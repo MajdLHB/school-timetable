@@ -49,15 +49,19 @@ RESCUE_WEIGHT = 10000
 
 class Unit:
     """One single lesson-hour, as emitted to aSc and counted by verify."""
-    __slots__ = ("uid", "class_id", "subject_id", "teacher_id", "room_type", "idx")
+    __slots__ = ("uid", "class_id", "subject_id", "teacher_id", "room_type",
+                 "idx", "group", "week")
 
-    def __init__(self, uid, class_id, subject_id, teacher_id, room_type, idx):
+    def __init__(self, uid, class_id, subject_id, teacher_id, room_type, idx,
+                 group=0, week=""):
         self.uid = uid
         self.class_id = class_id
         self.subject_id = subject_id
         self.teacher_id = teacher_id
         self.room_type = room_type
         self.idx = idx
+        self.group = group
+        self.week = week
 
 
 class Sess:
@@ -66,12 +70,17 @@ class Sess:
     explicit=True when the curriculum row carries a written block pattern
     ("2+1+1"): then H9 also demands each block on its OWN day. A blank
     pattern leaves the solver free - single hours, soft spreading only.
+
+    group: 0 = the whole class together; 1..N = one half/third of the class
+    (T43 - two different groups of one class MAY sit in the same period).
+    week: "" = every week; "A"/"B" = that week of the fortnight only (T42 -
+    a week-A session and a week-B session MAY share a slot).
     """
     __slots__ = ("sid", "class_id", "subject_id", "teacher_id", "room_type",
-                 "length", "hour_offset", "explicit")
+                 "length", "hour_offset", "explicit", "group", "week")
 
     def __init__(self, sid, class_id, subject_id, teacher_id, room_type,
-                 length, hour_offset, explicit):
+                 length, hour_offset, explicit, group=0, week=""):
         self.sid = sid
         self.class_id = class_id
         self.subject_id = subject_id
@@ -80,11 +89,27 @@ class Sess:
         self.length = length
         self.hour_offset = hour_offset
         self.explicit = explicit
+        self.group = group
+        self.week = week
+
+
+def uid_of(se, t):
+    """The per-hour uid. Historical scheme 'class|subject|idx' kept for
+    every-week rows; week rows carry the week letter before the index
+    ('C1|HIST|A0'), so an A-row and a B-row of one subject never collide."""
+    return "%s|%s|%s%d" % (se.class_id, se.subject_id, se.week,
+                           se.hour_offset + t)
 
 
 def expand(s):
-    """Turn each curriculum row into its sessions (H9 block pattern)."""
+    """Turn each curriculum row into its sessions (H9 block pattern).
+
+    groups=N repeats the row's pattern once per group (the teacher teaches
+    it N times; each pupil attends once). The hour offsets run on per
+    (class, subject, week) across rows AND groups, so uids never collide
+    even when a subject has a theory row and a grouped row."""
     sessions = []
+    next_off = collections.defaultdict(int)
     for row in s.curriculum:
         rt = s.room_type_for(row)
         explicit = bool(str(row.get("blocks", "")).strip())
@@ -93,12 +118,18 @@ def expand(s):
             # check() reports this in plain language; if we are running
             # anyway (selftest skip_check), fall back to single hours.
             bl, explicit = [1] * row["hours"], False
-        off = 0
-        for k, L in enumerate(bl):
-            sid = "%s|%s|s%d" % (row["class_id"], row["subject_id"], k)
-            sessions.append(Sess(sid, row["class_id"], row["subject_id"],
-                                 row["teacher_id"], rt, L, off, explicit))
-            off += L
+        week = (row.get("week") or "").strip().upper()
+        n_groups = max(1, int(row.get("groups", 1) or 1))
+        okey = (row["class_id"], row["subject_id"], week)
+        for g in (range(1, n_groups + 1) if n_groups > 1 else [0]):
+            for k, L in enumerate(bl):
+                sid = "%s|%s|%s|g%d|s%d.%d" % (
+                    row["class_id"], row["subject_id"], week, g, k,
+                    next_off[okey])
+                sessions.append(Sess(sid, row["class_id"], row["subject_id"],
+                                     row["teacher_id"], rt, L, next_off[okey],
+                                     explicit, g, week))
+                next_off[okey] += L
     return sessions
 
 
@@ -107,10 +138,9 @@ def hour_units(sessions):
     units = []
     for se in sessions:
         for t in range(se.length):
-            i = se.hour_offset + t
-            uid = "%s|%s|%d" % (se.class_id, se.subject_id, i)
-            units.append(Unit(uid, se.class_id, se.subject_id,
-                              se.teacher_id, se.room_type, i))
+            units.append(Unit(uid_of(se, t), se.class_id, se.subject_id,
+                              se.teacher_id, se.room_type, se.hour_offset + t,
+                              se.group, se.week))
     return units
 
 
@@ -122,11 +152,20 @@ def placement_from_solver(value_of, sessions, x, starts_of, slots):
             if value_of(x[se.sid, j]):
                 for t, i in enumerate(ixs):
                     dd, pp = slots[i]
-                    uid = "%s|%s|%d" % (se.class_id, se.subject_id,
-                                        se.hour_offset + t)
-                    out[uid] = [dd, pp]
+                    out[uid_of(se, t)] = [dd, pp]
                 break
     return out
+
+
+def weeks_of(ss):
+    """The week views these sessions need: [''] when nothing is fortnightly
+    (one shared view), else ['A', 'B'] (every-week sessions appear in both)."""
+    return ["A", "B"] if any(se.week for se in ss) else [""]
+
+
+def in_week(se, w):
+    """Is this session present in week view w? '' matches everything."""
+    return se.week == "" or w == "" or se.week == w
 
 
 class Progress(cp_model.CpSolverSolutionCallback):
@@ -281,82 +320,107 @@ def build(s, sessions, rescue=False):
     by_class = collections.defaultdict(list)
     by_teacher = collections.defaultdict(list)
     by_type = collections.defaultdict(list)
-    by_row = collections.defaultdict(list)
+    by_row = collections.defaultdict(list)     # (class, subject, group)
+    by_cs = collections.defaultdict(list)      # (class, subject) - for locks
     for se in sessions:
         by_class[se.class_id].append(se)
         if se.teacher_id:
             by_teacher[se.teacher_id].append(se)
         by_type[se.room_type].append(se)
-        by_row[se.class_id, se.subject_id].append(se)
+        by_row[se.class_id, se.subject_id, se.group].append(se)
+        by_cs[se.class_id, se.subject_id].append(se)
 
     S = len(slots)
 
     # ---- H2: a class is in one place at a time ---------------------------
+    # With groups (T43): the class's PARTS clash, not its cards. A whole-class
+    # session (group 0) clashes with everything; group g clashes with group g
+    # and with the whole class - but two DIFFERENT groups may run in parallel.
+    # With weeks (T42): the clash is per week view - a week-A card and a
+    # week-B card may share the slot, they never meet.
     for cid, ss in by_class.items():
-        for i in range(S):
-            vs = occs(ss, i)
-            if len(vs) > 1:
-                m.AddAtMostOne(vs)
+        gs = sorted({se.group for se in ss if se.group})
+        parts = [[se for se in ss if se.group in (0, g)] for g in gs] or [ss]
+        for part in parts:
+            for w in weeks_of(part):
+                act = [se for se in part if in_week(se, w)]
+                for i in range(S):
+                    vs = occs(act, i)
+                    if len(vs) > 1:
+                        m.AddAtMostOne(vs)
 
-    # ---- H1: a teacher is in one place at a time -------------------------
+    # ---- H1: a teacher is in one place at a time (per week view) ---------
     for tid, ss in by_teacher.items():
-        for i in range(S):
-            vs = occs(ss, i)
-            if len(vs) > 1:
-                m.AddAtMostOne(vs)
+        for w in weeks_of(ss):
+            act = [se for se in ss if in_week(se, w)]
+            for i in range(S):
+                vs = occs(act, i)
+                if len(vs) > 1:
+                    m.AddAtMostOne(vs)
 
     # ---- H3 + H4 + H6: never need more rooms of a type than exist --------
     # Rooms are interchangeable within a type, so counting is enough here.
     # assign_rooms() below turns the counts into concrete room numbers, and
-    # verify.py checks the concrete result independently.
+    # verify.py checks the concrete result independently. Counted per week
+    # view: an every-week lesson occupies its room in both weeks.
     for rt, ss in by_type.items():
         n_rooms = len(s.rooms_of_type(rt))
-        for i in range(S):
-            vs = occs(ss, i)
-            if len(vs) > n_rooms:
-                m.Add(sum(vs) <= n_rooms)
+        for w in weeks_of(ss):
+            act = [se for se in ss if in_week(se, w)]
+            for i in range(S):
+                vs = occs(act, i)
+                if len(vs) > n_rooms:
+                    m.Add(sum(vs) <= n_rooms)
 
     # ---- H9: different blocks of one subject on different days -----------
     # (The contiguity half of H9 is built into the start positions above.)
     # Hard ONLY for rows with a written pattern; a blank pattern gets the
     # soft same-day penalty below instead. Also breaks the symmetry of
     # equal-length sessions in a pattern by ordering their days.
-    day_pres_row = {}
+    # Per GROUP copy (each group's own pattern lands on its own days) and per
+    # WEEK view (a week-A block and the same subject's week-B block may share
+    # a day - the pupils never see them together).
+    day_pres_row = {}          # (class, subject, group, weekview) -> {day: b}
     for key, ss in by_row.items():
-        if len(ss) < 2:
-            continue
-        explicit = ss[0].explicit
-        dps = {}
-        day_hours = {}
-        for d in days:
-            terms = []
-            hour_terms = []
-            for se in ss:
-                for j, (dd, p0, ixs) in enumerate(starts_of(se)):
-                    if dd == d:
-                        terms.append(x[se.sid, j])
-                        hour_terms.append(se.length * x[se.sid, j])
-            if not terms:
+        for w in weeks_of(ss):
+            act = [se for se in ss if in_week(se, w)]
+            if len(act) < 2:
                 continue
-            if explicit:
-                m.Add(sum(terms) <= 1)
-            b = m.NewBoolVar("rowday_%s_%s_%s" % (key[0], key[1], d))
-            m.Add(sum(terms) >= 1).OnlyEnforceIf(b)
-            m.Add(sum(terms) == 0).OnlyEnforceIf(b.Not())
-            dps[d] = b
-            day_hours[d] = hour_terms
-        day_pres_row[key] = dps
-        if not explicit:
-            # old S6 half: pile-up on one day is discouraged, not forbidden
-            for d, hour_terms in day_hours.items():
-                extra = m.NewIntVar(0, sum(se.length for se in ss),
-                                    "pile_%s_%s_%s" % (key[0], key[1], d))
-                m.Add(extra >= sum(hour_terms) - 1)
-                penalties.append((W.get("same_subject_twice_a_day", 50), extra))
-            continue
-        # symmetry: equal-length neighbours in the pattern take increasing days
+            explicit = any(se.explicit for se in act)
+            dps = {}
+            day_hours = {}
+            for d in days:
+                terms = []
+                hour_terms = []
+                for se in act:
+                    for j, (dd, p0, ixs) in enumerate(starts_of(se)):
+                        if dd == d:
+                            terms.append(x[se.sid, j])
+                            hour_terms.append(se.length * x[se.sid, j])
+                if not terms:
+                    continue
+                if explicit:
+                    m.Add(sum(terms) <= 1)
+                b = m.NewBoolVar("rowday_%s_%s_g%s_%s_%s"
+                                 % (key[0], key[1], key[2], w, d))
+                m.Add(sum(terms) >= 1).OnlyEnforceIf(b)
+                m.Add(sum(terms) == 0).OnlyEnforceIf(b.Not())
+                dps[d] = b
+                day_hours[d] = hour_terms
+            day_pres_row[key + (w,)] = dps
+            if not explicit:
+                # old S6 half: pile-up on one day is discouraged, not forbidden
+                for d, hour_terms in day_hours.items():
+                    extra = m.NewIntVar(0, sum(se.length for se in act),
+                                        "pile_%s_%s_g%s_%s_%s"
+                                        % (key[0], key[1], key[2], w, d))
+                    m.Add(extra >= sum(hour_terms) - 1)
+                    penalties.append((W.get("same_subject_twice_a_day", 50), extra))
+                continue
+        # symmetry: equal-length neighbours in one week's pattern take
+        # increasing days (never pairs a week-A with a week-B session)
         for a, bse in zip(ss, ss[1:]):
-            if a.length != bse.length:
+            if a.length != bse.length or a.week != bse.week:
                 continue
             da = m.NewIntVar(0, len(days) - 1, "dv_%s" % a.sid)
             db = m.NewIntVar(0, len(days) - 1, "dv_%s" % bse.sid)
@@ -364,7 +428,40 @@ def build(s, sessions, rescue=False):
                             for j, (dd, p0, ixs) in enumerate(starts_of(a))))
             m.Add(db == sum(day_ix[dd] * x[bse.sid, j]
                             for j, (dd, p0, ixs) in enumerate(starts_of(bse))))
-            m.Add(da < db)
+            if a.explicit and bse.explicit:
+                m.Add(da < db)
+
+    # ---- S22 / M-SN4: the group copies of one row belong together --------
+    # The ministry's lab rule: the two groups' sessions run back to back.
+    # Soft: penalise every day where one group's subject sits and the other
+    # group's does not (same week view). Same-day + the no-holes rules (S1)
+    # then pull them into adjacent periods naturally.
+    grouped_cs = collections.defaultdict(int)
+    for (cid, sid_, g) in by_row:
+        if g:
+            grouped_cs[cid, sid_] = max(grouped_cs[cid, sid_], g)
+    for (cid, sid_), maxg in grouped_cs.items():
+        ss = by_cs[cid, sid_]
+        for w in weeks_of(ss):
+            for ga, gb in zip(range(1, maxg), range(2, maxg + 1)):
+                for d in days:
+                    a_terms = [x[se.sid, j]
+                               for se in by_row.get((cid, sid_, ga), [])
+                               if in_week(se, w)
+                               for j, (dd, _p, _x) in enumerate(starts_of(se))
+                               if dd == d]
+                    b_terms = [x[se.sid, j]
+                               for se in by_row.get((cid, sid_, gb), [])
+                               if in_week(se, w)
+                               for j, (dd, _p, _x) in enumerate(starts_of(se))
+                               if dd == d]
+                    if not a_terms or not b_terms:
+                        continue
+                    diff = m.NewIntVar(0, max(len(a_terms), len(b_terms)),
+                                       "gsync_%s_%s_%d_%s_%s" % (cid, sid_, gb, w, d))
+                    m.Add(diff >= sum(a_terms) - sum(b_terms))
+                    m.Add(diff >= sum(b_terms) - sum(a_terms))
+                    penalties.append((W.get("tp_groups_same_day", 45), diff))
 
     # ---- H7: the teacher's day off AND training day are completely empty --
     # (circular II.1: respect the pedagogical training days)
@@ -439,20 +536,25 @@ def build(s, sessions, rescue=False):
     # Circular 51/2018 II.2, repeated by the inspectorate text. Relaxable in
     # rescue mode (a 7-hour day is livable in extremis; a clash is not).
     for tid, ss in by_teacher.items():
-        for d in days:
-            ix = [i for i, (dd, p) in enumerate(slots) if dd == d]
-            if len(ix) <= 6:
-                continue
-            terms = [v for i in ix for v in occs(ss, i)]
-            if len(terms) <= 6:
-                continue
-            if not rescue:
-                m.Add(sum(terms) <= 6)
-            else:
-                over = m.NewIntVar(0, len(ix) - 6, "vH17_%s_%s" % (tid, d))
-                m.Add(sum(terms) <= 6 + over)
-                penalties.append((RESCUE_WEIGHT, over))
-                viols.append(("H17", tid, d, over, "hours beyond 6 in one day"))
+        for w in weeks_of(ss):
+            act = [se for se in ss if in_week(se, w)]
+            for d in days:
+                ix = [i for i, (dd, p) in enumerate(slots) if dd == d]
+                if len(ix) <= 6:
+                    continue
+                terms = [v for i in ix for v in occs(act, i)]
+                if len(terms) <= 6:
+                    continue
+                if not rescue:
+                    m.Add(sum(terms) <= 6)
+                else:
+                    over = m.NewIntVar(0, len(ix) - 6,
+                                       "vH17_%s_%s_%s" % (tid, d, w))
+                    m.Add(sum(terms) <= 6 + over)
+                    penalties.append((RESCUE_WEIGHT, over))
+                    viols.append(("H17", tid, d, over,
+                                  "hours beyond 6 in one day"
+                                  + (" (week %s)" % w if w else "")))
 
     # ---- H8: declared unavailable slots ----------------------------------
     for un in s.unavailable:
@@ -495,6 +597,8 @@ def build(s, sessions, rescue=False):
             for b in ss:
                 if a.sid >= b.sid:
                     continue
+                if a.week and b.week and a.week != b.week:
+                    continue   # different weeks never meet - no 24h issue
                 for ja, (da_, pa, _xa) in enumerate(starts_of(a)):
                     for jb, (db_, pb, _xb) in enumerate(starts_of(b)):
                         ka, kb = day_ix[da_], day_ix[db_]
@@ -505,23 +609,27 @@ def build(s, sessions, rescue=False):
                             m.AddBoolOr([x[a.sid, ja].Not(), x[b.sid, jb].Not()])
 
     # ---- Locked sheet: the user's pinned placements are immovable --------
+    # >= 1 so a grouped subject may put EITHER group there (and with weeks,
+    # either week) - the pin says "this subject sits here", not which half.
     for lk in s.locked:
         i = slot_ix.get((lk["day"], lk["period"]))
         if i is None:
             continue
-        vs = occs(by_row.get((lk["class_id"], lk["subject_id"]), []), i)
+        vs = occs(by_cs.get((lk["class_id"], lk["subject_id"]), []), i)
         if vs:
-            m.Add(sum(vs) == 1)
+            m.Add(sum(vs) >= 1)
         else:
             m.Add(sum(()) == 1)   # pinned to a slot nothing can reach
 
     # ---- presence grid, reused by several soft rules ----------------------
-    def presence(group, key):
-        """pres[(day, period)] = 1 if this teacher/class is busy then."""
+    def presence(group, key, w=""):
+        """pres[(day, period)] = 1 if this teacher/class-part is busy then,
+        in week view w ('' = the single shared view)."""
         pres = {}
+        act = [se for se in group if in_week(se, w)]
         for i, (d, p) in enumerate(slots):
             b = m.NewBoolVar("pres_%s_%s_%d" % (key, d, p))
-            m.Add(b == sum(occs(group, i)))
+            m.Add(b == sum(occs(act, i)))
             pres[d, p] = b
         return pres
 
@@ -570,21 +678,39 @@ def build(s, sessions, rescue=False):
     # the exception Majd grants to teachers with long journeys.
     teacher_days = {}
     for tid, ss in by_teacher.items():
-        pres = presence(ss, "T" + tid)
         compact = s.teachers.get(tid, {}).get("compact", "") == "yes"
-        teacher_days[tid] = add_gap_penalty(pres, "T" + tid, W["teacher_gap"],
-                                            also_one_hour=True,
-                                            also_day_count=compact)
-        if not compact:
-            # S8 (ministry): every taught hour beyond 4 on one day is a
-            # sign of cramming; H17 caps the day at 6 outright.
+        wks = weeks_of(ss)
+        days_by_week = []
+        for w in wks:
+            pres = presence(ss, "T%s%s" % (tid, w), w)
+            days_by_week.append(
+                add_gap_penalty(pres, "T%s%s" % (tid, w), W["teacher_gap"],
+                                also_one_hour=True, also_day_count=compact))
+            if not compact:
+                # S8 (ministry): every taught hour beyond 4 on one day is a
+                # sign of cramming; H17 caps the day at 6 outright.
+                for d in s.cfg.days:
+                    ps = [p for (dd, p) in slots if dd == d]
+                    if len(ps) <= 4:
+                        continue
+                    over = m.NewIntVar(0, len(ps) - 4,
+                                       "crowd_%s_%s_%s" % (tid, d, w))
+                    m.Add(over >= sum(pres[d, p] for p in ps) - 4)
+                    penalties.append((W.get("overloaded_day", 40), over))
+        if len(days_by_week) == 1:
+            teacher_days[tid] = days_by_week[0]
+        else:
+            # S21 needs ONE here/not-here per day: present = comes in in
+            # EITHER week (they still travel that day, every second week)
+            merged = {}
             for d in s.cfg.days:
-                ps = [p for (dd, p) in slots if dd == d]
-                if len(ps) <= 4:
+                vs = [dw[d] for dw in days_by_week if d in dw]
+                if not vs:
                     continue
-                over = m.NewIntVar(0, len(ps) - 4, "crowd_%s_%s" % (tid, d))
-                m.Add(over >= sum(pres[d, p] for p in ps) - 4)
-                penalties.append((W.get("overloaded_day", 40), over))
+                b = m.NewBoolVar("hereAB_%s_%s" % (tid, d))
+                m.AddMaxEquality(b, vs)
+                merged[d] = b
+            teacher_days[tid] = merged
 
         # S5 (circular II.4): alternation - nobody teaches only mornings or
         # only evenings. Penalise |morning - evening| beyond a slack of 2.
@@ -623,10 +749,21 @@ def build(s, sessions, rescue=False):
             m.Add(a == b).OnlyEnforceIf(diff.Not())
             penalties.append((W.get("travel_pair", 70), diff))
 
-    # S7 pupils get no holes either
+    # S7 pupils get no holes either - seen from each PART of the class (a
+    # pupil in group 1 lives through the whole-class hours plus group 1's),
+    # and per week view when the class has fortnightly rows.
+    def class_parts(ss):
+        gs = sorted({se.group for se in ss if se.group})
+        if not gs:
+            return {0: ss}
+        return {g: [se for se in ss if se.group in (0, g)] for g in gs}
+
     for cid, ss in by_class.items():
-        pres = presence(ss, "C" + cid)
-        add_gap_penalty(pres, "C" + cid, W["class_gap"])
+        for g, part in class_parts(ss).items():
+            for w in weeks_of(part):
+                key = "C%s.g%s%s" % (cid, g, w)
+                pres = presence(part, key, w)
+                add_gap_penalty(pres, key, W["class_gap"])
 
     # ---- S15: a class never comes in for a single lone hour ---------------
     # Circular I.2: minimum 2 hours in any morning or evening - for pupils
@@ -636,26 +773,31 @@ def build(s, sessions, rescue=False):
                      if p not in evening],
               "pm": sorted(evening)}
     for cid, ss in by_class.items():
-        exempt = [se for se in ss
-                  if s.subjects.get(se.subject_id, {}).get("minmax_exempt") == "yes"]
-        counted = [se for se in ss if se not in exempt]
-        for d in s.cfg.days:
-            for half, ps in halves.items():
-                ix = [i for i, (dd, p) in enumerate(slots) if dd == d and p in ps]
-                if len(ix) < 2:
-                    continue
-                tot = sum(v for i in ix for v in occs(ss, i))
-                cnt = sum(v for i in ix for v in occs(counted, i))
-                solo = m.NewBoolVar("csolo_%s_%s_%s" % (cid, d, half))
-                b_tot1 = m.NewBoolVar("ctot1_%s_%s_%s" % (cid, d, half))
-                m.Add(tot == 1).OnlyEnforceIf(b_tot1)
-                m.Add(tot != 1).OnlyEnforceIf(b_tot1.Not())
-                b_cnt1 = m.NewBoolVar("ccnt1_%s_%s_%s" % (cid, d, half))
-                m.Add(cnt >= 1).OnlyEnforceIf(b_cnt1)
-                m.Add(cnt == 0).OnlyEnforceIf(b_cnt1.Not())
-                m.AddBoolAnd([b_tot1, b_cnt1]).OnlyEnforceIf(solo)
-                m.AddBoolOr([b_tot1.Not(), b_cnt1.Not()]).OnlyEnforceIf(solo.Not())
-                penalties.append((W.get("class_one_hour_session", 85), solo))
+        for g, part in class_parts(ss).items():
+            for w in weeks_of(part):
+                act = [se for se in part if in_week(se, w)]
+                exempt = [se for se in act
+                          if s.subjects.get(se.subject_id, {}).get("minmax_exempt") == "yes"]
+                counted = [se for se in act if se not in exempt]
+                tag = "%s.g%s%s" % (cid, g, w)
+                for d in s.cfg.days:
+                    for half, ps in halves.items():
+                        ix = [i for i, (dd, p) in enumerate(slots)
+                              if dd == d and p in ps]
+                        if len(ix) < 2:
+                            continue
+                        tot = sum(v for i in ix for v in occs(act, i))
+                        cnt = sum(v for i in ix for v in occs(counted, i))
+                        solo = m.NewBoolVar("csolo_%s_%s_%s" % (tag, d, half))
+                        b_tot1 = m.NewBoolVar("ctot1_%s_%s_%s" % (tag, d, half))
+                        m.Add(tot == 1).OnlyEnforceIf(b_tot1)
+                        m.Add(tot != 1).OnlyEnforceIf(b_tot1.Not())
+                        b_cnt1 = m.NewBoolVar("ccnt1_%s_%s_%s" % (tag, d, half))
+                        m.Add(cnt >= 1).OnlyEnforceIf(b_cnt1)
+                        m.Add(cnt == 0).OnlyEnforceIf(b_cnt1.Not())
+                        m.AddBoolAnd([b_tot1, b_cnt1]).OnlyEnforceIf(solo)
+                        m.AddBoolOr([b_tot1.Not(), b_cnt1.Not()]).OnlyEnforceIf(solo.Not())
+                        penalties.append((W.get("class_one_hour_session", 85), solo))
 
     # ---- S3: hard subjects belong in the morning -------------------------
     hard_sess = [se for se in sessions
@@ -710,11 +852,14 @@ def build(s, sessions, rescue=False):
                     i2 = slot_ix.get((d, p + 1))
                     if i2 is None:
                         continue
+    # (grouped subjects can put TWO cards in one slot - the aggregation vars
+    #  below must be wide enough for that, or the model turns infeasible)
                     va = occs(ses_a, i)
                     vb = occs(ses_b, i2)
                     if not va or not vb:
                         continue
-                    both = m.NewIntVar(0, 1, "na_%s_%s_%s_%s_%d" % (cid, sid_a, sid_b, d, p))
+                    both = m.NewIntVar(0, len(va) + len(vb),
+                                       "na_%s_%s_%s_%s_%d" % (cid, sid_a, sid_b, d, p))
                     m.Add(both >= sum(va) + sum(vb) - 1)
                     penalties.append((W.get("not_after", 60), both))
 
@@ -746,7 +891,8 @@ def build(s, sessions, rescue=False):
                     va = occs(others, i)
                     if not va:
                         continue
-                    pair = m.NewIntVar(0, 1, "nat_%s_%s_%s_%d" % (cid, nat, sid_b, i))
+                    pair = m.NewIntVar(0, len(va) + len(vb),
+                                       "nat_%s_%s_%s_%d" % (cid, nat, sid_b, i))
                     m.Add(pair >= sum(va) + sum(vb) - 1)
                     penalties.append((W.get("same_nature_adjacent", 80), pair))
 
@@ -757,14 +903,14 @@ def build(s, sessions, rescue=False):
                 for c in s.curriculum}
     ev_ix_all = [i for i, (d, p) in enumerate(slots) if p in evening]
     for key, ss in by_row.items():
-        if not row_core.get(key):
+        if not row_core.get(key[:2]):
             continue
         hours = sum(se.length for se in ss)
         allowed_ev = hours // 4
         terms = [v for i in ev_ix_all for v in occs(ss, i)]
         if not terms:
             continue
-        over = m.NewIntVar(0, hours, "core_ev_%s_%s" % key)
+        over = m.NewIntVar(0, hours, "core_ev_%s_%s_g%s" % key)
         m.Add(over >= sum(terms) - allowed_ev)
         penalties.append((W.get("core_morning", 65), over))
 
@@ -848,8 +994,7 @@ def assign_rooms(s, sessions, placement):
     session falls back to per-hour assignment, which always succeeds.
     """
     def hour_uids(se):
-        return ["%s|%s|%d" % (se.class_id, se.subject_id, se.hour_offset + t)
-                for t in range(se.length)]
+        return [uid_of(se, t) for t in range(se.length)]
 
     rooms_by_type = collections.defaultdict(list)
     for r in s.rooms.values():
@@ -857,20 +1002,32 @@ def assign_rooms(s, sessions, placement):
     for k in rooms_by_type:
         rooms_by_type[k].sort()
 
-    taken = collections.defaultdict(set)      # (day, period) -> room ids
+    # (day, period) -> {room id: set of weeks occupied}. An every-week lesson
+    # occupies {'A','B'}; a fortnight lesson only its own week, so a week-A
+    # and a week-B lesson can share one room in one period.
+    taken = collections.defaultdict(dict)
     out = {}
+
+    def wset(se):
+        return {"A", "B"} if not se.week else {se.week}
 
     def slot_of(uid):
         d, p = placement[uid]
         return (d, p)
 
+    def room_free(se, rid, sl):
+        return not (taken[sl].get(rid, set()) & wset(se))
+
+    def take(se, rid, sl):
+        taken[sl].setdefault(rid, set()).update(wset(se))
+
     def try_room(se, rid):
         us = hour_uids(se)
-        if any(rid in taken[slot_of(u)] for u in us):
+        if any(not room_free(se, rid, slot_of(u)) for u in us):
             return False
         for u in us:
             out[u] = rid
-            taken[slot_of(u)].add(rid)
+            take(se, rid, slot_of(u))
         return True
 
     ordered = sorted(sessions, key=lambda se: -se.length)
@@ -891,9 +1048,9 @@ def assign_rooms(s, sessions, placement):
             # fall back to per-hour rooms; H3/H6 still hold
             for u in hour_uids(se):
                 for rid in rooms_by_type.get(se.room_type, []):
-                    if rid not in taken[slot_of(u)]:
+                    if room_free(se, rid, slot_of(u)):
                         out[u] = rid
-                        taken[slot_of(u)].add(rid)
+                        take(se, rid, slot_of(u))
                         break
                 else:
                     out[u] = ""  # should never happen; verify.py will catch it
@@ -1169,7 +1326,7 @@ def main():
             place = saved.get("placement", {})
             hinted = 0
             for se in sessions:
-                uid0 = "%s|%s|%d" % (se.class_id, se.subject_id, se.hour_offset)
+                uid0 = uid_of(se, 0)
                 got = place.get(uid0)
                 if not got:
                     continue
@@ -1277,11 +1434,15 @@ def main():
     if chosen_offs:
         print("  Flexible day offs chosen for %d teachers - the list is in "
               "the report." % len(chosen_offs))
+        os.makedirs(OUT, exist_ok=True)
+        with open(os.path.join(OUT, "dayoffs.json"), "w", encoding="utf-8") as f:
+            json.dump(chosen_offs, f, ensure_ascii=False, indent=1)
 
     os.makedirs(OUT, exist_ok=True)
     xml_path = os.path.join(OUT, "timetable.xml")
     emit_asc.write(s, units, placement, rooms, xml_path)
-    emit_html.write(s, units, placement, rooms, os.path.join(OUT, "view.html"))
+    emit_html.write(s, units, placement, rooms, os.path.join(OUT, "view.html"),
+                    day_offs=chosen_offs)
     emit_html.write_teachers(s, os.path.join(OUT, "teachers.html"))
     rep = report(s, units, placement, rooms, solver, status, elapsed,
                  exceptions=exceptions, day_offs=chosen_offs)

@@ -26,6 +26,29 @@ EXC = os.path.join(D.HERE, "out", "exceptions.json")
 EXCUSABLE = {"H7", "H17"}
 
 
+def _group_no(groupids):
+    """'GRP_<classid>_<n>' -> n; no groupids (or entire class) -> 0."""
+    g = (groupids or "").split(",")[0].strip()
+    if not g:
+        return 0
+    try:
+        return int(g.rsplit("_", 1)[1])
+    except (IndexError, ValueError):
+        return 0
+
+
+def _weeks_of_mask(mask):
+    """A card's weeks mask -> which weeks it exists in. Single-week files
+    ('1', or no mask at all) exist in 'both' weeks - the distinction only
+    matters once A/B lessons appear."""
+    m = (mask or "").strip()
+    if m == "10":
+        return ("A",)
+    if m == "01":
+        return ("B",)
+    return ("A", "B")
+
+
 def read_xml(path):
     """Return (lessons, cards) exactly as aSc would see them."""
     root = ET.parse(path).getroot()
@@ -36,6 +59,7 @@ def read_xml(path):
             classes=[c for c in (el.get("classids") or "").split(",") if c],
             teachers=[t for t in (el.get("teacherids") or "").split(",") if t],
             per_week=int(el.get("periodsperweek") or 0),
+            group=_group_no(el.get("groupids")),
         )
     cards = []
     for el in root.findall("./cards/card"):
@@ -44,6 +68,7 @@ def read_xml(path):
             period=int(el.get("period")),
             days=el.get("days") or "",
             room=el.get("classroomids") or "",
+            weeks=_weeks_of_mask(el.get("weeks")),
         ))
     return lessons, cards
 
@@ -80,8 +105,8 @@ def main():
     days = cfg.days
     open_slots = set(cfg.slots)
 
-    # --- decode every card into (day, period) -----------------------------
-    placed = []   # (day, period, room, lesson_id)
+    # --- decode every card into (day, period, weeks) ----------------------
+    placed = []   # (day, period, room, lesson_id, weeks_tuple)
     for c in cards:
         mask = c["days"]
         if len(mask) != len(days):
@@ -93,67 +118,93 @@ def main():
             fail("XML", "card for %s has mask %r selecting %d days; expected exactly 1."
                  % (c["lesson"], mask, len(on)))
             continue
-        placed.append((on[0], c["period"], c["room"], c["lesson"]))
+        placed.append((on[0], c["period"], c["room"], c["lesson"], c["weeks"]))
 
     # --- every card lands in an open period -------------------------------
-    for d, p, r, lid in placed:
+    for d, p, r, lid, wks in placed:
         if (d, p) not in open_slots:
             fail("H0", "a lesson is placed at %s period %d, when the school is shut." % (d, p))
 
     # --- H5: required hours delivered exactly -----------------------------
+    # Per (class, subject, group, week): every group of a split row gets the
+    # row's hours; a week-A row delivers in week A. An every-week card counts
+    # in both week views, and so does an every-week row.
     want = collections.Counter()
     for row in s.curriculum:
-        want[row["class_id"], row["subject_id"]] += row["hours"]
+        n_groups = max(1, row.get("groups", 1))
+        rweek = row.get("week", "")
+        for g in (range(1, n_groups + 1) if n_groups > 1 else [0]):
+            for w in ("A", "B"):
+                if rweek in ("", w):
+                    want[row["class_id"], row["subject_id"], g, w] += row["hours"]
     got = collections.Counter()
-    for d, p, r, lid in placed:
+    for d, p, r, lid, wks in placed:
         L = lessons.get(lid)
         if not L:
             fail("XML", "card refers to unknown lesson id %s." % lid)
             continue
         for cid in L["classes"]:
-            got[cid, L["subject"]] += 1
+            for w in wks:
+                got[cid, L["subject"], L["group"], w] += 1
     for key in set(want) | set(got):
         if want[key] != got[key]:
-            fail("H5", "class %s subject %s: needs %d hours, timetable has %d."
-                 % (key[0], key[1], want[key], got[key]))
+            grp = ("group %d" % key[2]) if key[2] else "whole class"
+            fail("H5", "class %s subject %s (%s, week %s): needs %d hours, "
+                       "timetable has %d."
+                 % (key[0], key[1], grp, key[3], want[key], got[key]))
 
     # --- H1 teacher clash / H2 class clash / H3 room clash ----------------
+    # All three are per WEEK: a week-A card and a week-B card never meet.
+    # H2 is per class PART: group 1 clashes with group 1 and with the whole
+    # class, but groups 1 and 2 may sit in parallel (the proven aSc split).
     t_at = collections.defaultdict(list)
     c_at = collections.defaultdict(list)
     r_at = collections.defaultdict(list)
-    for d, p, r, lid in placed:
+    for d, p, r, lid, wks in placed:
         L = lessons.get(lid)
         if not L:
             continue
-        for t in L["teachers"]:
-            t_at[t, d, p].append(lid)
-        for cid in L["classes"]:
-            c_at[cid, d, p].append(lid)
-        if r:
-            r_at[r, d, p].append(lid)
+        for w in wks:
+            for t in L["teachers"]:
+                t_at[t, d, p, w].append(lid)
+            for cid in L["classes"]:
+                c_at[cid, d, p, w].append(L["group"])
+            if r:
+                r_at[r, d, p, w].append(lid)
 
-    for (t, d, p), v in t_at.items():
+    def wtag(w):
+        return " (week %s)" % w
+
+    for (t, d, p, w), v in t_at.items():
         if len(v) > 1:
-            fail("H1", "teacher %s is in %d places at %s period %d." % (t, len(v), d, p))
-    for (c, d, p), v in c_at.items():
+            fail("H1", "teacher %s is in %d places at %s period %d%s."
+                 % (t, len(v), d, p, wtag(w)))
+    for (c, d, p, w), gs in c_at.items():
+        if len(gs) > 1 and (0 in gs or len(set(gs)) < len(gs)):
+            fail("H2", "class %s is in %d places at %s period %d%s "
+                       "(groups %s - only DIFFERENT groups may overlap)."
+                 % (c, len(gs), d, p, wtag(w),
+                    ", ".join(str(g) for g in sorted(gs))))
+    for (r, d, p, w), v in r_at.items():
         if len(v) > 1:
-            fail("H2", "class %s is in %d places at %s period %d." % (c, len(v), d, p))
-    for (r, d, p), v in r_at.items():
-        if len(v) > 1:
-            fail("H3", "room %s holds %d lessons at %s period %d." % (r, len(v), d, p))
+            fail("H3", "room %s holds %d lessons at %s period %d%s."
+                 % (r, len(v), d, p, wtag(w)))
 
     # --- H4: never more lessons at once than rooms exist ------------------
-    per_slot = collections.Counter((d, p) for d, p, r, lid in placed)
-    for (d, p), n in per_slot.items():
+    per_slot = collections.Counter()
+    for d, p, r, lid, wks in placed:
+        for w in wks:
+            per_slot[d, p, w] += 1
+    for (d, p, w), n in per_slot.items():
         if n > len(s.rooms):
-            fail("H4", "%d lessons at %s period %d but only %d rooms exist."
-                 % (n, d, p, len(s.rooms)))
+            fail("H4", "%d lessons at %s period %d%s but only %d rooms exist."
+                 % (n, d, p, wtag(w), len(s.rooms)))
 
     # --- H6: right kind of room -------------------------------------------
     need_type = {}
     for row in s.curriculum:
         need_type[row["class_id"], row["subject_id"]] = s.room_type_for(row)
-    for d, p, r, lid in placed:
+    for d, p, r, lid, wks in placed:
         L = lessons.get(lid)
         if not L:
             continue
@@ -169,67 +220,93 @@ def main():
                      % (cid, L["subject"], want_t, r, s.rooms[r]["type"]))
 
     # --- H9: block patterns ------------------------------------------------
-    # Each block of a class+subject must sit as ONE run of consecutive
-    # periods on ONE day, and the run lengths across the week must be exactly
-    # the declared pattern (blank blocks = all single hours, on separate days).
-    cs_day = collections.defaultdict(list)   # (class, subject, day) -> periods
-    for d, p, r, lid in placed:
+    # Each block must sit as ONE run of consecutive periods on ONE day, per
+    # GROUP copy and per WEEK view; the run lengths must match the declared
+    # pattern(s). When a subject has several rows (theory + fortnight extra),
+    # the expectation is the union of their patterns in that week.
+    cs_day = collections.defaultdict(list)  # (class, subj, group, week, day) -> periods
+    for d, p, r, lid, wks in placed:
         L = lessons.get(lid)
         if not L:
             continue
         for cid in L["classes"]:
-            cs_day[cid, L["subject"], d].append(p)
+            for w in wks:
+                cs_day[cid, L["subject"], L["group"], w, d].append(p)
 
-    runs = collections.defaultdict(list)     # (class, subject) -> run lengths
-    for (cid, subj, d), ps in cs_day.items():
+    runs = collections.defaultdict(list)    # (class, subj, group, week) -> runs
+    for (cid, subj, g, w, d), ps in cs_day.items():
         ps.sort()
         run = 1
         for a, b in zip(ps, ps[1:]):
             if b == a + 1:
                 run += 1
             else:
-                runs[cid, subj].append(run)
+                runs[cid, subj, g, w].append(run)
                 run = 1
-        runs[cid, subj].append(run)
+        runs[cid, subj, g, w].append(run)
 
+    expect = collections.defaultdict(list)  # (class, subj, group, week) -> blocks
+    unverifiable = set()                    # a blank-pattern row is in the mix
     for row in s.curriculum:
-        if not str(row.get("blocks", "")).strip():
-            continue   # blank pattern imposes nothing (spreading is soft)
+        n_groups = max(1, row.get("groups", 1))
+        rweek = row.get("week", "")
+        blank = not str(row.get("blocks", "")).strip()
         want_bl, berr = D.parse_blocks(row.get("blocks", ""), row["hours"])
-        if berr or not want_bl or sum(want_bl) != row["hours"]:
-            continue   # unreadable pattern is a data error, reported elsewhere
-        got_bl = runs.get((row["class_id"], row["subject_id"]), [])
+        bad = berr or not want_bl or sum(want_bl) != row["hours"]
+        for g in (range(1, n_groups + 1) if n_groups > 1 else [0]):
+            for w in ("A", "B"):
+                if rweek not in ("", w):
+                    continue
+                key = (row["class_id"], row["subject_id"], g, w)
+                if blank or bad:
+                    unverifiable.add(key)
+                else:
+                    expect[key].extend(want_bl)
+    for key, want_bl in expect.items():
+        if key in unverifiable:
+            continue   # mixed with a free-form row - runs cannot be predicted
+        got_bl = runs.get(key, [])
         if sorted(got_bl) != sorted(want_bl):
-            fail("H9", "class %s subject %s: blocks say %s but the timetable "
-                       "has runs of %s (each block must be consecutive hours "
-                       "on its own day)."
-                 % (row["class_id"], row["subject_id"],
-                    "+".join(map(str, want_bl)),
+            grp = ("group %d" % key[2]) if key[2] else "whole class"
+            fail("H9", "class %s subject %s (%s, week %s): blocks say %s but "
+                       "the timetable has runs of %s (each block must be "
+                       "consecutive hours on its own day)."
+                 % (key[0], key[1], grp, key[3],
+                    "+".join(map(str, sorted(want_bl, reverse=True))),
                     "+".join(map(str, sorted(got_bl, reverse=True))) or "none"))
 
     # --- H19: 24 hours between sessions of a gap24 subject -----------------
     # On consecutive days, the later session must not start earlier in the
     # day than the first one did (circular III.2, the PE 24-hour note).
+    # Checked inside each week view - sessions of different weeks never meet.
     day_order = {d: k for k, d in enumerate(cfg.days)}
+    seen_h19 = set()
     for row in s.curriculum:
         if not str(row.get("blocks", "")).strip():
             continue
         if s.subjects.get(row["subject_id"], {}).get("gap24") != "yes":
             continue
-        starts = {}
-        for (cid, subj, d), ps in cs_day.items():
-            if cid == row["class_id"] and subj == row["subject_id"]:
-                starts[day_order[d]] = min(ps)
-        for k in sorted(starts):
-            if k + 1 in starts and starts[k + 1] < starts[k]:
-                fail("H19", "class %s subject %s: sessions on consecutive days "
-                            "start at period %d then %d - less than 24 hours "
-                            "apart (circular III.2)."
-                     % (row["class_id"], row["subject_id"],
-                        starts[k], starts[k + 1]))
+        n_groups = max(1, row.get("groups", 1))
+        for g in (range(1, n_groups + 1) if n_groups > 1 else [0]):
+            for w in ("A", "B"):
+                key = (row["class_id"], row["subject_id"], g, w)
+                if key in seen_h19 or row.get("week", "") not in ("", w):
+                    continue
+                seen_h19.add(key)
+                starts = {}
+                for (cid, subj, gg, ww, d), ps in cs_day.items():
+                    if (cid, subj, gg, ww) == key:
+                        starts[day_order[d]] = min(ps)
+                for k in sorted(starts):
+                    if k + 1 in starts and starts[k + 1] < starts[k]:
+                        fail("H19", "class %s subject %s: sessions on consecutive "
+                                    "days start at period %d then %d - less than "
+                                    "24 hours apart (circular III.2)."
+                             % (row["class_id"], row["subject_id"],
+                                starts[k], starts[k + 1]))
 
     # --- H15: daylight-only subjects ---------------------------------------
-    for d, p, r, lid in placed:
+    for d, p, r, lid, wks in placed:
         L = lessons.get(lid)
         if not L:
             continue
@@ -240,7 +317,7 @@ def main():
                         "(no daylight)." % (L["subject"], d, p, lp))
 
     # --- H7: day off AND training day are empty ----------------------------
-    for (t, d, p), v in t_at.items():
+    for (t, d) in sorted({(t, d) for (t, d, p, w) in t_at}):
         rec = s.teachers.get(t, {})
         if rec.get("day_off", "") == d:
             fail("H7", "teacher %s teaches on %s, which is their day off." % (t, d),
@@ -256,7 +333,7 @@ def main():
     # included) is completely free of lessons.
     day_list = list(cfg.days)
     taught_days = collections.defaultdict(set)
-    for (t, d, p), v in t_at.items():
+    for (t, d, p, w), v in t_at.items():
         taught_days[t].add(d)
     for t in s.teachers.values():
         if (t.get("day_off") or "").strip():
@@ -284,19 +361,23 @@ def main():
                          % t["id"])
 
     # --- H17: never more than 6 teaching hours in one day ------------------
+    # Per week: an every-week hour loads both weeks, a week-A hour only A.
     day_load = collections.Counter()
-    for (t, d, p), v in t_at.items():
-        day_load[t, d] += len(v)
-    for (t, d), n in sorted(day_load.items()):
-        if n > 6:
-            fail("H17", "teacher %s teaches %d hours on %s; the ministry caps "
-                        "the day at 6 (circular II.2)." % (t, n, d), key=(t, d))
+    for (t, d, p, w), v in t_at.items():
+        day_load[t, d, w] += len(v)
+    reported_h17 = set()
+    for (t, d, w), n in sorted(day_load.items()):
+        if n > 6 and (t, d) not in reported_h17:
+            reported_h17.add((t, d))
+            fail("H17", "teacher %s teaches %d hours on %s (week %s); the "
+                        "ministry caps the day at 6 (circular II.2)."
+                 % (t, n, d, w), key=(t, d))
 
     # --- H8: declared unavailable ------------------------------------------
     for un in s.unavailable:
         if un["hard"] != "yes":
             continue
-        for (t, d, p), v in t_at.items():
+        for (t, d, p) in sorted({(t, d, p) for (t, d, p, w) in t_at}):
             if t != un["teacher_id"]:
                 continue
             if un["day"] in ("*", d) and (un["period"] == "*" or str(p) == str(un["period"])):
@@ -315,19 +396,21 @@ def main():
                 fail("H18", "teacher %s has day_off %s adjacent to training_day "
                             "%s - consecutive free days (Sunday counts)." % (t["id"], off, tr))
 
-    # --- H10: contracted hours --------------------------------------------
+    # --- H10: contracted hours (the busier week is what counts) ------------
     load = collections.Counter()
-    for (t, d, p), v in t_at.items():
-        load[t] += len(v)
-    for t, n in load.items():
+    for (t, d, p, w), v in t_at.items():
+        load[t, w] += len(v)
+    for t in sorted({t for (t, w) in load}):
+        n = max(load.get((t, "A"), 0), load.get((t, "B"), 0))
         cap = s.teachers.get(t, {}).get("hours", 0)
         if cap and n > cap:
-            fail("H10", "teacher %s teaches %d hours, contract is %d." % (t, n, cap))
+            fail("H10", "teacher %s teaches %d hours in their busier week, "
+                        "contract is %d." % (t, n, cap))
 
     # --- Locked: the user's pins were honoured -----------------------------
     for lk in s.locked:
         hit = False
-        for d, p, r, lid in placed:
+        for d, p, r, lid, wks in placed:
             L = lessons.get(lid)
             if L and lk["class_id"] in L["classes"] and L["subject"] == lk["subject_id"] \
                     and d == lk["day"] and p == lk["period"]:

@@ -9,14 +9,12 @@ Sources of truth:
 Documented first-draft policies (every deviation is written to
 data/CURRICULUM_REPORT.md so nothing is silent):
 
-  P1  hours = floor(pupil_hours), whole-class (groups=1). Fortnightly halves
-      (PISL/CIV 1.5, HIST 3.5...) are DROPPED for now - they return with the
-      Week A/B machinery. Flooring never inflates teacher loads, so it can
-      never create false H10 contract errors.
-  P2  blocks pattern written only when the circular's sessions are plain
-      whole-class integers (fortnight entries dropped) and they sum to the
-      hours. Anything with groups/alternation gets a blank pattern (free
-      single hours) until the group machinery exists.
+  P1  (UPGRADED 2026-08-24, both aSc probes passed) group sessions are real
+      groups=2 rows at per-group length; fortnightly sessions are real
+      week=A/B rows. Which week a class takes is set by class parity within
+      its stream, so weeks A and B stay balanced school-wide.
+  P2  blocks patterns come straight from the circular's session lengths,
+      per row (theory, TP and fortnight rows each carry their own pattern).
   P3  The Distribution gives section COUNTS per stream, not class numbers.
       Classes are paired to teachers deterministically: classes in id order,
       Distribution rows in sheet order. This pairing is a FREE CHOICE -
@@ -94,48 +92,53 @@ def node_for(streams, grade, stream):
     return streams[STREAM_KEY[stream]]["Y%d" % grade]
 
 
-def split_theory_tp(node):
-    """P9 (Majd, 2026-08-24): 'there is physics lesson session in normal
-    classroom and there is the tp session - groups one - in lab'.
+def parse_sessions(node):
+    """P9 + T42/T43 (2026-08-24, both aSc probes passed): read the circular's
+    session list into real machinery.
 
-    Returns (theory_hours, theory_blocks, tp_hours, flags).
-    theory = the whole-class sessions -> ordinary classroom.
-    tp     = the group sessions, at their per-group length (a 4h group
-             session is 2h per group; the two groups run back to back in
-             the lab, which is exactly ministry rule M-SN4) -> lab.
-    Fortnightly parts are dropped until Week A/B exists.
+    theory  = whole-class sessions -> ordinary classroom (lab subjects) or
+              the subject's own room.
+    tp      = group sessions, groups=2, at PER-GROUP length: a circled(4)
+              is 2h per group - the teacher teaches both, back to back in
+              the lab (ministry M-SN4, solver rule S22).
+    *_alt   = fortnightly (Week A/B) versions of the same. WHICH week each
+              class takes is decided by class parity, so the A and B loads
+              balance across the school.
+    pairs   = alt_whole1_group4: 1h whole class one week, 2h per group the
+              other week - the two halves MUST take opposite weeks.
     """
     flags = []
-    theory, tp_list = [], []
+    out = dict(theory=[], theory_alt=[], tp=[], tp_alt=[], pairs=[])
+
+    def per_group(total):
+        pg = total / 2.0
+        rounded = int(math.ceil(pg))
+        if rounded != pg:
+            flags.append("group session of %sh -> %.1fh per group, rounded up "
+                         "to %dh (aSc cannot show half hours - same convention "
+                         "the school already used)" % (total, pg, rounded))
+        return rounded
+
     for se in node.get("sessions", []):
         keys = list(se.keys())
         if keys == ["whole"]:
-            theory.append(int(se["whole"]))
+            out["theory"].append(int(se["whole"]))
         elif keys == ["fortnight_whole"]:
-            flags.append("fortnightly hour dropped until Week A/B exists")
+            out["theory_alt"].append(int(math.ceil(float(se["fortnight_whole"]))))
         elif keys == ["group"]:
-            tp_list.append(se["group"])    # per-group length applied below
+            out["tp"].append(per_group(se["group"]))
+        elif keys == ["fortnight_group"]:
+            out["tp_alt"].append(per_group(se["fortnight_group"]))
+        elif keys == ["alt_whole_1_2"]:
+            # 1h one week, 2h the next = 1h weekly + a fortnightly extra hour
+            out["theory"].append(1)
+            out["theory_alt"].append(1)
         elif keys == ["alt_whole1_group4"]:
-            # alternates: week A 1h whole class, week B 4h in groups.
-            # Single-week model: 1h theory + 1h lab, flagged.
-            theory.append(1)
-            tp_list.append(2)              # 2h group session -> 1h per group
-            flags.append("alternating 1h-whole / 4h-groups approximated as "
-                         "1h theory + 1h lab weekly until Week A/B exists")
+            # week X: 1h whole class; week Y: 2h per group - opposite weeks
+            out["pairs"].append((1, 2))
         else:
             flags.append("session %r not understood - skipped" % (se,))
-    tp_sessions = []
-    for g in tp_list:
-        per_group = g / 2.0
-        rounded = int(math.ceil(per_group))
-        if rounded != per_group:
-            flags.append("TP group session of %sh -> %.1fh per group, rounded "
-                         "up to %dh (aSc cannot show half hours - same "
-                         "convention the school already used)" % (g, per_group, rounded))
-        tp_sessions.append(rounded)
-    th = sum(theory)
-    blocks = "+".join(str(w) for w in sorted(theory, reverse=True)) if theory else ""
-    return th, blocks, tp_sessions, flags
+    return out, flags
 
 
 def class_names_in(text, name_to_id):
@@ -298,12 +301,19 @@ def main():
         if (cid, "IT") in assign and "IT" not in subs:
             subs["IT"] = {"pupil_hours": 2.0, "sessions": [{"group": 4}]}
             guessed_it.append(cid)
+        # Week A/B balance: even classes of a stream take their fortnightly
+        # rows in week A, odd classes in week B - so both weeks carry about
+        # half the school's fortnight load and no week is overloaded.
+        pool = by_gs.get((grade, stream), [])
+        parity = pool.index(cid) if cid in pool else 0
+        prim = "A" if parity % 2 == 0 else "B"
+        seco = "B" if prim == "A" else "A"
         for sid, node in subs.items():
             if sid.startswith("_"):
                 continue
             if sid in OPTION_SUBJECTS:
                 continue
-            theory_h, theory_blocks, tp_sessions, hf = split_theory_tp(node)
+            parts, hf = parse_sessions(node)
             for f in hf:
                 flags_hours.add("%s: %s" % (sid, f))
             tid = assign.get((cid, sid), "")
@@ -312,36 +322,49 @@ def main():
             elif not tid and sid != "SPORT":
                 unassigned.append((cid, sid))
             core = "yes" if sid in CORE.get((grade, stream), set()) else ""
-            if sid in lab_split:
-                # P9: theory in an ordinary classroom, TP in the lab
-                if theory_h > 0:
-                    out_rows.append((cid, sid, theory_h, tid, theory_blocks,
-                                     core, "normal"))
-                if tp_sessions:
-                    out_rows.append((cid, sid + "_TP", sum(tp_sessions), tid,
-                                     "+".join(str(t) for t in
-                                              sorted(tp_sessions, reverse=True)),
-                                     "", ""))
-            else:
-                hours = theory_h + sum(tp_sessions)
-                if hours <= 0:
+            # P9: lab subjects put theory in an ordinary classroom and the
+            # group sessions in the lab under <SID>_TP. Everything else
+            # keeps its own subject id and room for both kinds of session.
+            tp_sid = sid + "_TP" if sid in lab_split else sid
+            theory_room = "normal" if sid in lab_split else ""
+            rows_here = []   # (subject_id, hours, blocks, groups, room, week)
+            if parts["theory"]:
+                rows_here.append((sid, sum(parts["theory"]),
+                                  "+".join(str(w) for w in
+                                           sorted(parts["theory"], reverse=True)),
+                                  1, theory_room, ""))
+            for n in parts["theory_alt"]:
+                rows_here.append((sid, n, str(n), 1, theory_room, prim))
+            if parts["tp"]:
+                rows_here.append((tp_sid, sum(parts["tp"]),
+                                  "+".join(str(t) for t in
+                                           sorted(parts["tp"], reverse=True)),
+                                  2, "", ""))
+            for n in parts["tp_alt"]:
+                rows_here.append((tp_sid, n, str(n), 2, "", prim))
+            for wh, tpg in parts["pairs"]:
+                # 1h whole class one week, groups the other - opposite weeks
+                rows_here.append((sid, wh, str(wh), 1, theory_room, prim))
+                rows_here.append((tp_sid, tpg, str(tpg), 2, "", seco))
+            for rsid, h, bl, g, rm, wk in rows_here:
+                if h <= 0:
                     continue
-                if tp_sessions and theory_h == 0:
-                    blocks = "+".join(str(t) for t in sorted(tp_sessions, reverse=True))
-                elif tp_sessions:
-                    blocks = ""     # mixed, no clean pattern
-                else:
-                    blocks = theory_blocks
-                out_rows.append((cid, sid, hours, tid, blocks, core, ""))
+                out_rows.append((cid, rsid, h, tid, bl, g, rm,
+                                 core if rsid == sid else "", wk))
         # TASH: only for the classes on the official art sheet (opted pupils)
         if (cid, "TASH") in assign:
-            out_rows.append((cid, "TASH", 2, assign[cid, "TASH"], "2", "", ""))
+            out_rows.append((cid, "TASH", 2, assign[cid, "TASH"], "2",
+                             1, "", "", ""))
 
     # ---- write ------------------------------------------------------------
-    for cid, sid, hours, tid, blocks, core, room in out_rows:
+    # make sure the sheet carries the week column (older workbooks stop at core)
+    header = [str(c.value or "").strip() for c in cur_ws[1]]
+    if "week" not in header:
+        cur_ws.cell(row=1, column=len(header) + 1, value="week")
+    for cid, sid, hours, tid, blocks, groups, room, core, week in out_rows:
         # Columns: class_id, subject_id, hours, teacher_id, blocks, groups,
-        # room_type, core
-        cur_ws.append([cid, sid, hours, tid, blocks, 1, room, core])
+        # room_type, core, week
+        cur_ws.append([cid, sid, hours, tid, blocks, groups, room, core, week])
     wb.save(XLSX)
 
     # ---- report -----------------------------------------------------------
@@ -353,7 +376,7 @@ def main():
     if added_subjects:
         R("- Subjects added for the CS stream (P6): " + ", ".join(added_subjects))
     R("")
-    R("## P1 - hours floored / group subjects placed whole-class")
+    R("## P1 - session notes (rounding, unusual patterns)")
     R("")
     for f in sorted(flags_hours):
         R("- " + f)

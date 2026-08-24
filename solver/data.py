@@ -248,6 +248,10 @@ def load_school(xlsx=None, cfg=None):
             # S19, circular III.2: core / stream-specific subjects get three
             # quarters of their hours in the morning. yes = this row is one.
             core=(r.get("core") or "").strip().lower(),
+            # Week A/B (the ministry fortnight patterns, T42): blank = every
+            # week; A or B = that week of the two-week cycle only. hours are
+            # the hours IN that week. Older workbooks have no such column.
+            week=(r.get("week") or "").strip().upper(),
         ))
     if "Unavailable" in wb.sheetnames:
         for r in _rows(wb["Unavailable"]):
@@ -280,6 +284,9 @@ def check(s):
     max_run = longest_open_run(s.cfg)
     for c in s.curriculum:
         where = "Curriculum row " + c["class_id"] + " / " + c["subject_id"]
+        if c.get("week", "") not in ("", "A", "B"):
+            errs.append(where + " - week '" + c["week"] + "' must be blank "
+                        "(every week), A or B.")
         if c["class_id"] not in s.classes:
             errs.append(where + " - class '" + c["class_id"] + "' is not in the Classes sheet.")
         if c["subject_id"] not in s.subjects:
@@ -346,16 +353,28 @@ def check(s):
     for rt in sorted(needed - have):
         errs.append("Some lessons need a '" + rt + "' room but no room of that type exists.")
 
-    # teacher workload vs contract
-    load = {}
+    # teacher workload vs contract. A row with groups=N is taught N times
+    # (each group separately), so the teacher works hours x N. A week-A row
+    # only loads week A - the binding number is the BUSIER week.
+    def taught_hours(c):
+        return c["hours"] * max(1, c.get("groups", 1))
+
+    loadw = {}      # tid -> [week A hours, week B hours]
     for c in s.curriculum:
         if c["teacher_id"]:
-            load[c["teacher_id"]] = load.get(c["teacher_id"], 0) + c["hours"]
+            e = loadw.setdefault(c["teacher_id"], [0, 0])
+            wk = c.get("week", "")
+            if wk in ("", "A"):
+                e[0] += taught_hours(c)
+            if wk in ("", "B"):
+                e[1] += taught_hours(c)
+    load = {tid: max(e) for tid, e in loadw.items()}
     for tid in sorted(load):
         t = s.teachers.get(tid)
         if t and t["hours"] and load[tid] > t["hours"]:
             errs.append("Teacher " + tid + " (" + t["name"] + ") is given " +
-                        str(load[tid]) + " hours but the contract says " + str(t["hours"]) + ".")
+                        str(load[tid]) + " hours in their busier week but the "
+                        "contract says " + str(t["hours"]) + ".")
     for tid, t in s.teachers.items():
         if tid not in load:
             notes.append("Teacher " + tid + " (" + t["name"] + ") teaches nothing yet.")
@@ -383,15 +402,23 @@ def check(s):
                         str(avail) + " are reachable: max 6 per day (H17)" +
                         (", with " + " and ".join(sorted(blocked)) + " free" if blocked else "") + ".")
 
-    # class workload vs week length
+    # class workload vs week length - from the PUPIL's seat: a grouped row
+    # still costs each pupil `hours` periods (their own group's session), and
+    # a week-A row costs nothing in week B. The binding week decides.
     week = len(s.cfg.slots)
-    cl = {}
+    clw = {}
     for c in s.curriculum:
-        cl[c["class_id"]] = cl.get(c["class_id"], 0) + c["hours"]
-    for cid in sorted(cl):
-        if cl[cid] > week:
-            errs.append("Class " + cid + " needs " + str(cl[cid]) +
-                        " hours but the week only has " + str(week) + " open periods.")
+        e = clw.setdefault(c["class_id"], [0, 0])
+        wk = c.get("week", "")
+        if wk in ("", "A"):
+            e[0] += c["hours"]
+        if wk in ("", "B"):
+            e[1] += c["hours"]
+    for cid in sorted(clw):
+        if max(clw[cid]) > week:
+            errs.append("Class " + cid + " needs " + str(max(clw[cid])) +
+                        " hours in its busier week but the week only has " +
+                        str(week) + " open periods.")
 
     # H16: the ministry says do not split a class of 24 pupils or fewer
     for c in s.curriculum:
@@ -414,7 +441,10 @@ def check(s):
                         " periods.")
             continue
         allowed = sum(1 for (d, p) in s.cfg.slots if p <= lp)
-        need = sum(c["hours"] for c in s.curriculum if c["subject_id"] == sid)
+        need = max(
+            sum(taught_hours(c) for c in s.curriculum
+                if c["subject_id"] == sid and c.get("week", "") in ("", w))
+            for w in ("A", "B"))
         n_rooms = len(s.rooms_of_type(sub.get("room_type") or "normal"))
         cap = allowed * max(1, n_rooms)
         if need > cap:
@@ -422,8 +452,12 @@ def check(s):
                         " hours but may only use periods 1-" + str(lp) +
                         ", giving " + str(cap) + " slots.")
 
-    # THE bottleneck: rooms
-    total = sum(c["hours"] for c in s.curriculum)
+    # THE bottleneck: rooms. Grouped rows occupy a room PER GROUP; week A/B
+    # rows only occupy their week - the busier week is what must fit.
+    total = max(
+        sum(taught_hours(c) for c in s.curriculum
+            if c.get("week", "") in ("", w))
+        for w in ("A", "B")) if s.curriculum else 0
     cap = len(s.rooms) * week
     if cap:
         use = 100.0 * total / cap
@@ -437,17 +471,36 @@ def check(s):
         else:
             notes.append(line)
 
-    # per-room-type bottleneck
+    # per-room-type bottleneck (again per week, groups counted)
     by_type = {}
     for c in s.curriculum:
         rt = s.room_type_for(c)
-        by_type[rt] = by_type.get(rt, 0) + c["hours"]
+        e = by_type.setdefault(rt, [0, 0])
+        wk = c.get("week", "")
+        if wk in ("", "A"):
+            e[0] += taught_hours(c)
+        if wk in ("", "B"):
+            e[1] += taught_hours(c)
     for rt in sorted(by_type):
         n = len(s.rooms_of_type(rt))
-        if n and by_type[rt] > n * week:
-            errs.append("Rooms of type '" + rt + "': need " + str(by_type[rt]) +
+        if n and max(by_type[rt]) > n * week:
+            errs.append("Rooms of type '" + rt + "': need " + str(max(by_type[rt])) +
                         " hours but only " + str(n) + " room(s) x " + str(week) +
                         " periods = " + str(n * week) + " available.")
+
+    # a class must split into the SAME halves everywhere: rows of one class
+    # that split must agree on the group count, or "group 1" would mean two
+    # different sets of pupils in two subjects.
+    gcount = {}
+    for c in s.curriculum:
+        g = max(1, c.get("groups", 1))
+        if g > 1:
+            prev = gcount.setdefault(c["class_id"], g)
+            if prev != g:
+                errs.append("Class " + c["class_id"] + " splits into " +
+                            str(prev) + " groups in one subject and " + str(g) +
+                            " in another. All split rows of one class must "
+                            "use the same group count.")
     return errs, notes
 
 

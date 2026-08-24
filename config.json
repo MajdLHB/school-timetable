@@ -73,7 +73,8 @@
     "daylight_not_morning": 45,
     "bac_friday_evening": 30,
     "travel_pair": 70,
-    "bac_no_free_afternoon": 70
+    "bac_no_free_afternoon": 70,
+    "tp_groups_same_day": 45
   },
   "weeks_per_cycle": 1
 }

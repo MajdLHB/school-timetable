@@ -31,8 +31,21 @@ def _time_of(p):
     return "%02d:00" % (7 + p)
 
 
+def _tag_of(group, week):
+    """The little label on a card: فوج (group) and/or أ/ب (week A/B)."""
+    bits = []
+    if group:
+        bits.append("ف%d" % group)
+    if week:
+        bits.append({"A": "أ", "B": "ب"}.get(week, week))
+    return " ".join(bits)
+
+
 def _table(cfg, grid, second_line, day_tags=None):
-    """One printable table. grid: (day, period) -> (subject, other, room).
+    """One printable table.
+    grid: (day, period) -> [(subject, other, room, tag), ...] - several
+    entries when two half-class groups share the slot, or when a week-A and
+    a week-B lesson alternate there.
 
     day_tags: {day: label} - e.g. يوم الراحة / يوم التكوين. The label prints
     in the day's header and the whole column is shaded, so a lesson placed
@@ -53,11 +66,14 @@ def _table(cfg, grid, second_line, day_tags=None):
             free = " rest" if d in day_tags else ""
             cell = grid.get((d, p))
             if cell:
-                subj, other, room = cell
-                L.append("<td class='l%s'><b>%s</b><span>%s</span>"
-                         "<small>%s</small></td>"
-                         % (free, _esc(subj), _esc(second_line(other)),
-                            _esc(room)))
+                parts = []
+                for subj, other, room, tag in cell:
+                    parts.append("<b>%s%s</b><span>%s</span><small>%s</small>"
+                                 % (_esc(subj),
+                                    " <em>%s</em>" % _esc(tag) if tag else "",
+                                    _esc(second_line(other)), _esc(room)))
+                L.append("<td class='l%s'>%s</td>"
+                         % (free, "<hr>".join(parts)))
             else:
                 L.append("<td class='%s'></td>" % free.strip())
         L.append("</tr>")
@@ -65,22 +81,30 @@ def _table(cfg, grid, second_line, day_tags=None):
     return "".join(L)
 
 
-def write(s, units, placement, rooms, path):
+def write(s, units, placement, rooms, path, day_offs=None):
+    """day_offs: {teacher_id: day} - the solver's flexible day-off choices
+    for this run (a FIXED day comes from the sheet and wins)."""
+    day_offs = day_offs or {}
     sub_name = {k: v.get("name", k) for k, v in s.subjects.items()}
     cls_name = {k: v.get("name", k) for k, v in s.classes.items()}
     tch_name = {k: v.get("name", k) for k, v in s.teachers.items()}
     room_name = {k: v.get("name", k) for k, v in s.rooms.items()}
 
     cgrid, tgrid = {}, {}
+    thours = {}
     for u in units:
         if u.uid not in placement:
             continue
         d, p = placement[u.uid]
         rm = room_name.get(rooms.get(u.uid, ""), "")
         subj = sub_name.get(u.subject_id, u.subject_id)
-        cgrid.setdefault(u.class_id, {})[(d, p)] = (subj, u.teacher_id, rm)
+        tag = _tag_of(getattr(u, "group", 0), getattr(u, "week", ""))
+        cgrid.setdefault(u.class_id, {}).setdefault((d, p), []).append(
+            (subj, u.teacher_id, rm, tag))
         if u.teacher_id:
-            tgrid.setdefault(u.teacher_id, {})[(d, p)] = (subj, u.class_id, rm)
+            tgrid.setdefault(u.teacher_id, {}).setdefault((d, p), []).append(
+                (subj, u.class_id, rm, tag))
+            thours[u.teacher_id] = thours.get(u.teacher_id, 0) + 1
 
     grids, opt_c, opt_t = [], [], []
     for cid in sorted(cgrid, key=lambda c: (len(c), c)):
@@ -91,10 +115,28 @@ def write(s, units, placement, rooms, path):
         opt_c.append("<option value='%s'>%s</option>"
                      % (cid, _esc(cls_name.get(cid, cid))))
     for tid in sorted(tgrid, key=lambda t: (len(t), t)):
+        t = s.teachers.get(tid, {})
+        # Majd asked for both numbers on the teacher's page: the hours this
+        # timetable gives them, and the hours they were asked to do.
+        contract = t.get("hours") or 0
+        hline = "الساعات المنجزة: %d / المطلوبة: %s" % (
+            thours.get(tid, 0), contract if contract else "؟")
+        tags = {}
+        tr = (t.get("training_day") or "").strip()
+        if tr:
+            tags[tr] = "يوم التكوين"
+        off = (t.get("day_off") or "").strip()
+        if not off:
+            off = day_offs.get(tid, "")
+        if off and off != "(none)":
+            tags[off] = "يوم الراحة" + \
+                ("" if (t.get("day_off") or "").strip() else " (اختيار البرنامج)")
         grids.append(
-            "<div class='grid tgrid' id='%s'><h2>%s — الأستاذ(ة) %s — %s</h2>%s</div>"
-            % (tid, SCHOOL, _esc(tch_name.get(tid, tid)), YEAR,
-               _table(s.cfg, tgrid[tid], lambda c: cls_name.get(c, ""))))
+            "<div class='grid tgrid' id='%s'><h2>%s — الأستاذ(ة) %s — %s"
+            "<br><small>%s</small></h2>%s</div>"
+            % (tid, SCHOOL, _esc(tch_name.get(tid, tid)), YEAR, _esc(hline),
+               _table(s.cfg, tgrid[tid], lambda c: cls_name.get(c, ""),
+                      day_tags=tags)))
         opt_t.append("<option value='%s'>%s</option>"
                      % (tid, _esc(tch_name.get(tid, tid))))
 
@@ -115,11 +157,18 @@ def write_teachers(s, path):
         cid, sid, tid = r["class_id"], r["subject_id"], r["teacher_id"]
         cname = s.classes.get(cid, {}).get("name", cid)
         sname = s.subjects.get(sid, {}).get("name", sid)
+        taught = (r["hours"] or 0) * max(1, r.get("groups", 1))
+        wk = (r.get("week") or "").strip()
+        if wk:
+            sname += " (أسبوع %s)" % {"A": "أ", "B": "ب"}.get(wk, wk)
+        if max(1, r.get("groups", 1)) > 1:
+            sname += " (أفواج)"
         if not tid:
-            unassigned.append((cname, sname, r["hours"]))
+            unassigned.append((cname, sname, taught))
             continue
-        per.setdefault(tid, {}).setdefault(sname, []).append((cname, r["hours"]))
-        load[tid] = load.get(tid, 0) + (r["hours"] or 0)
+        per.setdefault(tid, {}).setdefault(sname, []).append((cname, taught))
+        # fortnightly hours count half toward the weekly average
+        load[tid] = load.get(tid, 0) + (taught / 2.0 if wk else taught)
 
     L = ["<h1>من يدرّس ماذا — %s %s</h1>" % (SCHOOL, YEAR)]
     for tid in sorted(per):
@@ -243,9 +292,13 @@ th,td{border:1px solid #b9b2a2;padding:5px 3px;text-align:center;font-size:.85em
 th{background:#3d5a80;color:#fff}
 td.t,th.t{background:#ece8dd;font-weight:bold;min-width:54px}
 td.closed{background:repeating-linear-gradient(45deg,#f0ede6,#f0ede6 6px,#e3dfd4 6px,#e3dfd4 12px)}
+td.rest{background:#e8f0e4}
+td.l.rest{background:#fbe3e3}   /* a lesson ON a free day = declared exception, make it jump out */
 td.l b{display:block;color:#1d3557}
+td.l b em{font-style:normal;font-size:.78em;background:#e3ecf6;border-radius:4px;padding:0 4px;color:#3d5a80}
 td.l span{display:block;font-size:.9em}
 td.l small{display:block;color:#6b6455}
+td.l hr{border:none;border-top:1px dashed #b9b2a2;margin:2px 0}
 .grid{display:none}.grid.show{display:block}
 @page{size:A4 landscape;margin:9mm}
 @media print{
@@ -260,6 +313,8 @@ td.l small{display:block;color:#6b6455}
  th,td{border-color:#000}
  td.t{background:#fff}
  td.closed{background:#f2f2f2}
+ td.rest{background:#f2f2f2}
+ td.l.rest{background:#e8e8e8}
 }
 </style></head><body>
 <div class="controls">

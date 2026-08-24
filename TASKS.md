@@ -40,8 +40,8 @@ Related files: `docs/RULES.md` (what is decided) · `docs/OPEN_QUESTIONS.md`
 | id | task | status |
 |---|---|---|
 | T16 | Import `test/testC1_groups.xml` — split class, two groups in parallel | **PASSED 2026-08-24 (UNSURE on details)** — screenshot shows all 3 cards placed, the two groups stacked in one period. Still to confirm: no clash warning, unplaced list empty |
-| T17 | Import `test/testC2_weeks_AB.xml` — the ministry `△1/(4)` pattern | **FAILED 2026-08-24, cause known** — imported into a 1-week project (weeks box unchecked in wizard), masks silently dropped. Redo in a new 2-week project |
-| T18 | Teach the emitter to write groups and weeks | BLOCKED by T16, T17 |
+| T17 | Import `test/testC2_weeks_AB.xml` — the ministry `△1/(4)` pattern | **PASSED WITH A CAVEAT 2026-08-24** — in a 2-week project the week-A cards PLACED correctly (proven); 3 phantom unplaced copies appeared (aSc 2013 seems to ignore lesson `weeksdefid`). `test/testC3_weeks_lesson_mask.xml` probes the cosmetic fix — Majd to import it |
+| T18 | Teach the emitter to write groups and weeks | **DONE 2026-08-24** — `<groups>` (test C1 form) + `<weeksdefs>`/card week masks (test C2 proven part) |
 
 **Nothing gets built on these until they are proven by import.** The day-mask
 bug fails silently, so "it looks right" is not evidence.
@@ -86,11 +86,11 @@ Seventeen rules, all high value and low cost, most needing no new data.
 
 | id | task | status |
 |---|---|---|
-| T40 | **H9 block patterns** — `2+1+1`, doubles kept together | LATER — biggest single gap |
+| T40 | **H9 block patterns** — `2+1+1`, doubles kept together | DONE (2026-08-24, earlier session) |
 | T41 | Doubles at the start of a half-day, never split by the break | after T40 |
-| T42 | **Week A / Week B** | after T17 |
-| T43 | **Group splitting**, with pupil ≠ teacher hours | after T16 |
-| T44 | **H14 option groups** pooled across classes | after T43 |
+| T42 | **Week A / Week B** | **DONE 2026-08-24** — `week` column (A/B/blank), all clashes + caps + comfort rules per week view, verified, selftested |
+| T43 | **Group splitting**, with pupil ≠ teacher hours | **DONE 2026-08-24** — `groups=N`, hours per group, parallel halves, per-part clash + pupil views, S22 same-day preference (M-SN4), verified, selftested |
+| T44 | **H14 option groups** pooled across classes | LAST REMAINING HARD RULE — needs Majd's answers (RULES.md H14 questions) |
 | T45 | Room proximity — avoid long walks between consecutive lessons | after T20 |
 
 ## Phase 6 — finishing

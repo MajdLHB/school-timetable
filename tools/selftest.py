@@ -70,9 +70,10 @@ def klass(s, cid):
                           home_room="", size=30)
 
 
-def teach(s, cid, sid, hours, tid, blocks=""):
+def teach(s, cid, sid, hours, tid, blocks="", groups=1, week=""):
     s.curriculum.append(dict(class_id=cid, subject_id=sid, hours=hours,
-                             teacher_id=tid, blocks=blocks, room_type=""))
+                             teacher_id=tid, blocks=blocks, room_type="",
+                             groups=groups, week=week))
 
 
 def status(s, skip_check=False):
@@ -352,6 +353,67 @@ def check_rescue_mode():
     return True, "strict refused; rescue solved and declared H7 T1 Mon x2"
 
 
+def case_T43_groups_unlock_parallel():
+    """T43 group splitting. Two split subjects, one teacher each, 4 slots:
+    each half-class needs 2h of each = 4h = a full week, which only works
+    when group 1 sits in one subject WHILE group 2 sits in the other.
+    BREAK: the same teaching volume whole-class (4h+4h = 8 pupil-hours in a
+    4-slot week) is impossible. RELAX: split - the halves interleave."""
+    def base(split):
+        s = tiny()
+        s.rooms["R2"] = dict(id="R2", name="R2", type="normal", capacity=99)
+        teacher(s, "T1")
+        teacher(s, "T2")
+        klass(s, "C1")
+        h, g = (2, 2) if split else (4, 1)
+        teach(s, "C1", "MA", h, "T1", groups=g)
+        teach(s, "C1", "AR", h, "T2", groups=g)
+        return s
+    return base(False), base(True)
+
+
+def case_T43_half_class_overbooked():
+    """The other direction: a HALF class can still be double-booked. Each
+    group already fills all 4 slots with the two split subjects; one more
+    whole-class hour makes 5 pupil-hours in a 4-slot week - the group-aware
+    class clash must refuse. RELAX: drop the extra hour."""
+    def base(extra):
+        s = tiny()
+        s.rooms["R2"] = dict(id="R2", name="R2", type="normal", capacity=99)
+        s.rooms["R3"] = dict(id="R3", name="R3", type="normal", capacity=99)
+        teacher(s, "T1")
+        teacher(s, "T2")
+        teacher(s, "T3")
+        klass(s, "C1")
+        teach(s, "C1", "MA", 2, "T1", groups=2)
+        teach(s, "C1", "AR", 2, "T2", groups=2)
+        if extra:
+            s.subjects["FR"] = dict(id="FR", name="Francais", short="Fr",
+                                    difficulty="medium", room_type="normal",
+                                    latest_period=0)
+            teach(s, "C1", "FR", 1, "T3")
+        return s
+    return base(True), base(False)
+
+
+def case_T42_weeks_share_slot():
+    """T42 week A/B. A one-slot school: two subjects can only coexist when
+    one runs week A and the other week B in the SAME slot. BREAK: both on
+    week A - a real clash, the week-aware rules must refuse. RELAX: A/B."""
+    def base(wb):
+        s = tiny(days=("Mon",), periods=1)
+        s.cfg.morning = [1]
+        s.cfg.evening = []
+        s.rooms["R2"] = dict(id="R2", name="R2", type="normal", capacity=99)
+        teacher(s, "T1")
+        teacher(s, "T2")
+        klass(s, "C1")
+        teach(s, "C1", "MA", 1, "T1", week="A")
+        teach(s, "C1", "AR", 1, "T2", week=wb)
+        return s
+    return base("A"), base("B")
+
+
 def case_LOCK_conflict():
     """Two different subjects of one class pinned to the same slot.
     RELAX: pin them to different slots."""
@@ -430,6 +492,9 @@ CASES = [
     ("H18 adjacent free days", case_H18_adjacent_free_days, "validator"),
     ("H18 Sat/Mon through Sunday", case_H18_sunday_wrap, "validator"),
     ("H19 24h between PE sessions", case_H19_pe_24h_gap, "solver"),
+    ("T43 groups unlock parallel", case_T43_groups_unlock_parallel, "solver"),
+    ("T43 half class overbooked", case_T43_half_class_overbooked, "solver"),
+    ("T42 week A/B share a slot", case_T42_weeks_share_slot, "solver"),
     ("LOCK conflicting pins", case_LOCK_conflict, "solver"),
 ]
 
