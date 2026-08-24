@@ -50,11 +50,11 @@ bug fails silently, so "it looks right" is not evidence.
 
 | id | task | status |
 |---|---|---|
-| T19 | Classes: name, level, stream, size | BLOCKED — you. 41 class names already recovered from last year |
+| T19 | Classes: name, level, stream, size | **PARTLY DONE 2026-08-24** — all 41 classes for 2026/27 written to the Classes sheet from the distribution sheets (structure verified 3 ways). Still needed: **sizes** (drives H16 splits) and home rooms |
 | T20 | Rooms: 45 of them — type, capacity, **where they are** | BLOCKED — you |
-| T21 | Curriculum: per class and subject, from `rules/curriculum.json` | after T19 |
-| T22 | Teacher hours and days off | BLOCKED — you |
-| T23 | Who teaches what | BLOCKED — you |
+| T21 | Curriculum: per class and subject, from `rules/curriculum.json` | after T19 sizes; teacher pools now known from T23 |
+| T22 | Teacher hours and days off | **HOURS DONE 2026-08-24** — المطالب بها saved for all teachers (needed for aSc printouts). Days off still needed — and constrained by new rule **H18** (never adjacent to the training day; Wed/Fri excluded when training is Thu) |
+| T23 | Who teaches what | **DONE 2026-08-24, with flags** — 2026/27 distribution extracted from the official sheets, cross-verified, written to the new **Distribution** sheet in `data/school.xlsx`. 9 flags need Majd's confirmation — see `data/DISTRIBUTION_REPORT.md` (esp. FLAG-1 English, FLAG-7 two teachers with no sheet, FLAG-8 Sport = last year's, provisional) |
 | T24 | Training days, trainees, two-school teachers | BLOCKED — you |
 | T25 | Compact-timetable exceptions | BLOCKED — you, list promised |
 

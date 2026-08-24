@@ -209,6 +209,15 @@ def main():
                 fail("H8", "teacher %s teaches at %s period %d but declared "
                            "unavailable (%s)." % (t, d, p, un["reason"] or "no reason given"))
 
+    # --- H18: day off never adjacent to training day (inspector's rule) ----
+    day_list = list(cfg.days)
+    for t in s.teachers.values():
+        off, tr = t.get("day_off", ""), t.get("training_day", "")
+        if off in day_list and tr in day_list and off != tr:
+            if abs(day_list.index(off) - day_list.index(tr)) == 1:
+                fail("H18", "teacher %s has day_off %s adjacent to training_day "
+                            "%s - two consecutive free days." % (t["id"], off, tr))
+
     # --- H10: contracted hours --------------------------------------------
     load = collections.Counter()
     for (t, d, p), v in t_at.items():

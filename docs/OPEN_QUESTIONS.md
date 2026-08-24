@@ -236,6 +236,12 @@ across classes.
   stream. Can you send that page again, or tell me those three?
 - **Q21.** Islamic Thought: the circular puts it in the morning, or 14:00-16:00
   if it must be in the evening. Apply that cutoff, same as Sport? One cell.
+- **Q26.** H18 (day off never next to the training day) is coded for adjacent
+  weekdays: training Thursday blocks Wednesday and Friday, exactly the
+  inspector's example. Edge case: the week is Mon-Sat and Sunday is the rest
+  day - so a **Saturday day off with a Monday training day** gives three free
+  days in a row through Sunday. Should H18 also forbid that Sat/Mon pair, or
+  is the inspector's rule only about school-week neighbours? One word answer.
 - **Q25. RESOLVED 2026-08-24 - period 5 stays CLOSED.** Majd: *"it shouldnt
   be open even if rare follow rules... last year due to time it was very hard
   to make the sceduel so we made exceptions"*. The 40 cards in period 5 last
