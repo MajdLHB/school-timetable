@@ -63,6 +63,36 @@ are first guesses - **we will tune them together after seeing the first result.*
 | H13 | **A 3-hour lab session is really 1.5h x 2 alternating groups.** The lab is small, so the class splits: group A does the lab while group B does something else, then they swap. aSc could not express 1.5h so it was written as 3h. **This is the hardest rule in the project and must be modelled explicitly, not faked.** | HARD | SPEC |
 | S11 | **Teacher's 3 portions of 3 classes** - the starting point of the whole timetable and the hardest part by hand. [CONFIRM: does this mean one teacher takes a group from each of 3 different classes in the same period?] | ? | NEEDS DEFINITION |
 
+### MEASURED from last year's real export (2026-08-24)
+
+Not asked, measured. `python tools/analyze_reference.py` reproduces all of it.
+
+| fact | value |
+|---|---|
+| teachers | **101** |
+| classes | **41** |
+| **classrooms** | **45** (not 20 - see below) |
+| subjects | 24 |
+| groups | 265 (41 whole-class + **224 real subdivisions**) |
+| lessons / placed cards | 881 / **1682** |
+| week | **Mon-Sat**, day mask **6 chars** on all 1682 cards |
+| periods | **10 per day, 08:00-18:00, one hour each, NO lunch break** |
+| Saturday | half day (176 lessons vs ~300 on other days) |
+| class load | min 32, median 43, max 53, **avg 42.2 h/week** |
+| teacher load | min 8, median 17, max 23, **avg 16.7 h/week** |
+| busiest period | **47 lessons at once** vs 45 rooms |
+| alternating weeks | **145 of 1682 cards** are Week A or Week B only |
+| co-teaching | **none** - 0 lessons with 2 teachers |
+| multi-class lessons | 23 |
+
+**The "20 physical classes" figure was wrong.** The real file defines 45
+classrooms and uses all 45. That is why the room arithmetic looked impossible:
+45 rooms x 6 days x 10 periods = 2700 room-slots for 1682 cards = 62% full.
+Comfortable, not impossible.
+
+The busiest period needs 47 rooms for 45 - because the stadium holds several
+classes at once (Stad 1/2/3), exactly as described.
+
 ### Known about last year's timetable
 - It is **not identical to this year**: dummy class-groups that were never used,
   groups added for nothing, fields never updated.

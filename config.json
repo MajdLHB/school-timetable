@@ -1,5 +1,5 @@
 {
-  "_comment": "Mon-Sat, 8 periods (4 morning + 4 evening), no lunch break. CONFIRM the 'closed' block - Saturday afternoon is still a guess.",
+  "_comment": "Measured from last year: Mon-Sat, 10 periods 08:00-18:00, no lunch break. weeks_per_cycle MUST equal the week count in the aSc project (their real file uses 2: Week A / Week B). Keep at 1 until alternating weeks are modelled.",
   "days": [
     "Mon",
     "Tue",
@@ -8,26 +8,29 @@
     "Fri",
     "Sat"
   ],
-  "periods_per_day": 8,
+  "periods_per_day": 10,
   "morning_periods": [
     1,
     2,
     3,
-    4
+    4,
+    5
   ],
   "evening_periods": [
-    5,
     6,
     7,
-    8
+    8,
+    9,
+    10
   ],
   "closed": {
-    "_comment": "GUESS - confirm with the school",
+    "_comment": "from last year: Saturday is a half day (176 lessons vs ~300)",
     "Sat": [
-      5,
       6,
       7,
-      8
+      8,
+      9,
+      10
     ]
   },
   "time_limit_seconds": 120,
@@ -38,5 +41,6 @@
     "hard_subject_evening": 70,
     "same_subject_twice_a_day": 50,
     "extra_day_present": 40
-  }
+  },
+  "weeks_per_cycle": 1
 }

@@ -96,13 +96,18 @@ def write(s, units, placement, rooms, path, include_periods=True):
     A('   </lessons>')
 
     # ---- cards: one per placed hour ---------------------------------------
-    A('   <cards options="" columns="lessonid,period,days,classroomids">')
+    # weeks mask: "1" for a single-week cycle, "11" for a school running
+    # Week A / Week B. Length MUST equal the aSc project week count, exactly
+    # like the days mask - same silent-failure trap. Their real file uses 2.
+    nweeks = getattr(s.cfg, "weeks_per_cycle", 1) or 1
+    weeks_mask = "1" * nweeks
+    A('   <cards options="" columns="lessonid,period,days,weeks,classroomids">')
     for key, us in sorted(groups.items()):
         lid = lesson_id[key]
         for u in us:
             d, p = placement[u.uid]
             A(_row("card", lessonid=lid, period=p, days=day_mask(days, d),
-                   classroomids=rooms.get(u.uid, "")))
+                   weeks=weeks_mask, classroomids=rooms.get(u.uid, "")))
     A('   </cards>')
 
     A('</timetable>')

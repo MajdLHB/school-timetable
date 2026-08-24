@@ -24,6 +24,7 @@ class Config:
     closed: dict
     time_limit: int
     weights: dict
+    weeks_per_cycle: int = 1
 
     @property
     def slots(self):
@@ -75,6 +76,7 @@ def load_config(path=None):
         closed=closed,
         time_limit=c.get("time_limit_seconds", 120),
         weights=c["weights"],
+        weeks_per_cycle=c.get("weeks_per_cycle", 1),
     )
 
 
