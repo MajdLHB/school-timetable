@@ -7,7 +7,9 @@ it could not achieve.
 Usage:  python solver/solve.py [path/to/school.xlsx]
 """
 import collections
+import json
 import os
+import shutil
 import signal
 import sys
 import time
@@ -52,19 +54,65 @@ def expand(s):
 
 
 class Progress(cp_model.CpSolverSolutionCallback):
-    """Print each improvement so the user never stares at a frozen screen."""
+    """Print each improvement, and save it so a crash costs nothing.
 
-    def __init__(self, t0):
+    An overnight run that dies at hour 7 to a power cut must not lose the
+    work. Every improvement is written to out/solution.json (throttled, so
+    hundreds of quick improvements do not thrash the disk), and the very best
+    is always saved. Resume later with --continue.
+    """
+
+    def __init__(self, t0, units=None, x=None, slots=None, every=15.0):
         super().__init__()
         self.t0 = t0
         self.n = 0
+        self.units = units
+        self.x = x
+        self.slots = slots
+        self.every = every
+        self.last_save = 0.0
+        self.best = None
+
+    def snapshot(self):
+        """{unit id: [day, period]} for the solution currently in hand."""
+        out = {}
+        for u in self.units:
+            for i in range(len(self.slots)):
+                if self.Value(self.x[u.uid, i]):
+                    d, p = self.slots[i]
+                    out[u.uid] = [d, p]
+                    break
+        return out
+
+    def save(self, force=False):
+        if self.units is None:
+            return
+        now = time.time()
+        if not force and now - self.last_save < self.every:
+            return
+        self.last_save = now
+        payload = dict(
+            penalty=int(self.ObjectiveValue()),
+            elapsed_seconds=round(now - self.t0, 1),
+            solution_number=self.n,
+            placement=self.snapshot(),
+        )
+        os.makedirs(OUT, exist_ok=True)
+        tmp = os.path.join(OUT, "solution.json.tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(payload, f)
+        # atomic replace, so a crash mid-write cannot corrupt the saved file
+        os.replace(tmp, os.path.join(OUT, "solution.json"))
+        self.best = payload
 
     def on_solution_callback(self):
         self.n += 1
         el = time.time() - self.t0
         print("   %6.1fs  solution %-3d penalty %s"
               % (el, self.n, int(self.ObjectiveValue())), flush=True)
+        self.save()
         if STOP:
+            self.save(force=True)
             print("   Ctrl+C - keeping this solution and stopping.", flush=True)
             self.StopSearch()
 
@@ -432,8 +480,33 @@ def main():
     print("Solving (limit %ds, Ctrl+C keeps the best found so far):"
           % cfg.time_limit, flush=True)
 
-    cb = Progress(t0)
+    # --continue: start from the last saved solution instead of from nothing.
+    # AddHint is only a suggestion - it never overrides a constraint, so a
+    # stale hint can slow the search but can never make the result wrong.
+    if "--continue" in sys.argv:
+        prev = os.path.join(OUT, "solution.json")
+        if os.path.exists(prev):
+            with open(prev, encoding="utf-8") as f:
+                saved = json.load(f)
+            place = saved.get("placement", {})
+            slot_ix = {sl: i for i, sl in enumerate(slots)}
+            hinted = 0
+            for u in units:
+                got = place.get(u.uid)
+                if not got:
+                    continue
+                i = slot_ix.get((got[0], got[1]))
+                if i is not None:
+                    m.AddHint(x[u.uid, i], 1)
+                    hinted += 1
+            print("Resuming from out/solution.json - penalty %s, %d of %d "
+                  "lessons hinted." % (saved.get("penalty"), hinted, len(units)))
+        else:
+            print("--continue given but no out/solution.json yet; starting fresh.")
+
+    cb = Progress(t0, units=units, x=x, slots=slots)
     status = solver.Solve(m, cb)
+    cb.save(force=True)
     elapsed = time.time() - t0
 
     name = solver.StatusName(status)
@@ -461,6 +534,18 @@ def main():
     rep = report(s, units, placement, rooms, solver, status, elapsed)
     with open(os.path.join(OUT, "report.md"), "w", encoding="utf-8") as f:
         f.write(rep)
+
+    # Timestamped archive, so a good result is never silently overwritten by a
+    # worse one on the next run. Keeps the XML, the report and the raw solution.
+    stamp = time.strftime("%Y-%m-%d_%H%M")
+    arch = os.path.join(OUT, "archive")
+    os.makedirs(arch, exist_ok=True)
+    tag = "%s_penalty%d" % (stamp, int(solver.ObjectiveValue()))
+    shutil.copy(xml_path, os.path.join(arch, tag + ".xml"))
+    shutil.copy(os.path.join(OUT, "report.md"), os.path.join(arch, tag + ".md"))
+    sol = os.path.join(OUT, "solution.json")
+    if os.path.exists(sol):
+        shutil.copy(sol, os.path.join(arch, tag + ".json"))
 
     print("\nDone in %.1fs - status %s, penalty %d"
           % (elapsed, name, int(solver.ObjectiveValue())))

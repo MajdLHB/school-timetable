@@ -22,13 +22,26 @@ silently bends one.
 | H1 | A teacher is never in two places in the same period. | SPEC |
 | H2 | A class is never in two places in the same period. | SPEC |
 | H3 | A room is never used by two lessons in the same period. | SPEC |
-| H4 | At most **20** lessons run in any single period (we have 20 rooms). | SPEC |
+| H4 | Never more lessons at once than rooms exist. Measured last year: **45 rooms**, busiest period **47 lessons** - the extra fit because the stadium holds several classes (Stad 1/2/3). The solver counts per room TYPE, so this is automatic. | SPEC |
 | H5 | Every class receives exactly the required weekly hours of every subject. | SPEC |
 | H6 | A lesson only lands in a room of the right type (lab / IT / gym / normal). | SPEC |
 | H7 | Each teacher's **day off** is fully empty. | SPEC |
 | H8 | A teacher is never scheduled in a period they declared unavailable. | SPEC |
 | H9 | Multi-hour blocks (double hours) stay consecutive and never straddle the lunch break. | SPEC |
 | H10 | A teacher never exceeds their contracted weekly hours. | SPEC |
+
+| H14 | **Optional-subject groups cross class boundaries.** Pupils choose one option (Spanish / German / Italian / Tashkilia). Within a single class the pupils do not all pick the same option, and it would waste a teacher to run a class of one or two. So pupils taking the same option are **pooled from several classes** into one group that studies together. While that option lesson runs, every class contributing pupils must be free at the same time - the option lessons of all those classes are locked to the same period. | SPEC |
+
+**H14 is stated by Majd, not inferred.** It also explains what was measured in
+last year's file: 23 lessons spanning more than one class, and 224 real group
+subdivisions.
+
+Still to confirm before this can be coded:
+- Which subjects are options? (Spanish, German, Italian, Tashkilia - any others?)
+- Does every pupil take exactly one option, or can they take none / several?
+- How many classes typically pool into one option group?
+- Do the pooled classes have to be the same grade/level?
+- Is this the same thing as "a teacher teaching 3 portions of 3 classes"?
 
 ---
 
@@ -54,16 +67,7 @@ are first guesses - **we will tune them together after seeing the first result.*
 
 ---
 
-## New rules from 2026-08-24 - NOT YET CODED, confirm each one
-
-| # | Rule | Kind | Status |
-|---|------|------|--------|
-| H11 | **Sport needs daylight.** The stadium has no lighting, so Sport cannot go in the late periods. [CONFIRM: what is the last period Sport may occupy? You said "in hard conditions 14h->16h", so is 16:00 the hard cutoff?] | HARD | SPEC |
-| H12 | **The stadium holds several classes at once.** aSc models it as 3 separate rooms (Stad 1, 2, 3), so 3-4 classes can do Sport simultaneously. Our room-type system already handles this: 3 rooms of type `gym`. | HARD | matches existing model |
-| H13 | **A 3-hour lab session is really 1.5h x 2 alternating groups.** The lab is small, so the class splits: group A does the lab while group B does something else, then they swap. aSc could not express 1.5h so it was written as 3h. **This is the hardest rule in the project and must be modelled explicitly, not faked.** | HARD | SPEC |
-| S11 | **Teacher's 3 portions of 3 classes** - the starting point of the whole timetable and the hardest part by hand. [CONFIRM: does this mean one teacher takes a group from each of 3 different classes in the same period?] | ? | NEEDS DEFINITION |
-
-### MEASURED from last year's real export (2026-08-24)
+## MEASURED from last year's real export (2026-08-24)
 
 Not asked, measured. `python tools/analyze_reference.py` reproduces all of it.
 
@@ -93,7 +97,7 @@ Comfortable, not impossible.
 The busiest period needs 47 rooms for 45 - because the stadium holds several
 classes at once (Stad 1/2/3), exactly as described.
 
-### Known about last year's timetable
+## Known about last year's timetable
 - It is **not identical to this year**: dummy class-groups that were never used,
   groups added for nothing, fields never updated.
 - **Some rules were deliberately broken** because it was too hard by hand.
@@ -123,3 +127,4 @@ Every change to a rule gets a line here, so no rule is ever silently lost.
 | Date | Change |
 |------|--------|
 | 2026-08-24 | File created from the first conversation. All rules `SPEC`, nothing coded. |
+| 2026-08-24 | **Retracted H11, H12, H13, S11.** They were written up as numbered rules from remarks made in passing. Nothing had been decided. Moved to `docs/NOTES.md` as open questions. Nothing gets a rule number until it is stated deliberately and confirmed. |

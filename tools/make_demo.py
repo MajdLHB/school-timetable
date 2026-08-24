@@ -39,7 +39,19 @@ MAX_TEACHER_HOURS = 18
 
 
 def build(n_classes=40):
+    # NEVER destroy real data. A demo workbook carries a hidden _DEMO sheet;
+    # anything without it is real and must not be overwritten by fake names.
     if os.path.exists(OUT):
+        from openpyxl import load_workbook as _lw
+        try:
+            _wb = _lw(OUT, read_only=True)
+            _demo = "_DEMO" in _wb.sheetnames
+            _wb.close()
+        except Exception:
+            _demo = False
+        if not _demo:
+            sys.exit("REFUSING: " + OUT + " holds REAL data (no _DEMO sheet). "
+                     "Move it somewhere safe first if you really want a demo.")
         os.remove(OUT)
     make_workbook.build()
     wb = load_workbook(OUT)
