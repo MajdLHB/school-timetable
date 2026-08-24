@@ -73,18 +73,27 @@ def build(n_classes=40):
     # ---------------- subjects ----------------
     ws = wb["Subjects"]
     for sid, name, short, diff, rt, _h in SUBJECTS + [IT]:
-        # Sport must finish by 16:00 - no stadium lighting (rule H15).
+        # Sport must finish by 16:00 - no stadium lighting (rule H15) - and
+        # is exempt from the min-2h rules (circular I.2 note).
         latest = 8 if sid == "SPORT" else ""
-        ws.append([sid, name, short, diff, rt, latest])
+        # S16 ministry preferences: Maths before 16:00 (M-MA3), Physics
+        # avoids 17:00-18:00 (M-PH5).
+        avoid = {"MATH": 8, "PHYS": 9}.get(sid, "")
+        exempt = "yes" if sid == "SPORT" else ""
+        ws.append([sid, name, short, diff, rt, latest, avoid, exempt])
 
     # ---------------- classes ----------------
+    # Columns: id, name, grade, stream, size, is_bac, home_room, cohort -
+    # matching the workbook header exactly.
     classes = []
     normal_rooms = [r[0] for r in rooms if r[2] == "normal"]
     for i in range(1, n_classes + 1):
         cid = "C%02d" % i
         grade = (i - 1) % 4 + 1
-        classes.append((cid, "%d eme %d" % (grade, i), grade, "ALL",
-                        normal_rooms[(i - 1) % len(normal_rooms)], 30))
+        stream = "COMMON" if grade == 1 else "SCIENCES"
+        is_bac = "yes" if grade == 4 else ""
+        classes.append((cid, "%d eme %d" % (grade, i), grade, stream, 30,
+                        is_bac, normal_rooms[(i - 1) % len(normal_rooms)], "ALL"))
     ws = wb["Classes"]
     for c in classes:
         ws.append(list(c))
@@ -93,7 +102,7 @@ def build(n_classes=40):
     # Work out how many hours of each subject the whole school needs, then
     # hire just enough teachers for each subject.
     plan = []           # (class_id, subject_id, hours)
-    for cid, _n, grade, _c, _r, _s in classes:
+    for cid, _n, grade, _st, _sz, _b, _r, _co in classes:
         for sid, _nm, _sh, _d, _rt, hours in SUBJECTS:
             plan.append((cid, sid, hours))
         if grade <= 2:
@@ -113,8 +122,13 @@ def build(n_classes=40):
             tno += 1
             tid = "T%03d" % tno
             day_off = DAYS[tno % len(DAYS)]
+            # Columns: id, name, short, subjects, hours, day_off,
+            # training_day, compact, notes - matching the workbook header.
+            # A few compact=yes teachers so the S8 exception is exercised.
+            compact = "yes" if tno % 10 == 0 else ""
             teachers.append((tid, "Prof %03d" % tno, "P%02d" % tno, sid,
-                             MAX_TEACHER_HOURS, day_off, "demo data - not a real person"))
+                             MAX_TEACHER_HOURS, day_off, "", compact,
+                             "demo data - not a real person"))
             pool[sid].append(tid)
 
     # hand each class+subject to the least loaded qualified teacher
@@ -124,7 +138,9 @@ def build(n_classes=40):
         best = min(pool[sid], key=lambda t: (load[t], t))
         load[best] += h
         blocks = "+".join(["1"] * h)
-        curriculum.append((cid, sid, h, best, blocks, ""))
+        # Columns: class_id, subject_id, hours, teacher_id, blocks, groups,
+        # room_type - matching the workbook header.
+        curriculum.append((cid, sid, h, best, blocks, 1, ""))
 
     ws = wb["Teachers"]
     for t in teachers:

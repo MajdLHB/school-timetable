@@ -134,6 +134,13 @@ def load_school(xlsx=None, cfg=None):
             subjects=[x for x in (r.get("subjects") or "").split(";") if x],
             hours=_int(r.get("hours")),
             day_off=(r.get("day_off") or "").strip(),
+            # M-T6 / circular II.1: the pedagogical training day stays empty,
+            # exactly like a day off. Blank = no training day.
+            training_day=(r.get("training_day") or "").strip(),
+            # S8: ministry default is hours spread over most days (II.2).
+            # compact=yes keeps the packed week - the exception Majd grants to
+            # teachers with long journeys. Blank = ministry default.
+            compact=(r.get("compact") or "").strip().lower(),
             notes=r.get("notes", ""),
         )
     for r in _rows(wb["Classes"]):
@@ -141,6 +148,10 @@ def load_school(xlsx=None, cfg=None):
             id=r["id"],
             name=r.get("name") or r["id"],
             grade=r.get("grade", ""),
+            stream=(r.get("stream") or "").strip(),
+            # yes = final year. Drives S13 (no Friday evening, local
+            # preference) and S17 (free afternoon Mon-Thu, circular I.6).
+            is_bac=(r.get("is_bac") or "").strip().lower(),
             cohort=(r.get("cohort") or "ALL").upper(),
             home_room=r.get("home_room", ""),
             size=_int(r.get("size")),
@@ -162,6 +173,12 @@ def load_school(xlsx=None, cfg=None):
             # H15: last period this subject may occupy. Blank = no limit.
             # Older workbooks have no such column, hence the tolerant get().
             latest_period=_int(r.get("latest_period"), 0),
+            # S16: soft version - prefer not to sit after this period.
+            # Ministry: Maths before 16:00 (M-MA3), Physics not 17-18 (M-PH5).
+            avoid_after=_int(r.get("avoid_after"), 0),
+            # Circular I.2 note: the min-2h/session rules do not apply to PE
+            # and optional subjects. yes = exempt from S15.
+            minmax_exempt=(r.get("minmax_exempt") or "").strip().lower(),
         )
     for r in _rows(wb["Curriculum"]):
         s.curriculum.append(dict(
@@ -221,6 +238,13 @@ def check(s):
         if off and off not in days and off != "(none)":
             errs.append("Teacher " + t["id"] + " has day_off '" + off +
                         "' which is not a school day (" + ", ".join(s.cfg.days) + ").")
+        tr = t.get("training_day", "")
+        if tr and tr not in days and tr != "(none)":
+            errs.append("Teacher " + t["id"] + " has training_day '" + tr +
+                        "' which is not a school day (" + ", ".join(s.cfg.days) + ").")
+        if tr and tr == off and tr in days:
+            notes.append("Teacher " + t["id"] + ": training_day equals day_off (" +
+                         tr + "). Allowed, but check it is intended.")
 
     needed = {s.room_type_for(c) for c in s.curriculum}
     have = {r["type"] for r in s.rooms.values()}
@@ -241,15 +265,21 @@ def check(s):
         if tid not in load:
             notes.append("Teacher " + tid + " (" + t["name"] + ") teaches nothing yet.")
 
-    # a teacher with a day off cannot need more hours than the remaining days hold
+    # a teacher's free days (day off + training day) and the H17 daily cap of 6
+    # teaching hours bound what any placement could ever deliver
     for tid, hrs in sorted(load.items()):
         t = s.teachers.get(tid)
-        if not t or not t["day_off"] or t["day_off"] == "(none)":
+        if not t:
             continue
-        avail = sum(len(s.cfg.day_slots(d)) for d in s.cfg.days if d != t["day_off"])
+        blocked = {d for d in (t["day_off"], t.get("training_day", ""))
+                   if d and d != "(none)"}
+        # H17: at most 6 teaching hours on any one day (circular II.2)
+        avail = sum(min(len(s.cfg.day_slots(d)), 6)
+                    for d in s.cfg.days if d not in blocked)
         if hrs > avail:
-            errs.append("Teacher " + tid + " needs " + str(hrs) + " hours but only " +
-                        str(avail) + " periods exist outside their day off (" + t["day_off"] + ").")
+            errs.append("Teacher " + tid + " needs " + str(hrs) + " hours but at most " +
+                        str(avail) + " are reachable: max 6 per day (H17)" +
+                        (", with " + " and ".join(sorted(blocked)) + " free" if blocked else "") + ".")
 
     # class workload vs week length
     week = len(s.cfg.slots)

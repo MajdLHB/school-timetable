@@ -10,6 +10,7 @@ If this prints anything other than ALL GREEN, do not use the timetable.
 Usage:  python solver/verify.py [path/to/school.xlsx]
 """
 import collections
+import json
 import os
 import sys
 import xml.etree.ElementTree as ET
@@ -18,6 +19,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import data as D  # noqa: E402
 
 XML = os.path.join(D.HERE, "out", "timetable.xml")
+EXC = os.path.join(D.HERE, "out", "exceptions.json")
+
+# Only these rules may ever be excused by a rescue-mode exceptions file.
+# A clash or a wrong room is never an acceptable exception.
+EXCUSABLE = {"H7", "H17"}
 
 
 def read_xml(path):
@@ -43,9 +49,26 @@ def read_xml(path):
 
 
 def main():
-    fails = []
-    def fail(rule, msg):
-        fails.append("%-4s %s" % (rule, msg))
+    # A rescue-mode run declares its exceptions in out/exceptions.json.
+    # We still detect every violation ourselves; the file only decides
+    # whether a violation was DECLARED. Declared H7/H17 violations are
+    # listed separately instead of failing; anything undeclared fails.
+    accepted = set()
+    if os.path.exists(EXC):
+        try:
+            with open(EXC, encoding="utf-8") as f:
+                for e in json.load(f).get("exceptions", []):
+                    if e.get("rule") in EXCUSABLE:
+                        accepted.add((e["rule"], e["teacher_id"], e["day"]))
+        except (ValueError, KeyError):
+            pass  # a broken exceptions file excuses nothing
+
+    fails, excused = [], []
+    def fail(rule, msg, key=None):
+        if key is not None and (rule, key[0], key[1]) in accepted:
+            excused.append("%-4s %s" % (rule, msg))
+        else:
+            fails.append("%-4s %s" % (rule, msg))
 
     cfg = D.load_config()
     s = D.load_school(sys.argv[1] if len(sys.argv) > 1 else None, cfg)
@@ -156,11 +179,24 @@ def main():
             fail("H15", "%s runs at %s period %d but may not go past period %d "
                         "(no daylight)." % (L["subject"], d, p, lp))
 
-    # --- H7: day off is empty ---------------------------------------------
+    # --- H7: day off AND training day are empty ----------------------------
     for (t, d, p), v in t_at.items():
-        off = s.teachers.get(t, {}).get("day_off", "")
-        if off and off == d:
-            fail("H7", "teacher %s teaches on %s, which is their day off." % (t, d))
+        rec = s.teachers.get(t, {})
+        if rec.get("day_off", "") == d:
+            fail("H7", "teacher %s teaches on %s, which is their day off." % (t, d),
+                 key=(t, d))
+        if rec.get("training_day", "") == d:
+            fail("H7", "teacher %s teaches on %s, their training day." % (t, d),
+                 key=(t, d))
+
+    # --- H17: never more than 6 teaching hours in one day ------------------
+    day_load = collections.Counter()
+    for (t, d, p), v in t_at.items():
+        day_load[t, d] += len(v)
+    for (t, d), n in sorted(day_load.items()):
+        if n > 6:
+            fail("H17", "teacher %s teaches %d hours on %s; the ministry caps "
+                        "the day at 6 (circular II.2)." % (t, n, d), key=(t, d))
 
     # --- H8: declared unavailable ------------------------------------------
     for un in s.unavailable:
@@ -208,10 +244,22 @@ def main():
         if len(fails) > 60:
             print("  ...and %d more." % (len(fails) - 60))
         return 1
+    if excused:
+        print("GREEN WITH DECLARED EXCEPTIONS (rescue mode).")
+        print("The strict rules admitted no timetable; these deliberate,")
+        print("declared exceptions were taken and are listed in out/report.md:")
+        print("")
+        for f in excused:
+            print("  " + f)
+        print("")
+        print("Everything else holds. Fix the cause and re-run for a fully")
+        print("legal timetable.")
+        return 0
     print("ALL GREEN - every hard rule holds.")
     print("H1 no teacher clash | H2 no class clash | H3 no room clash")
-    print("H4 room count | H5 hours exact | H6 room type | H7 day off")
-    print("H8 unavailable | H10 contract hours | H15 daylight | LOCK pins honoured")
+    print("H4 room count | H5 hours exact | H6 room type | H7 day off+training")
+    print("H8 unavailable | H10 contract hours | H15 daylight | H17 max 6h/day")
+    print("LOCK pins honoured")
     return 0
 
 

@@ -31,8 +31,9 @@ import solve as S  # noqa: E402
 
 WEIGHTS = {
     "teacher_gap": 100, "one_hour_day": 90, "class_gap": 85,
-    "hard_subject_evening": 70, "same_subject_twice_a_day": 50,
-    "extra_day_present": 40,
+    "class_one_hour_session": 85, "hard_subject_evening": 70,
+    "morning_evening_imbalance": 60, "same_subject_twice_a_day": 50,
+    "late_subject": 50, "overloaded_day": 40, "extra_day_present": 40,
 }
 
 
@@ -83,7 +84,7 @@ def status(s, skip_check=False):
         if errs:
             return "DATA_ERROR"
     units = S.expand(s)
-    m, _x, _slots = S.build(s, units)
+    m, _x, _slots, _viols = S.build(s, units)
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = 10.0
     solver.parameters.num_search_workers = 4
@@ -208,6 +209,52 @@ def case_H15_daylight():
     return base(1), base(2)
 
 
+def case_H17_six_hour_day():
+    """One 8-period day; a teacher owes 7 hours to one class. Any placement
+    puts 7 hours in one day, over the ministry cap of 6 (circular II.2).
+    RELAX: give the school a second day - 6+1 becomes possible."""
+    def base(days):
+        s = tiny(days=days, periods=8)
+        s.cfg.morning = [1, 2, 3, 4]
+        s.cfg.evening = [5, 6, 7, 8]
+        teacher(s, "T1")
+        klass(s, "C1")
+        teach(s, "C1", "MA", 7, "T1")
+        return s
+    return base(("Mon",)), base(("Mon", "Tue"))
+
+
+def check_rescue_mode():
+    """Prove rescue mode does what Majd asked: when the strict rules admit no
+    timetable, a livable one appears WITH the violation counted and reported -
+    and the exception variables say exactly what was broken."""
+    s = tiny()
+    teacher(s, "T1", day_off="Mon")   # 4 hours owed, day off kills half the week
+    klass(s, "C1")
+    teach(s, "C1", "MA", 4, "T1")
+    units = S.expand(s)
+
+    m, _x, _sl, _v = S.build(s, units)                 # strict: must refuse
+    sv = cp_model.CpSolver()
+    sv.parameters.max_time_in_seconds = 10.0
+    if not sv.StatusName(sv.Solve(m)).startswith("INFEASIBLE"):
+        return False, "strict solve should be INFEASIBLE"
+
+    m, _x, _sl, viols = S.build(s, units, rescue=True)  # rescue: must succeed
+    sv = cp_model.CpSolver()
+    sv.parameters.max_time_in_seconds = 10.0
+    st = sv.StatusName(sv.Solve(m))
+    if st not in ("OPTIMAL", "FEASIBLE"):
+        return False, "rescue solve should be FEASIBLE, got " + st
+    broken = [(r, t, d, sv.Value(v)) for r, t, d, v, _ in viols if sv.Value(v)]
+    if not broken:
+        return False, "rescue solved but declared no exception - it must confess"
+    if not any(r == "H7" and t == "T1" and d == "Mon" and n == 2
+               for r, t, d, n in broken):
+        return False, "expected H7/T1/Mon x2 declared, got %r" % broken
+    return True, "strict refused; rescue solved and declared H7 T1 Mon x2"
+
+
 def case_LOCK_conflict():
     """Two different subjects of one class pinned to the same slot.
     RELAX: pin them to different slots."""
@@ -243,7 +290,7 @@ def check_H5_hours_delivered():
     teach(s, "C1", "MA", 3, "T1")
     teach(s, "C1", "AR", 2, "T2")
     units = S.expand(s)
-    m, x, slots = S.build(s, units)
+    m, x, slots, _viols = S.build(s, units)
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = 10.0
     st = solver.StatusName(solver.Solve(m))
@@ -274,6 +321,7 @@ CASES = [
     # be trivially true and would give false confidence.
     ("H10 over contracted hours", case_H10_contract_hours, "validator"),
     ("H15 daylight cutoff", case_H15_daylight, "solver"),
+    ("H17 max 6 hours a day", case_H17_six_hour_day, "solver"),
     ("LOCK conflicting pins", case_LOCK_conflict, "solver"),
 ]
 
@@ -329,11 +377,19 @@ def main():
     if not ok5:
         print("      ^ " + msg5)
 
+    okr, msgr = check_rescue_mode()
+    if not okr:
+        bad += 1
+    print("  %-28s %-9s %-20s %-11s %s"
+          % ("RESCUE declared exceptions", "output", "exception vars", "-",
+             "ok" if okr else "<-- FAILED"))
+    print("      ^ " + msgr)
+
     print("")
     if bad:
         print("%d RULE(S) NOT PROPERLY ENFORCED. Do not trust the output." % bad)
         return 1
-    print("All %d hard rules proven enforced." % (len(CASES) + 1))
+    print("All %d hard rules proven enforced (plus rescue-mode honesty)." % (len(CASES) + 1))
     print("(This proves the rules are WIRED UP. Whether each rule says what")
     print(" Majd meant is a separate question - that is what RULES.md is for.)")
     return 0

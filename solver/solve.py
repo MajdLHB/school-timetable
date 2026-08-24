@@ -117,13 +117,33 @@ class Progress(cp_model.CpSolverSolutionCallback):
             self.StopSearch()
 
 
-def build(s, units):
+# In rescue mode a relaxable hard rule may be broken, but each broken hour
+# costs this much - far above anything the soft rules could ever trade it
+# against. The solver only pays it when the strict rules admit NO timetable.
+RESCUE_WEIGHT = 10000
+
+
+def build(s, units, rescue=False):
+    """Build the CP-SAT model.
+
+    rescue=False - every hard rule is a real constraint (the normal mode).
+    rescue=True  - the RELAXABLE hard rules (H7 day off / training day, H17
+                   daily cap) become violations costing RESCUE_WEIGHT per hour,
+                   so a livable timetable can exist even when the strict rules
+                   are impossible. H1-H6, H8, H15, closed periods and locks are
+                   NEVER relaxed. Every violation is reported, never hidden.
+
+    Returns (model, x, slots, viols); viols is a list of
+    (rule, teacher_id, day, int_var, description) used to report exceptions.
+    """
     m = cp_model.CpModel()
     slots = s.cfg.slots                      # [(day, period), ...]
     S = len(slots)
     slot_ix = {sl: i for i, sl in enumerate(slots)}
     W = s.cfg.weights
     evening = set(s.cfg.evening)
+    viols = []
+    penalties = []
 
     # ---- variable: unit u sits in slot i ----------------------------------
     x = {}
@@ -163,15 +183,46 @@ def build(s, units):
         for i in range(S):
             m.Add(sum(x[u.uid, i] for u in us) <= n_rooms)
 
-    # ---- H7: the teacher's day off is completely empty -------------------
+    # ---- H7: the teacher's day off AND training day are completely empty --
+    # (circular II.1: respect the pedagogical training days)
+    # Relaxable in rescue mode: teaching on a free day is livable in extremis;
+    # it is reported as an exception, never silently.
     for tid, us in by_teacher.items():
-        off = s.teachers.get(tid, {}).get("day_off", "")
-        if not off or off == "(none)":
-            continue
-        for i, (d, p) in enumerate(slots):
-            if d == off:
+        t = s.teachers.get(tid, {})
+        for kind in ("day_off", "training_day"):
+            off = t.get(kind, "")
+            if not off or off == "(none)":
+                continue
+            ix = [i for i, (d, p) in enumerate(slots) if d == off]
+            if not ix:
+                continue
+            if not rescue:
                 for u in us:
-                    m.Add(x[u.uid, i] == 0)
+                    for i in ix:
+                        m.Add(x[u.uid, i] == 0)
+            else:
+                v = m.NewIntVar(0, len(ix), "vH7_%s_%s" % (tid, kind))
+                m.Add(v == sum(x[u.uid, i] for u in us for i in ix))
+                penalties.append((RESCUE_WEIGHT, v))
+                viols.append(("H7", tid, off, v,
+                              "teaches on their %s" % kind.replace("_", " ")))
+
+    # ---- H17: a teacher never teaches more than 6 hours in one day --------
+    # Circular 51/2018 II.2, repeated by the inspectorate text. Relaxable in
+    # rescue mode (a 7-hour day is livable in extremis; a clash is not).
+    for tid, us in by_teacher.items():
+        for d in s.cfg.days:
+            ix = [i for i, (dd, p) in enumerate(slots) if dd == d]
+            if len(ix) <= 6:
+                continue
+            day_sum = sum(x[u.uid, i] for u in us for i in ix)
+            if not rescue:
+                m.Add(day_sum <= 6)
+            else:
+                over = m.NewIntVar(0, len(ix) - 6, "vH17_%s_%s" % (tid, d))
+                m.Add(day_sum <= 6 + over)
+                penalties.append((RESCUE_WEIGHT, over))
+                viols.append(("H17", tid, d, over, "hours beyond 6 in one day"))
 
     # ---- H8: declared unavailable slots ----------------------------------
     for un in s.unavailable:
@@ -210,8 +261,6 @@ def build(s, units):
                 m.Add(x[u.uid, i] == 1)
                 locked_used.add(u.uid)
                 break
-
-    penalties = []
 
     # ---- presence grid, reused by several soft rules ----------------------
     def presence(group_units, key):
@@ -255,16 +304,123 @@ def build(s, units):
             if also_day_count:
                 penalties.append((W["extra_day_present"], here))
 
-    # S1 teacher holes, S2 one-hour days, S8 fewest days
+    # S1 teacher holes, S2 one-hour days. S8 is the MINISTRY version now
+    # (circular II.2: hours balanced across working days): by default a
+    # teacher's overloaded days are penalised, which spreads the week.
+    # compact=yes in the Teachers sheet keeps the old packed week instead -
+    # the exception Majd grants to teachers with long journeys.
     for tid, us in by_teacher.items():
         pres = presence(us, "T" + tid)
+        compact = s.teachers.get(tid, {}).get("compact", "") == "yes"
         add_gap_penalty(pres, "T" + tid, W["teacher_gap"],
-                        also_one_hour=True, also_day_count=True)
+                        also_one_hour=True, also_day_count=compact)
+        if not compact:
+            # S8 (ministry): every taught hour beyond 4 on one day is a
+            # sign of cramming; H17 caps the day at 6 outright.
+            for d in s.cfg.days:
+                ps = [p for (dd, p) in slots if dd == d]
+                if len(ps) <= 4:
+                    continue
+                over = m.NewIntVar(0, len(ps) - 4, "crowd_%s_%s" % (tid, d))
+                m.Add(over >= sum(pres[d, p] for p in ps) - 4)
+                penalties.append((W.get("overloaded_day", 40), over))
+
+        # S5 (circular II.4): alternation - nobody teaches only mornings or
+        # only evenings. Penalise |morning - evening| beyond a slack of 2.
+        m_ix = [i for i, (d, p) in enumerate(slots) if p not in evening]
+        e_ix = [i for i, (d, p) in enumerate(slots) if p in evening]
+        if m_ix and e_ix:
+            mh = sum(x[u.uid, i] for u in us for i in m_ix)
+            eh = sum(x[u.uid, i] for u in us for i in e_ix)
+            imb = m.NewIntVar(0, len(slots), "imb_%s" % tid)
+            m.Add(imb >= mh - eh - 2)
+            m.Add(imb >= eh - mh - 2)
+            penalties.append((W.get("morning_evening_imbalance", 60), imb))
 
     # S7 pupils get no holes either
     for cid, us in by_class.items():
         pres = presence(us, "C" + cid)
         add_gap_penalty(pres, "C" + cid, W["class_gap"])
+
+    # ---- S15: a class never comes in for a single lone hour ---------------
+    # Circular I.2: minimum 2 hours in any morning or evening - for pupils
+    # too. The circular exempts PE and optional subjects (minmax_exempt=yes
+    # in the Subjects sheet): a lone PE hour is fine.
+    halves = {"am": [p for p in range(1, s.cfg.periods_per_day + 1)
+                     if p not in evening],
+              "pm": sorted(evening)}
+    for cid, us in by_class.items():
+        exempt = [u for u in us
+                  if s.subjects.get(u.subject_id, {}).get("minmax_exempt") == "yes"]
+        counted = [u for u in us if u not in exempt]
+        for d in s.cfg.days:
+            for half, ps in halves.items():
+                ix = [i for i, (dd, p) in enumerate(slots) if dd == d and p in ps]
+                if len(ix) < 2:
+                    continue
+                tot = sum(x[u.uid, i] for u in us for i in ix)
+                cnt = sum(x[u.uid, i] for u in counted for i in ix)
+                solo = m.NewBoolVar("csolo_%s_%s_%s" % (cid, d, half))
+                # solo <=> (exactly 1 hour in this half-day, and it counts)
+                m.Add(tot == 1).OnlyEnforceIf(solo)
+                m.Add(cnt >= 1).OnlyEnforceIf(solo)
+                b_tot1 = m.NewBoolVar("ctot1_%s_%s_%s" % (cid, d, half))
+                m.Add(tot == 1).OnlyEnforceIf(b_tot1)
+                m.Add(tot != 1).OnlyEnforceIf(b_tot1.Not())
+                b_cnt1 = m.NewBoolVar("ccnt1_%s_%s_%s" % (cid, d, half))
+                m.Add(cnt >= 1).OnlyEnforceIf(b_cnt1)
+                m.Add(cnt == 0).OnlyEnforceIf(b_cnt1.Not())
+                m.AddBoolAnd([b_tot1, b_cnt1]).OnlyEnforceIf(solo)
+                m.AddBoolOr([b_tot1.Not(), b_cnt1.Not()]).OnlyEnforceIf(solo.Not())
+                penalties.append((W.get("class_one_hour_session", 85), solo))
+
+    # ---- S16: subject-specific late-hour avoidance ------------------------
+    # Soft cousin of H15. Ministry: Maths avoids the evening and never after
+    # 16:00 if it must (M-MA3); Physics avoids 17:00-18:00 (M-PH5).
+    for u in units:
+        aa = s.subjects.get(u.subject_id, {}).get("avoid_after") or 0
+        if not aa:
+            continue
+        late = [i for i, (d, p) in enumerate(slots) if p > aa]
+        for i in late:
+            penalties.append((W.get("late_subject", 50), x[u.uid, i]))
+
+    # ---- S14: the last period of the day is a slot of last resort ---------
+    # Majd: "try to avoid 17 to 18 as much as possible its late". Ministry
+    # backing: the inspectorate tells Physics the same (M-PH5). Applies to
+    # everyone; soft, because banning it would cost too much capacity.
+    last_p = s.cfg.periods_per_day
+    last_ix = [i for i, (d, p) in enumerate(slots) if p == last_p]
+    for u in units:
+        for i in last_ix:
+            penalties.append((W.get("last_period", 55), x[u.uid, i]))
+
+    # ---- S13: no Friday evening for bac classes (local preference) --------
+    # ---- S17: bac classes get a free afternoon Mon-Thu (circular I.6) -----
+    first_four = s.cfg.days[:4]
+    for cid, us in by_class.items():
+        if s.classes.get(cid, {}).get("is_bac", "") != "yes":
+            continue
+        fri_ev = [i for i, (d, p) in enumerate(slots)
+                  if d == "Fri" and p in evening]
+        for u in us:
+            for i in fri_ev:
+                penalties.append((W.get("bac_friday_evening", 30), x[u.uid, i]))
+        # S17: at least one of the first four days' evenings entirely free
+        free_days = []
+        for d in first_four:
+            ix = [i for i, (dd, p) in enumerate(slots) if dd == d and p in evening]
+            if not ix:
+                continue
+            b = m.NewBoolVar("bacfree_%s_%s" % (cid, d))
+            m.Add(sum(x[u.uid, i] for u in us for i in ix) == 0).OnlyEnforceIf(b)
+            m.Add(sum(x[u.uid, i] for u in us for i in ix) >= 1).OnlyEnforceIf(b.Not())
+            free_days.append(b)
+        if free_days:
+            none_free = m.NewBoolVar("bacnofree_%s" % cid)
+            m.AddBoolAnd([b.Not() for b in free_days]).OnlyEnforceIf(none_free)
+            m.AddBoolOr(free_days).OnlyEnforceIf(none_free.Not())
+            penalties.append((W.get("bac_no_free_afternoon", 70), none_free))
 
     # ---- S3: hard subjects belong in the morning -------------------------
     hard_units = [u for u in units
@@ -301,7 +457,7 @@ def build(s, units):
             penalties.append((W["same_subject_twice_a_day"], extra))
 
     m.Minimize(sum(w * v for w, v in penalties))
-    return m, x, slots
+    return m, x, slots, viols
 
 
 def assign_rooms(s, units, placement):
@@ -344,7 +500,7 @@ def assign_rooms(s, units, placement):
     return out
 
 
-def report(s, units, placement, rooms, solver, status, elapsed):
+def report(s, units, placement, rooms, solver, status, elapsed, exceptions=None):
     """Plain-language explanation of what was and was not achieved."""
     slots = s.cfg.slots
     L = []
@@ -352,6 +508,23 @@ def report(s, units, placement, rooms, solver, status, elapsed):
     A("# Timetable report")
     A("")
     A("Generated in %.1f seconds. Solver said: **%s**." % (elapsed, solver.StatusName(status)))
+    if exceptions:
+        A("")
+        A("## ⚠ RULE EXCEPTIONS - this timetable was built in RESCUE MODE")
+        A("")
+        A("The strict rules admitted **no timetable at all**, so the solver was")
+        A("allowed to make the following livable exceptions. Everything else")
+        A("follows the rules. Fix the underlying cause (data or workload) and")
+        A("re-run to get a fully legal timetable.")
+        A("")
+        A("| rule | teacher | day | how much | what happened |")
+        A("|---|---|---|---|---|")
+        for e in exceptions:
+            t = s.teachers.get(e["teacher_id"], {})
+            A("| %s | %s (%s) | %s | %d | %s |"
+              % (e["rule"], t.get("name", e["teacher_id"]), e["teacher_id"],
+                 e["day"], e["amount"], e["what"]))
+        A("")
     if solver.StatusName(status) == "FEASIBLE":
         A("")
         A("*FEASIBLE means: a valid timetable, but the time limit stopped the search "
@@ -449,6 +622,28 @@ def report(s, units, placement, rooms, solver, status, elapsed):
       % (cgap, len(c_slots)))
     A("")
 
+    A("## S15 - classes coming in for a single hour (circular I.2)")
+    ev = set(s.cfg.evening)
+    lone = []
+    by_class_day = collections.defaultdict(list)
+    for u in units:
+        d, p = placement[u.uid]
+        ex = s.subjects.get(u.subject_id, {}).get("minmax_exempt") == "yes"
+        by_class_day[u.class_id, d, "pm" if p in ev else "am"].append((p, ex))
+    for (cid, d, half), hours in by_class_day.items():
+        if len(hours) == 1 and not hours[0][1]:
+            lone.append((cid, d, half, hours[0][0]))
+    A("")
+    if lone:
+        A("%d lone-hour half-days (pupils travel in for one hour):" % len(lone))
+        A("")
+        for cid, d, half, p in sorted(lone)[:30]:
+            A("- class %s - %s %s, only period %d" % (cid, d, half, p))
+    else:
+        A("**None.** No class travels in for a single hour "
+          "(PE and optional subjects exempt, as the circular allows).")
+    A("")
+
     A("## Room usage")
     A("")
     use = collections.Counter(placement[u.uid] for u in units)
@@ -488,7 +683,7 @@ def main():
     print("\nPlacing %d lesson-hours into %d open periods across %d rooms."
           % (len(units), len(s.cfg.slots), len(s.rooms)))
     print("Building the model...", flush=True)
-    m, x, slots = build(s, units)
+    m, x, slots, viols = build(s, units)
 
     def on_sigint(signum, frame):
         global STOP
@@ -531,18 +726,59 @@ def main():
     cb = Progress(t0, units=units, x=x, slots=slots)
     status = solver.Solve(m, cb)
     cb.save(force=True)
-    elapsed = time.time() - t0
 
     name = solver.StatusName(status)
+    exceptions = []
+    exc_path = os.path.join(OUT, "exceptions.json")
+
     if name in ("INFEASIBLE", "MODEL_INVALID"):
-        print("\nNO TIMETABLE EXISTS with these rules and this data.")
-        print("That is information, not a bug: something you asked for is")
-        print("impossible. Loosen a rule or change the data, then re-run.")
-        return 2
-    if name == "UNKNOWN":
+        # ---- RESCUE MODE ------------------------------------------------
+        # The strict rules admit no timetable at all. Rather than stop dead,
+        # retry with the RELAXABLE rules (H7 day off / training day, H17
+        # 6h/day cap) allowed to break at enormous cost. Clashes, the lunch
+        # break, H8 declarations, daylight limits and locks stay absolute.
+        # Every exception taken is listed in the report - nothing is hidden.
+        print("\nNo timetable exists under the strict rules.")
+        print("RESCUE MODE: retrying with livable exceptions allowed")
+        print("(day off / training day / 6h-day cap only - never clashes,")
+        print("never the lunch break). Every exception will be reported.")
+        m, x, slots, viols = build(s, units, rescue=True)
+        solver = cp_model.CpSolver()
+        solver.parameters.max_time_in_seconds = float(cfg.time_limit)
+        solver.parameters.num_search_workers = os.cpu_count() or 8
+        cb = Progress(t0, units=units, x=x, slots=slots)
+        status = solver.Solve(m, cb)
+        cb.save(force=True)
+        name = solver.StatusName(status)
+        if name in ("INFEASIBLE", "MODEL_INVALID"):
+            print("\nNO TIMETABLE EXISTS even with the livable exceptions.")
+            print("Something structural is impossible (a clash, room shortage,")
+            print("or contradictory data). Check the data, then re-run.")
+            return 2
+        if name == "UNKNOWN":
+            print("\nNo solution found inside the time limit (rescue mode).")
+            print("Raise time_limit_seconds in config.json and re-run.")
+            return 3
+        for rule, tid, day, var, desc in viols:
+            v = solver.Value(var)
+            if v:
+                exceptions.append(dict(rule=rule, teacher_id=tid, day=day,
+                                       amount=int(v), what=desc))
+        os.makedirs(OUT, exist_ok=True)
+        with open(exc_path, "w", encoding="utf-8") as f:
+            json.dump(dict(mode="rescue", exceptions=exceptions), f,
+                      ensure_ascii=False, indent=1)
+    elif name == "UNKNOWN":
         print("\nNo solution found inside the time limit.")
         print("Raise time_limit_seconds in config.json and re-run.")
         return 3
+    else:
+        # A strict solve succeeded: any exceptions file from an earlier
+        # rescue run is stale and must not excuse anything.
+        if os.path.exists(exc_path):
+            os.remove(exc_path)
+
+    elapsed = time.time() - t0
 
     placement = {}
     for u in units:
@@ -555,7 +791,8 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     xml_path = os.path.join(OUT, "timetable.xml")
     emit_asc.write(s, units, placement, rooms, xml_path)
-    rep = report(s, units, placement, rooms, solver, status, elapsed)
+    rep = report(s, units, placement, rooms, solver, status, elapsed,
+                 exceptions=exceptions)
     with open(os.path.join(OUT, "report.md"), "w", encoding="utf-8") as f:
         f.write(rep)
 
@@ -573,6 +810,13 @@ def main():
 
     print("\nDone in %.1fs - status %s, penalty %d"
           % (elapsed, name, int(solver.ObjectiveValue())))
+    if exceptions:
+        print("\n  ⚠ RESCUE MODE - %d rule exception(s) were needed:" % len(exceptions))
+        for e in exceptions:
+            print("    %s: teacher %s, %s - %s (x%d)"
+                  % (e["rule"], e["teacher_id"], e["day"], e["what"], e["amount"]))
+        print("  Full list in out/report.md. Fix the cause and re-run for a")
+        print("  fully legal timetable.")
     print("  out/timetable.xml  -> import into aSc TimeTables")
     print("  out/report.md      -> what it could and could not satisfy")
     print("\nNow run:  python solver/verify.py")

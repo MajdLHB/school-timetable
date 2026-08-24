@@ -31,8 +31,8 @@ Related files: `docs/RULES.md` (what is decided) · `docs/OPEN_QUESTIONS.md`
 
 | id | task | status |
 |---|---|---|
-| T13 | Read `rules/rules.pdf` — **20 of 21 pages still unread** | NEXT |
-| T14 | Fold its per-subject rules into `docs/RULES.md` with ratings | after T13 |
+| T13 | Read `rules/rules.pdf` — all 21 pages | DONE — it is the scanned original of the inspectorate text; catalogue verified against it, 2 errors fixed (M-PH5, M-PHI3/M-PHI8) |
+| T14 | Fold its per-subject rules into `docs/RULES.md` with ratings | DONE — was already catalogued in `docs/MINISTRY_RULES.md`; corrections folded in |
 | T15 | Re-scan guide page 10/5 — Letters Arabic/French/English top rows cut off | BLOCKED — Q24. Provisional values taken from last year |
 
 ## Phase 2 — prove the two hard aSc features
@@ -67,17 +67,17 @@ Seventeen rules, all high value and low cost, most needing no new data.
 
 | id | task | status |
 |---|---|---|
-| T26 | Max 6 h/day, min 2 h per half-day — **pupils and teachers** | LATER |
+| T26 | Max 6 h/day, min 2 h per half-day — **pupils and teachers** | DONE for teachers (H17 hard + S2) and pupil min-2 (S15). Pupil max-6/day needs group machinery — card-hours ≠ pupil-hours |
 | T27 | Max 4 h for a pupil in one half-day | LATER |
-| T28 | Spread each teacher across most days (replaces our S8) | LATER — with the T25 exceptions |
-| T29 | Morning/evening alternation, first four days | LATER |
+| T28 | Spread each teacher across most days (replaces our S8) | DONE — S8 rewritten, `compact=yes` column ready for the T25 list |
+| T29 | Morning/evening alternation, first four days | DONE — S5 coded (|morning−evening| ≤ 2 slack) |
 | T30 | Three quarters of core and stream subjects in the morning | LATER — replaces our cruder S3 |
-| T31 | Bac: free afternoon in the first four days | LATER |
+| T31 | Bac: free afternoon in the first four days | DONE — S17, with S13 (no Friday evening) and S14 (avoid last period) |
 | T32 | PE sessions 24 hours apart | LATER |
 | T33 | 2 h/week subjects never on consecutive days | LATER |
 | T34 | Never Philosophy straight after PE | LATER |
 | T35 | English never doubles; never two consecutive days | LATER |
-| T36 | Maths before 16:00 — same machinery as H15 | LATER |
+| T36 | Maths before 16:00 — same machinery as H15 | DONE — S16 `avoid_after` (soft): Maths 8, Physics 9. Plus RESCUE MODE: livable declared exceptions when strict rules are impossible |
 | T37 | History and Geography never the same day | LATER |
 | T38 | Avoid 17:00–18:00 (S14) | LATER |
 | T39 | No two separate sessions of one subject, same day, same class | LATER |
