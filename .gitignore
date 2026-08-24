@@ -14,6 +14,7 @@ out/
 *.xls
 *.csv
 *.docx
+*.xml
 *.jpg
 *.jpeg
 *.png
@@ -24,6 +25,10 @@ out/
 *real*
 
 # ---- allowed back in: templates and demo data only ----
+# NOTE: *.xml is blocked by default because an aSc export dropped anywhere in
+# the project carries every real teacher name. On 2026-08-24 exactly that
+# happened - "last year/last-yeah.xml" (101 teachers) was caught by the
+# pre-push gate. Only the hand-written test probes are allowed through.
 !demo/
 !demo/**
 !tools/

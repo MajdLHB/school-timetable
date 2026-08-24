@@ -54,6 +54,22 @@ are first guesses - **we will tune them together after seeing the first result.*
 
 ---
 
+## New rules from 2026-08-24 - NOT YET CODED, confirm each one
+
+| # | Rule | Kind | Status |
+|---|------|------|--------|
+| H11 | **Sport needs daylight.** The stadium has no lighting, so Sport cannot go in the late periods. [CONFIRM: what is the last period Sport may occupy? You said "in hard conditions 14h->16h", so is 16:00 the hard cutoff?] | HARD | SPEC |
+| H12 | **The stadium holds several classes at once.** aSc models it as 3 separate rooms (Stad 1, 2, 3), so 3-4 classes can do Sport simultaneously. Our room-type system already handles this: 3 rooms of type `gym`. | HARD | matches existing model |
+| H13 | **A 3-hour lab session is really 1.5h x 2 alternating groups.** The lab is small, so the class splits: group A does the lab while group B does something else, then they swap. aSc could not express 1.5h so it was written as 3h. **This is the hardest rule in the project and must be modelled explicitly, not faked.** | HARD | SPEC |
+| S11 | **Teacher's 3 portions of 3 classes** - the starting point of the whole timetable and the hardest part by hand. [CONFIRM: does this mean one teacher takes a group from each of 3 different classes in the same period?] | ? | NEEDS DEFINITION |
+
+### Known about last year's timetable
+- It is **not identical to this year**: dummy class-groups that were never used,
+  groups added for nothing, fields never updated.
+- **Some rules were deliberately broken** because it was too hard by hand.
+- Treat it as a *reference for structure*, never as a source of truth.
+- No lunch break exists. `config.json` reflects this.
+
 ## Rules I suspect exist but you have not said yet
 
 Tell me yes or no on each - each one is cheap to add now and expensive later.
