@@ -13,7 +13,35 @@ tools/selftest.py. A rule that has not finished that path is not enforced.
 
 ---
 
-## UNRESOLVED - "in hard conditions 14h -> 16h"
+## RESOLVED 2026-08-24 - "14h -> 16h" meant SPORT
+
+Majd: *"it sport time window daylight meaning morning and max 14h to 16h"*.
+Coded as H15 (hard, never past 16:00) + S12 (soft, prefer morning). Note the
+ministry text uses the identical window for Islamic Thought - see MINISTRY_RULES.md.
+
+## REMINDER LIST - teachers who need a COMPACT timetable
+
+Majd, on the S8 vs ministry conflict:
+
+> *"we should follow ministry bc its bidagogic but it feels wrong when someone
+> uses transport to come here and u do that to him so there exceptions with
+> compact scheduels put them on reminder list so i say them to u later"*
+
+**Decision: the ministry rule wins by default** - each teacher's hours spread
+across most working days (circular 51/2018, II.2). **But some teachers get an
+exception** and keep a compact timetable, because they travel a long way and
+spreading their hours over five days means five journeys.
+
+This needs a per-teacher flag, not a global rule. Plan: a `compact` column in
+the Teachers sheet. Blank = ministry default (spread). `yes` = pack into fewer
+days.
+
+**Majd will supply the list of names later.** Until then the column exists and
+is empty, and everyone gets the ministry default.
+
+## OLD - superseded, kept for the record
+
+The original ambiguity of "14h -> 16h"
 
 Said in the same breath as sport and stadium lighting. **Two readings, and I
 will not guess between them:**

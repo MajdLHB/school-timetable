@@ -34,6 +34,11 @@ out/
 !tools/
 !test/*.xml
 !docs/**
+# Official ministry circulars are PUBLIC documents with no personal data in
+# them - they are the specification this tool is built against, so they belong
+# in the repository. Every file here must be READ before it is committed.
+!rules/
+!rules/*.pdf
 
 # python noise
 __pycache__/

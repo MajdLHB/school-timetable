@@ -20,6 +20,10 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BLOCKED_DIRS = ("data/", "out/")
 BLOCKED_EXT = (".pdf", ".xlsx", ".xls", ".csv", ".roz", ".docx",
                ".jpg", ".jpeg", ".png")
+# Official ministry circulars are published public documents and contain no
+# personal data - they are the specification this tool implements. Everything
+# under rules/ must still be READ before it is committed.
+ALLOWED_PREFIXES = ("rules/",)
 # names short enough to cause false matches are skipped
 MIN_NAME_LEN = 4
 
@@ -112,6 +116,8 @@ def main():
         low = f.lower()
         if low.startswith(BLOCKED_DIRS):
             problems.append("TRACKED REAL DATA: " + f)
+        elif low.startswith(ALLOWED_PREFIXES):
+            continue
         elif low.endswith(BLOCKED_EXT):
             problems.append("TRACKED DATA FILE TYPE: " + f)
 
