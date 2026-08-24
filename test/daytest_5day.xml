@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<timetable importtype="database" options="idprefix:DAYTEST">
+   <teachers options="" columns="id,name,short">
+      <teacher id="T1" name="Prof Alpha" short="ALP"/>
+   </teachers>
+   <classes options="" columns="id,name,short">
+      <class id="C1" name="DayTest" short="DT"/>
+   </classes>
+   <subjects options="" columns="id,name,short">
+      <subject id="S1" name="Day1 Mon" short="D1"/>
+      <subject id="S2" name="Day2 Tue" short="D2"/>
+      <subject id="S3" name="Day3 Wed" short="D3"/>
+      <subject id="S4" name="Day4 Thu" short="D4"/>
+      <subject id="S5" name="Day5 Fri" short="D5"/>
+   </subjects>
+   <classrooms options="" columns="id,name,short">
+      <classroom id="R1" name="Salle 1" short="S1"/>
+   </classrooms>
+   <lessons options="" columns="id,subjectid,classids,teacherids,periodspercard,periodsperweek">
+      <lesson id="L1" subjectid="S1" classids="C1" teacherids="T1" periodspercard="1" periodsperweek="1"/>
+      <lesson id="L2" subjectid="S2" classids="C1" teacherids="T1" periodspercard="1" periodsperweek="1"/>
+      <lesson id="L3" subjectid="S3" classids="C1" teacherids="T1" periodspercard="1" periodsperweek="1"/>
+      <lesson id="L4" subjectid="S4" classids="C1" teacherids="T1" periodspercard="1" periodsperweek="1"/>
+      <lesson id="L5" subjectid="S5" classids="C1" teacherids="T1" periodspercard="1" periodsperweek="1"/>
+   </lessons>
+   <cards options="" columns="lessonid,period,days,classroomids">
+      <card lessonid="L1" period="1" days="10000" classroomids="R1"/>
+      <card lessonid="L2" period="1" days="01000" classroomids="R1"/>
+      <card lessonid="L3" period="1" days="00100" classroomids="R1"/>
+      <card lessonid="L4" period="1" days="00010" classroomids="R1"/>
+      <card lessonid="L5" period="1" days="00001" classroomids="R1"/>
+   </cards>
+</timetable>

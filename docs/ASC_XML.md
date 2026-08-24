@@ -159,3 +159,45 @@ lesson list unplaced. **Cards must reference a `lessonid`.**
 Reviewing the left pane before pressing OK is the safety check: `Add` on
 everything for a fresh import. Anything saying `Delete` on a real file means
 stop and cancel.
+
+---
+
+# ⚠️ BUG FOUND 2026-08-24 (second import test) - DAY MASK LENGTH
+
+The user imported a full generated timetable. Result: **Monday and Friday had
+lessons; Tuesday, Wednesday and Thursday were completely empty**, and a large
+tray of unplaced cards sat at the bottom of the aSc window.
+
+## Cause
+
+We emitted **6-character** day masks (`100000` = Monday in a Mon-Sat week) into
+an aSc project whose week was **not set to 6 days**. When the mask length does
+not match the number of days in the aSc project, aSc does not raise an error -
+it silently fails to place most cards.
+
+**This is the dangerous failure mode of this whole integration: it fails
+QUIETLY.** Nothing warns you. The timetable simply comes out full of holes.
+
+## Rules that follow from this
+
+1. **The aSc project must be configured for the same number of days as
+   `config.json` BEFORE importing.** Do this first, in aSc, on a blank project.
+2. `emit_asc.py` now also writes a `<daysdefs>` block declaring the day set, to
+   give aSc the day count explicitly.
+3. `verify.py` already checks that every mask length equals `len(cfg.days)`.
+   That check passes on our side - the mismatch is between our file and the aSc
+   PROJECT, which we cannot see from here. Only the import test catches it.
+
+## Diagnostic files - run these to settle it
+
+`test/daytest_6day.xml` and `test/daytest_5day.xml`.
+
+Each contains ONE class, ONE teacher, and one lesson per day, named `Day1 Mon`,
+`Day2 Tue`, ... Import into a blank project and look at where they land:
+
+- **All six subjects on their matching days** -> masks are right, use 6-day.
+- **Some days empty** -> the project day count does not match the mask length.
+- **Subjects on the wrong days** -> aSc reads the mask in a different order,
+  and `day_mask()` in emit_asc.py must be changed to match.
+
+This costs two minutes and removes all guesswork.

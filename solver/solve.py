@@ -6,10 +6,15 @@ it could not achieve.
 
 Usage:  python solver/solve.py [path/to/school.xlsx]
 """
+import collections
 import os
+import signal
 import sys
 import time
-import collections
+
+# Set by Ctrl+C. The solution callback sees it and stops the search cleanly,
+# so the best VALID timetable found so far is kept and written out.
+STOP = False
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -59,6 +64,9 @@ class Progress(cp_model.CpSolverSolutionCallback):
         el = time.time() - self.t0
         print("   %6.1fs  solution %-3d penalty %s"
               % (el, self.n, int(self.ObjectiveValue())), flush=True)
+        if STOP:
+            print("   Ctrl+C - keeping this solution and stopping.", flush=True)
+            self.StopSearch()
 
 
 def build(s, units):
@@ -410,9 +418,16 @@ def main():
     print("Building the model...", flush=True)
     m, x, slots = build(s, units)
 
+    def on_sigint(signum, frame):
+        global STOP
+        STOP = True
+        print("   Stopping after the next solution...", flush=True)
+
+    signal.signal(signal.SIGINT, on_sigint)
+
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = float(cfg.time_limit)
-    solver.parameters.num_search_workers = 8
+    solver.parameters.num_search_workers = os.cpu_count() or 8
     solver.parameters.log_search_progress = False
     print("Solving (limit %ds, Ctrl+C keeps the best found so far):"
           % cfg.time_limit, flush=True)

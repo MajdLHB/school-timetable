@@ -45,6 +45,18 @@ def write(s, units, placement, rooms, path, include_periods=True):
             A(_row("period", period=p, name=str(p), short=str(p)))
         A('   </periods>')
 
+    # Tell aSc explicitly how many days the week has. The card masks below
+    # MUST be exactly this long or aSc silently fails to place the cards -
+    # that is what produced the empty Tue/Wed/Thu on 2026-08-24.
+    A('   <daysdefs options="" columns="id,days,name,short">')
+    A(_row("daysdef", id="whole_week", days="1" * len(days),
+           name="Whole week", short="week"))
+    for i, d in enumerate(days):
+        A(_row("daysdef", id="day_" + d,
+               days="".join("1" if j == i else "0" for j in range(len(days))),
+               name=d, short=d))
+    A('   </daysdefs>')
+
     A('   <subjects options="" columns="id,name,short">')
     for sub in s.subjects.values():
         A(_row("subject", id=sub["id"], name=sub["name"], short=sub["short"]))

@@ -1,13 +1,34 @@
 {
-  "_comment": "Edit these to match the school. Everything else is data.",
-  "days": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+  "_comment": "Mon-Sat, 8 periods (4 morning + 4 evening), no lunch break. CONFIRM the 'closed' block - Saturday afternoon is still a guess.",
+  "days": [
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat"
+  ],
   "periods_per_day": 8,
-  "morning_periods": [1, 2, 3, 4],
-  "evening_periods": [5, 6, 7, 8],
+  "morning_periods": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "evening_periods": [
+    5,
+    6,
+    7,
+    8
+  ],
   "closed": {
-    "_comment": "day -> periods when the whole school is shut (half days)",
-    "Wed": [5, 6, 7, 8],
-    "Sat": [5, 6, 7, 8]
+    "_comment": "GUESS - confirm with the school",
+    "Sat": [
+      5,
+      6,
+      7,
+      8
+    ]
   },
   "time_limit_seconds": 120,
   "weights": {
