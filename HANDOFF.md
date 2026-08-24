@@ -107,9 +107,10 @@ the real one (40 classes, 20 rooms, 37 teachers, 580 lesson-hours):
       in `config.json` right now.
 - [ ] No real data loaded. User has PDFs to convert.
 - [ ] Most soft rules are untuned; weights are first guesses.
-- [ ] Blocks (`2+1` double hours) are parsed but NOT yet enforced - every
-      lesson is currently placed as a single hour. This is the biggest known
-      gap. Rule H9 in RULES.md is still SPEC, not CODED.
+- [x] **Blocks (H9) are ENFORCED** (2026-08-24). The solver places sessions:
+      `blocks` "2+1+1" = one double + two singles, each a consecutive run on
+      its own day, never straddling the lunch break. Verified independently,
+      selftested, proven on a 120-double demo. Blank blocks = free singles.
 - [ ] Cohort AM/PM is read from the Classes sheet but not yet constrained.
 - [ ] The `<periods>` block in the emitted XML is the one element never tested
       against real aSc. If import misbehaves, drop it (see emit_asc.py).

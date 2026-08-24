@@ -168,6 +168,45 @@ def main():
                 fail("H6", "%s/%s needs a '%s' room but sits in %s which is '%s'."
                      % (cid, L["subject"], want_t, r, s.rooms[r]["type"]))
 
+    # --- H9: block patterns ------------------------------------------------
+    # Each block of a class+subject must sit as ONE run of consecutive
+    # periods on ONE day, and the run lengths across the week must be exactly
+    # the declared pattern (blank blocks = all single hours, on separate days).
+    cs_day = collections.defaultdict(list)   # (class, subject, day) -> periods
+    for d, p, r, lid in placed:
+        L = lessons.get(lid)
+        if not L:
+            continue
+        for cid in L["classes"]:
+            cs_day[cid, L["subject"], d].append(p)
+
+    runs = collections.defaultdict(list)     # (class, subject) -> run lengths
+    for (cid, subj, d), ps in cs_day.items():
+        ps.sort()
+        run = 1
+        for a, b in zip(ps, ps[1:]):
+            if b == a + 1:
+                run += 1
+            else:
+                runs[cid, subj].append(run)
+                run = 1
+        runs[cid, subj].append(run)
+
+    for row in s.curriculum:
+        if not str(row.get("blocks", "")).strip():
+            continue   # blank pattern imposes nothing (spreading is soft)
+        want_bl, berr = D.parse_blocks(row.get("blocks", ""), row["hours"])
+        if berr or not want_bl or sum(want_bl) != row["hours"]:
+            continue   # unreadable pattern is a data error, reported elsewhere
+        got_bl = runs.get((row["class_id"], row["subject_id"]), [])
+        if sorted(got_bl) != sorted(want_bl):
+            fail("H9", "class %s subject %s: blocks say %s but the timetable "
+                       "has runs of %s (each block must be consecutive hours "
+                       "on its own day)."
+                 % (row["class_id"], row["subject_id"],
+                    "+".join(map(str, want_bl)),
+                    "+".join(map(str, sorted(got_bl, reverse=True))) or "none"))
+
     # --- H15: daylight-only subjects ---------------------------------------
     for d, p, r, lid in placed:
         L = lessons.get(lid)
@@ -267,8 +306,8 @@ def main():
     print("ALL GREEN - every hard rule holds.")
     print("H1 no teacher clash | H2 no class clash | H3 no room clash")
     print("H4 room count | H5 hours exact | H6 room type | H7 day off+training")
-    print("H8 unavailable | H10 contract hours | H15 daylight | H17 max 6h/day")
-    print("LOCK pins honoured")
+    print("H8 unavailable | H9 block patterns | H10 contract hours")
+    print("H15 daylight | H17 max 6h/day | H18 free-day adjacency | LOCK pins")
     return 0
 
 

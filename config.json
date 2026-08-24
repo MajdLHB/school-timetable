@@ -61,6 +61,7 @@
     "hard_subject_evening": 70,
     "morning_evening_imbalance": 60,
     "same_subject_twice_a_day": 50,
+    "same_subject_adjacent_days": 50,
     "late_subject": 50,
     "last_period": 55,
     "overloaded_day": 40,

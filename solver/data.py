@@ -112,6 +112,42 @@ def _int(v, default=0):
         return default
 
 
+def parse_blocks(blocks, hours):
+    """H9: '2+1+1' -> [2, 1, 1]. Blank -> all single hours.
+
+    Returns (list, error_message). error_message is None when the value is
+    readable; the CONSISTENCY of the list (sum vs hours, fitting the week)
+    is judged in check(), where it can be reported in plain language.
+    """
+    t = str(blocks or "").strip()
+    if not t:
+        return ([1] * hours if hours > 0 else [], None)
+    parts = [p for p in t.replace(" ", "").split("+") if p]
+    try:
+        out = [int(float(p)) for p in parts]
+    except ValueError:
+        return (None, "blocks '%s' is unreadable - write it like 2+1+1" % blocks)
+    if not out or any(v <= 0 for v in out):
+        return (None, "blocks '%s' must be positive numbers joined by +" % blocks)
+    return (out, None)
+
+
+def longest_open_run(cfg):
+    """The longest run of NUMERICALLY consecutive open periods on any day.
+    A block longer than this cannot be placed anywhere (the lunch break
+    interrupts every day, so on the real config this is 4)."""
+    best = 0
+    for d in cfg.days:
+        ps = sorted(p for (dd, p) in cfg.slots if dd == d)
+        run = 0
+        prev = None
+        for p in ps:
+            run = run + 1 if prev is not None and p == prev + 1 else 1
+            prev = p
+            best = max(best, run)
+    return best
+
+
 def load_school(xlsx=None, cfg=None):
     from openpyxl import load_workbook
 
@@ -222,6 +258,7 @@ def check(s):
     errs, notes = [], []
     days = set(s.cfg.days)
 
+    max_run = longest_open_run(s.cfg)
     for c in s.curriculum:
         where = "Curriculum row " + c["class_id"] + " / " + c["subject_id"]
         if c["class_id"] not in s.classes:
@@ -232,6 +269,24 @@ def check(s):
             errs.append(where + " - teacher '" + c["teacher_id"] + "' is not in the Teachers sheet.")
         if c["hours"] <= 0:
             errs.append(where + " - hours must be greater than 0.")
+        # H9: an EXPLICIT block pattern must be readable and must fit the
+        # week. A blank pattern imposes nothing - the solver places single
+        # hours freely (spreading is then a soft rule, not a promise).
+        if str(c.get("blocks", "")).strip():
+            bl, berr = parse_blocks(c.get("blocks", ""), c["hours"])
+            if berr:
+                errs.append(where + " - " + berr)
+            elif bl:
+                if sum(bl) != c["hours"]:
+                    errs.append(where + " - blocks " + str(c.get("blocks")) + " add up to " +
+                                str(sum(bl)) + " but hours says " + str(c["hours"]) + ".")
+                if len(bl) > len(s.cfg.days):
+                    errs.append(where + " - " + str(len(bl)) + " blocks but the week only has " +
+                                str(len(s.cfg.days)) + " days (each block goes on its own day, H9).")
+                if max(bl) > max_run:
+                    errs.append(where + " - a block of " + str(max(bl)) + " consecutive hours can "
+                                "never be placed: the longest open run in any day is " +
+                                str(max_run) + " (the lunch break interrupts every day).")
 
     for t in s.teachers.values():
         off = t["day_off"]

@@ -32,7 +32,8 @@ import solve as S  # noqa: E402
 WEIGHTS = {
     "teacher_gap": 100, "one_hour_day": 90, "class_gap": 85,
     "class_one_hour_session": 85, "hard_subject_evening": 70,
-    "morning_evening_imbalance": 60, "same_subject_twice_a_day": 50,
+    "morning_evening_imbalance": 60, "same_subject_adjacent_days": 50,
+    "same_subject_twice_a_day": 50,
     "late_subject": 50, "overloaded_day": 40, "extra_day_present": 40,
 }
 
@@ -66,9 +67,9 @@ def klass(s, cid):
                           home_room="", size=30)
 
 
-def teach(s, cid, sid, hours, tid):
+def teach(s, cid, sid, hours, tid, blocks=""):
     s.curriculum.append(dict(class_id=cid, subject_id=sid, hours=hours,
-                             teacher_id=tid, blocks="", room_type=""))
+                             teacher_id=tid, blocks=blocks, room_type=""))
 
 
 def status(s, skip_check=False):
@@ -210,6 +211,31 @@ def case_H15_daylight():
     return base(1), base(2)
 
 
+def case_H9_block_contiguity():
+    """A double hour where no two consecutive periods are open: one day with
+    periods 1 and 3 open, 2 closed. The block cannot sit as a consecutive
+    run - exactly the lunch-break-straddling situation. RELAX: open period 2."""
+    def base(closed):
+        s = tiny(days=("Mon",), periods=3, closed=closed)
+        teacher(s, "T1")
+        klass(s, "C1")
+        teach(s, "C1", "MA", 2, "T1", blocks="2")
+        return s
+    return base({"Mon": [2]}), base({})
+
+
+def case_H9_blocks_on_distinct_days():
+    """Blocks 1+1 need two days, but the school has one day. Both singles on
+    one day would merge into a fake double - H9 forbids it. RELAX: two days."""
+    def base(days):
+        s = tiny(days=days)
+        teacher(s, "T1")
+        klass(s, "C1")
+        teach(s, "C1", "MA", 2, "T1", blocks="1+1")
+        return s
+    return base(("Mon",)), base(("Mon", "Tue"))
+
+
 def case_H18_adjacent_free_days():
     """The inspector's rule: the day off must not sit next to the training
     day. A data property - no placement can change which days these are, so
@@ -306,19 +332,22 @@ def check_H5_hours_delivered():
     klass(s, "C1")
     teach(s, "C1", "MA", 3, "T1")
     teach(s, "C1", "AR", 2, "T2")
-    units = S.expand(s)
-    m, x, slots, _viols = S.build(s, units)
+    sessions = S.expand(s)
+    m, x, starts_of, _viols = S.build(s, sessions)
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = 10.0
     st = solver.StatusName(solver.Solve(m))
     if st not in ("OPTIMAL", "FEASIBLE"):
         return False, "school should have been solvable, got " + st
+    placement = S.placement_from_solver(solver.Value, sessions, x, starts_of,
+                                        s.cfg.slots)
     got = {}
-    for u in units:
-        placed = [i for i in range(len(slots)) if solver.Value(x[u.uid, i])]
-        if len(placed) != 1:
-            return False, u.uid + " placed " + str(len(placed)) + " times, expected once"
-        got[u.subject_id] = got.get(u.subject_id, 0) + 1
+    seen = set()
+    for uid, slot in placement.items():
+        if tuple(slot) in seen and uid.split("|")[0] == "C1":
+            return False, "two hours of C1 share slot %r" % (slot,)
+        seen.add(tuple(slot))
+        got[uid.split("|")[1]] = got.get(uid.split("|")[1], 0) + 1
     if got.get("MA") != 3 or got.get("AR") != 2:
         return False, "asked MA=3 AR=2, got MA=%s AR=%s" % (got.get("MA"), got.get("AR"))
     return True, "MA 3/3, AR 2/2 hours delivered exactly"
@@ -331,6 +360,8 @@ CASES = [
     ("H6  wrong room type", case_H6_room_type, "solver"),
     ("H7  day off not empty", case_H7_day_off, "solver"),
     ("H8  declared unavailable", case_H8_unavailable, "solver"),
+    ("H9  block needs consecutive", case_H9_block_contiguity, "solver"),
+    ("H9  blocks on distinct days", case_H9_blocks_on_distinct_days, "solver"),
     # A teacher's weekly total is fixed by the curriculum - moving lessons
     # around cannot change it. So H10 is a DATA invariant, not a placement
     # constraint. It is caught by data.check() before solving and re-checked

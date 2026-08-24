@@ -4,6 +4,12 @@ HARD rules are constraints - the solver physically cannot return a timetable
 that breaks one. SOFT rules are penalties - it minimises them and reports what
 it could not achieve.
 
+H9 makes the unit of placement the SESSION, not the hour: a curriculum row
+with blocks "2+1+1" becomes three sessions (one double, two singles). Each
+session occupies numerically consecutive open periods on one day - so it can
+never straddle the lunch break - and different sessions of the same subject
+land on different days.
+
 Usage:  python solver/solve.py [path/to/school.xlsx]
 """
 import collections
@@ -27,9 +33,14 @@ import emit_asc  # noqa: E402
 HERE = D.HERE
 OUT = os.path.join(HERE, "out")
 
+# In rescue mode a relaxable hard rule may be broken, but each broken hour
+# costs this much - far above anything the soft rules could ever trade it
+# against. The solver only pays it when the strict rules admit NO timetable.
+RESCUE_WEIGHT = 10000
+
 
 class Unit:
-    """One single lesson-hour that must be placed somewhere."""
+    """One single lesson-hour, as emitted to aSc and counted by verify."""
     __slots__ = ("uid", "class_id", "subject_id", "teacher_id", "room_type", "idx")
 
     def __init__(self, uid, class_id, subject_id, teacher_id, room_type, idx):
@@ -41,16 +52,73 @@ class Unit:
         self.idx = idx
 
 
+class Sess:
+    """One placeable session: `length` consecutive hours on a single day.
+
+    explicit=True when the curriculum row carries a written block pattern
+    ("2+1+1"): then H9 also demands each block on its OWN day. A blank
+    pattern leaves the solver free - single hours, soft spreading only.
+    """
+    __slots__ = ("sid", "class_id", "subject_id", "teacher_id", "room_type",
+                 "length", "hour_offset", "explicit")
+
+    def __init__(self, sid, class_id, subject_id, teacher_id, room_type,
+                 length, hour_offset, explicit):
+        self.sid = sid
+        self.class_id = class_id
+        self.subject_id = subject_id
+        self.teacher_id = teacher_id
+        self.room_type = room_type
+        self.length = length
+        self.hour_offset = hour_offset
+        self.explicit = explicit
+
+
 def expand(s):
-    """Turn each curriculum row into one Unit per weekly hour."""
-    units = []
+    """Turn each curriculum row into its sessions (H9 block pattern)."""
+    sessions = []
     for row in s.curriculum:
         rt = s.room_type_for(row)
-        for i in range(row["hours"]):
-            uid = "%s|%s|%d" % (row["class_id"], row["subject_id"], i)
-            units.append(Unit(uid, row["class_id"], row["subject_id"],
-                              row["teacher_id"], rt, i))
+        explicit = bool(str(row.get("blocks", "")).strip())
+        bl, err = D.parse_blocks(row.get("blocks", ""), row["hours"])
+        if err or not bl or sum(bl) != row["hours"]:
+            # check() reports this in plain language; if we are running
+            # anyway (selftest skip_check), fall back to single hours.
+            bl, explicit = [1] * row["hours"], False
+        off = 0
+        for k, L in enumerate(bl):
+            sid = "%s|%s|s%d" % (row["class_id"], row["subject_id"], k)
+            sessions.append(Sess(sid, row["class_id"], row["subject_id"],
+                                 row["teacher_id"], rt, L, off, explicit))
+            off += L
+    return sessions
+
+
+def hour_units(sessions):
+    """Per-hour Units matching the sessions, in the historical uid scheme."""
+    units = []
+    for se in sessions:
+        for t in range(se.length):
+            i = se.hour_offset + t
+            uid = "%s|%s|%d" % (se.class_id, se.subject_id, i)
+            units.append(Unit(uid, se.class_id, se.subject_id,
+                              se.teacher_id, se.room_type, i))
     return units
+
+
+def placement_from_solver(value_of, sessions, x, starts_of, slots):
+    """{per-hour uid: [day, period]} for the solution currently in hand."""
+    out = {}
+    for se in sessions:
+        for j, (d, p0, ixs) in enumerate(starts_of(se)):
+            if value_of(x[se.sid, j]):
+                for t, i in enumerate(ixs):
+                    dd, pp = slots[i]
+                    uid = "%s|%s|%d" % (se.class_id, se.subject_id,
+                                        se.hour_offset + t)
+                    out[uid] = [dd, pp]
+                break
+    return out
 
 
 class Progress(cp_model.CpSolverSolutionCallback):
@@ -62,40 +130,33 @@ class Progress(cp_model.CpSolverSolutionCallback):
     is always saved. Resume later with --continue.
     """
 
-    def __init__(self, t0, units=None, x=None, slots=None, every=15.0):
+    def __init__(self, t0, sessions=None, x=None, starts_of=None, slots=None,
+                 every=15.0):
         super().__init__()
         self.t0 = t0
         self.n = 0
-        self.units = units
+        self.sessions = sessions
         self.x = x
+        self.starts_of = starts_of
         self.slots = slots
         self.every = every
         self.last_save = 0.0
         self.best = None
 
-    def snapshot(self):
-        """{unit id: [day, period]} for the solution currently in hand."""
-        out = {}
-        for u in self.units:
-            for i in range(len(self.slots)):
-                if self.Value(self.x[u.uid, i]):
-                    d, p = self.slots[i]
-                    out[u.uid] = [d, p]
-                    break
-        return out
-
     def save(self, force=False):
-        if self.units is None:
+        if self.sessions is None:
             return
         now = time.time()
         if not force and now - self.last_save < self.every:
             return
         self.last_save = now
+        placement = placement_from_solver(self.Value, self.sessions, self.x,
+                                          self.starts_of, self.slots)
         payload = dict(
             penalty=int(self.ObjectiveValue()),
             elapsed_seconds=round(now - self.t0, 1),
             solution_number=self.n,
-            placement=self.snapshot(),
+            placement=placement,
         )
         os.makedirs(OUT, exist_ok=True)
         tmp = os.path.join(OUT, "solution.json.tmp")
@@ -117,77 +178,178 @@ class Progress(cp_model.CpSolverSolutionCallback):
             self.StopSearch()
 
 
-# In rescue mode a relaxable hard rule may be broken, but each broken hour
-# costs this much - far above anything the soft rules could ever trade it
-# against. The solver only pays it when the strict rules admit NO timetable.
-RESCUE_WEIGHT = 10000
-
-
-def build(s, units, rescue=False):
-    """Build the CP-SAT model.
+def build(s, sessions, rescue=False):
+    """Build the CP-SAT model over sessions.
 
     rescue=False - every hard rule is a real constraint (the normal mode).
     rescue=True  - the RELAXABLE hard rules (H7 day off / training day, H17
                    daily cap) become violations costing RESCUE_WEIGHT per hour,
                    so a livable timetable can exist even when the strict rules
-                   are impossible. H1-H6, H8, H15, closed periods and locks are
-                   NEVER relaxed. Every violation is reported, never hidden.
+                   are impossible. H1-H6, H8, H9, H15, closed periods and locks
+                   are NEVER relaxed. Every violation is reported, never hidden.
 
-    Returns (model, x, slots, viols); viols is a list of
+    Returns (model, x, starts_of, viols); viols is a list of
     (rule, teacher_id, day, int_var, description) used to report exceptions.
     """
     m = cp_model.CpModel()
-    slots = s.cfg.slots                      # [(day, period), ...]
-    S = len(slots)
+    slots = s.cfg.slots                      # [(day, period), ...] open only
     slot_ix = {sl: i for i, sl in enumerate(slots)}
     W = s.cfg.weights
     evening = set(s.cfg.evening)
+    days = list(s.cfg.days)
+    day_ix = {d: k for k, d in enumerate(days)}
     viols = []
     penalties = []
 
-    # ---- variable: unit u sits in slot i ----------------------------------
-    x = {}
-    for u in units:
-        for i in range(S):
-            x[u.uid, i] = m.NewBoolVar("x_%s_%d" % (u.uid, i))
+    # ---- feasible starts per session length (H9 contiguity) --------------
+    # A session of length L may start at period p on day d only when
+    # p, p+1, ..., p+L-1 are ALL open on d. The lunch break closes 5-6, so
+    # no session can straddle it - that part of H9 is free.
+    open_by_day = {d: sorted(p for (dd, p) in slots if dd == d) for d in days}
+    starts_by_len = {}
 
-    # ---- H5: every unit is placed exactly once ---------------------------
-    for u in units:
-        m.AddExactlyOne(x[u.uid, i] for i in range(S))
+    def starts_for_len(L):
+        if L not in starts_by_len:
+            out = []
+            for d in days:
+                pset = set(open_by_day[d])
+                for p in open_by_day[d]:
+                    run = [p + o for o in range(L)]
+                    if all(q in pset for q in run):
+                        out.append((d, p, [slot_ix[(d, q)] for q in run]))
+            starts_by_len[L] = out
+        return starts_by_len[L]
+
+    def starts_of(se):
+        return starts_for_len(se.length)
+
+    # ---- variable: session se begins at start j --------------------------
+    x = {}
+    for se in sessions:
+        st = starts_of(se)
+        for j in range(len(st)):
+            x[se.sid, j] = m.NewBoolVar("x_%s_%d" % (se.sid, j))
+        # H5 + H9: every session is placed exactly once, as one block
+        if st:
+            m.AddExactlyOne(x[se.sid, j] for j in range(len(st)))
+        else:
+            m.Add(sum(()) == 1)   # 0 == 1: no legal start exists at all
+
+    # cover[(sid, slot)] = the x vars that would put this session on slot
+    cover = collections.defaultdict(list)
+    for se in sessions:
+        for j, (d, p0, ixs) in enumerate(starts_of(se)):
+            for i in ixs:
+                cover[se.sid, i].append(x[se.sid, j])
+
+    # occ[(sid, slot)] = 1 when the session occupies the slot
+    occ = {}
+    for (sid, i), vs in cover.items():
+        b = m.NewBoolVar("o_%s_%d" % (sid, i))
+        m.Add(b == sum(vs))
+        occ[sid, i] = b
+
+    def occs(group, i):
+        """The occupancy vars of these sessions on slot i."""
+        return [occ[se.sid, i] for se in group if (se.sid, i) in occ]
+
+    def forbid_slot(se, i):
+        for xv in cover.get((se.sid, i), ()):
+            m.Add(xv == 0)
 
     by_class = collections.defaultdict(list)
     by_teacher = collections.defaultdict(list)
     by_type = collections.defaultdict(list)
-    for u in units:
-        by_class[u.class_id].append(u)
-        if u.teacher_id:
-            by_teacher[u.teacher_id].append(u)
-        by_type[u.room_type].append(u)
+    by_row = collections.defaultdict(list)
+    for se in sessions:
+        by_class[se.class_id].append(se)
+        if se.teacher_id:
+            by_teacher[se.teacher_id].append(se)
+        by_type[se.room_type].append(se)
+        by_row[se.class_id, se.subject_id].append(se)
+
+    S = len(slots)
 
     # ---- H2: a class is in one place at a time ---------------------------
-    for cid, us in by_class.items():
+    for cid, ss in by_class.items():
         for i in range(S):
-            m.AddAtMostOne(x[u.uid, i] for u in us)
+            vs = occs(ss, i)
+            if len(vs) > 1:
+                m.AddAtMostOne(vs)
 
     # ---- H1: a teacher is in one place at a time -------------------------
-    for tid, us in by_teacher.items():
+    for tid, ss in by_teacher.items():
         for i in range(S):
-            m.AddAtMostOne(x[u.uid, i] for u in us)
+            vs = occs(ss, i)
+            if len(vs) > 1:
+                m.AddAtMostOne(vs)
 
     # ---- H3 + H4 + H6: never need more rooms of a type than exist --------
     # Rooms are interchangeable within a type, so counting is enough here.
     # assign_rooms() below turns the counts into concrete room numbers, and
     # verify.py checks the concrete result independently.
-    for rt, us in by_type.items():
+    for rt, ss in by_type.items():
         n_rooms = len(s.rooms_of_type(rt))
         for i in range(S):
-            m.Add(sum(x[u.uid, i] for u in us) <= n_rooms)
+            vs = occs(ss, i)
+            if len(vs) > n_rooms:
+                m.Add(sum(vs) <= n_rooms)
+
+    # ---- H9: different blocks of one subject on different days -----------
+    # (The contiguity half of H9 is built into the start positions above.)
+    # Hard ONLY for rows with a written pattern; a blank pattern gets the
+    # soft same-day penalty below instead. Also breaks the symmetry of
+    # equal-length sessions in a pattern by ordering their days.
+    day_pres_row = {}
+    for key, ss in by_row.items():
+        if len(ss) < 2:
+            continue
+        explicit = ss[0].explicit
+        dps = {}
+        day_hours = {}
+        for d in days:
+            terms = []
+            hour_terms = []
+            for se in ss:
+                for j, (dd, p0, ixs) in enumerate(starts_of(se)):
+                    if dd == d:
+                        terms.append(x[se.sid, j])
+                        hour_terms.append(se.length * x[se.sid, j])
+            if not terms:
+                continue
+            if explicit:
+                m.Add(sum(terms) <= 1)
+            b = m.NewBoolVar("rowday_%s_%s_%s" % (key[0], key[1], d))
+            m.Add(sum(terms) >= 1).OnlyEnforceIf(b)
+            m.Add(sum(terms) == 0).OnlyEnforceIf(b.Not())
+            dps[d] = b
+            day_hours[d] = hour_terms
+        day_pres_row[key] = dps
+        if not explicit:
+            # old S6 half: pile-up on one day is discouraged, not forbidden
+            for d, hour_terms in day_hours.items():
+                extra = m.NewIntVar(0, sum(se.length for se in ss),
+                                    "pile_%s_%s_%s" % (key[0], key[1], d))
+                m.Add(extra >= sum(hour_terms) - 1)
+                penalties.append((W.get("same_subject_twice_a_day", 50), extra))
+            continue
+        # symmetry: equal-length neighbours in the pattern take increasing days
+        for a, bse in zip(ss, ss[1:]):
+            if a.length != bse.length:
+                continue
+            da = m.NewIntVar(0, len(days) - 1, "dv_%s" % a.sid)
+            db = m.NewIntVar(0, len(days) - 1, "dv_%s" % bse.sid)
+            m.Add(da == sum(day_ix[dd] * x[a.sid, j]
+                            for j, (dd, p0, ixs) in enumerate(starts_of(a))))
+            m.Add(db == sum(day_ix[dd] * x[bse.sid, j]
+                            for j, (dd, p0, ixs) in enumerate(starts_of(bse))))
+            m.Add(da < db)
 
     # ---- H7: the teacher's day off AND training day are completely empty --
     # (circular II.1: respect the pedagogical training days)
     # Relaxable in rescue mode: teaching on a free day is livable in extremis;
     # it is reported as an exception, never silently.
-    for tid, us in by_teacher.items():
+    for tid, ss in by_teacher.items():
         t = s.teachers.get(tid, {})
         for kind in ("day_off", "training_day"):
             off = t.get(kind, "")
@@ -197,12 +359,13 @@ def build(s, units, rescue=False):
             if not ix:
                 continue
             if not rescue:
-                for u in us:
+                for se in ss:
                     for i in ix:
-                        m.Add(x[u.uid, i] == 0)
+                        forbid_slot(se, i)
             else:
-                v = m.NewIntVar(0, len(ix), "vH7_%s_%s" % (tid, kind))
-                m.Add(v == sum(x[u.uid, i] for u in us for i in ix))
+                terms = [v for i in ix for v in occs(ss, i)]
+                v = m.NewIntVar(0, max(1, len(terms)), "vH7_%s_%s" % (tid, kind))
+                m.Add(v == sum(terms))
                 penalties.append((RESCUE_WEIGHT, v))
                 viols.append(("H7", tid, off, v,
                               "teaches on their %s" % kind.replace("_", " ")))
@@ -210,17 +373,19 @@ def build(s, units, rescue=False):
     # ---- H17: a teacher never teaches more than 6 hours in one day --------
     # Circular 51/2018 II.2, repeated by the inspectorate text. Relaxable in
     # rescue mode (a 7-hour day is livable in extremis; a clash is not).
-    for tid, us in by_teacher.items():
-        for d in s.cfg.days:
+    for tid, ss in by_teacher.items():
+        for d in days:
             ix = [i for i, (dd, p) in enumerate(slots) if dd == d]
             if len(ix) <= 6:
                 continue
-            day_sum = sum(x[u.uid, i] for u in us for i in ix)
+            terms = [v for i in ix for v in occs(ss, i)]
+            if len(terms) <= 6:
+                continue
             if not rescue:
-                m.Add(day_sum <= 6)
+                m.Add(sum(terms) <= 6)
             else:
                 over = m.NewIntVar(0, len(ix) - 6, "vH17_%s_%s" % (tid, d))
-                m.Add(day_sum <= 6 + over)
+                m.Add(sum(terms) <= 6 + over)
                 penalties.append((RESCUE_WEIGHT, over))
                 viols.append(("H17", tid, d, over, "hours beyond 6 in one day"))
 
@@ -228,52 +393,50 @@ def build(s, units, rescue=False):
     for un in s.unavailable:
         if un["hard"] != "yes":
             continue
-        us = by_teacher.get(un["teacher_id"], [])
+        ss = by_teacher.get(un["teacher_id"], [])
         for i, (d, p) in enumerate(slots):
             if un["day"] not in ("*", d):
                 continue
             if un["period"] != "*" and str(p) != str(un["period"]):
                 continue
-            for u in us:
-                m.Add(x[u.uid, i] == 0)
+            for se in ss:
+                forbid_slot(se, i)
 
     # ---- H15: daylight-only subjects never run past latest_period --------
     # Sport has no stadium lighting, so it may not sit after 16:00 (period 8
     # in a 10-period day starting 08:00). Expressed generally so any subject
     # can carry a time limit.
-    for u in units:
-        lp = s.subjects.get(u.subject_id, {}).get("latest_period") or 0
+    for se in sessions:
+        lp = s.subjects.get(se.subject_id, {}).get("latest_period") or 0
         if not lp:
             continue
         for i, (d, p) in enumerate(slots):
             if p > lp:
-                m.Add(x[u.uid, i] == 0)
+                forbid_slot(se, i)
 
     # ---- Locked sheet: the user's pinned placements are immovable --------
-    locked_used = set()
     for lk in s.locked:
         i = slot_ix.get((lk["day"], lk["period"]))
         if i is None:
             continue
-        for u in units:
-            if (u.class_id == lk["class_id"] and u.subject_id == lk["subject_id"]
-                    and u.uid not in locked_used):
-                m.Add(x[u.uid, i] == 1)
-                locked_used.add(u.uid)
-                break
+        vs = occs(by_row.get((lk["class_id"], lk["subject_id"]), []), i)
+        if vs:
+            m.Add(sum(vs) == 1)
+        else:
+            m.Add(sum(()) == 1)   # pinned to a slot nothing can reach
 
     # ---- presence grid, reused by several soft rules ----------------------
-    def presence(group_units, key):
+    def presence(group, key):
         """pres[(day, period)] = 1 if this teacher/class is busy then."""
         pres = {}
         for i, (d, p) in enumerate(slots):
             b = m.NewBoolVar("pres_%s_%s_%d" % (key, d, p))
-            m.Add(b == sum(x[u.uid, i] for u in group_units))
+            m.Add(b == sum(occs(group, i)))
             pres[d, p] = b
         return pres
 
     def add_gap_penalty(pres, key, weight, also_one_hour=False, also_day_count=False):
-        """S1/S7 no holes, S2 no 1-hour days, S8 fewest days present."""
+        """S1/S7 no holes, S2 no 1-hour days, S8-compact fewest days."""
         for d in s.cfg.days:
             ps = [p for (dd, p) in slots if dd == d]
             if len(ps) < 2:
@@ -304,13 +467,13 @@ def build(s, units, rescue=False):
             if also_day_count:
                 penalties.append((W["extra_day_present"], here))
 
-    # S1 teacher holes, S2 one-hour days. S8 is the MINISTRY version now
+    # S1 teacher holes, S2 one-hour days. S8 is the MINISTRY version
     # (circular II.2: hours balanced across working days): by default a
     # teacher's overloaded days are penalised, which spreads the week.
     # compact=yes in the Teachers sheet keeps the old packed week instead -
     # the exception Majd grants to teachers with long journeys.
-    for tid, us in by_teacher.items():
-        pres = presence(us, "T" + tid)
+    for tid, ss in by_teacher.items():
+        pres = presence(ss, "T" + tid)
         compact = s.teachers.get(tid, {}).get("compact", "") == "yes"
         add_gap_penalty(pres, "T" + tid, W["teacher_gap"],
                         also_one_hour=True, also_day_count=compact)
@@ -330,16 +493,16 @@ def build(s, units, rescue=False):
         m_ix = [i for i, (d, p) in enumerate(slots) if p not in evening]
         e_ix = [i for i, (d, p) in enumerate(slots) if p in evening]
         if m_ix and e_ix:
-            mh = sum(x[u.uid, i] for u in us for i in m_ix)
-            eh = sum(x[u.uid, i] for u in us for i in e_ix)
-            imb = m.NewIntVar(0, len(slots), "imb_%s" % tid)
+            mh = sum(v for i in m_ix for v in occs(ss, i))
+            eh = sum(v for i in e_ix for v in occs(ss, i))
+            imb = m.NewIntVar(0, S, "imb_%s" % tid)
             m.Add(imb >= mh - eh - 2)
             m.Add(imb >= eh - mh - 2)
             penalties.append((W.get("morning_evening_imbalance", 60), imb))
 
     # S7 pupils get no holes either
-    for cid, us in by_class.items():
-        pres = presence(us, "C" + cid)
+    for cid, ss in by_class.items():
+        pres = presence(ss, "C" + cid)
         add_gap_penalty(pres, "C" + cid, W["class_gap"])
 
     # ---- S15: a class never comes in for a single lone hour ---------------
@@ -349,21 +512,18 @@ def build(s, units, rescue=False):
     halves = {"am": [p for p in range(1, s.cfg.periods_per_day + 1)
                      if p not in evening],
               "pm": sorted(evening)}
-    for cid, us in by_class.items():
-        exempt = [u for u in us
-                  if s.subjects.get(u.subject_id, {}).get("minmax_exempt") == "yes"]
-        counted = [u for u in us if u not in exempt]
+    for cid, ss in by_class.items():
+        exempt = [se for se in ss
+                  if s.subjects.get(se.subject_id, {}).get("minmax_exempt") == "yes"]
+        counted = [se for se in ss if se not in exempt]
         for d in s.cfg.days:
             for half, ps in halves.items():
                 ix = [i for i, (dd, p) in enumerate(slots) if dd == d and p in ps]
                 if len(ix) < 2:
                     continue
-                tot = sum(x[u.uid, i] for u in us for i in ix)
-                cnt = sum(x[u.uid, i] for u in counted for i in ix)
+                tot = sum(v for i in ix for v in occs(ss, i))
+                cnt = sum(v for i in ix for v in occs(counted, i))
                 solo = m.NewBoolVar("csolo_%s_%s_%s" % (cid, d, half))
-                # solo <=> (exactly 1 hour in this half-day, and it counts)
-                m.Add(tot == 1).OnlyEnforceIf(solo)
-                m.Add(cnt >= 1).OnlyEnforceIf(solo)
                 b_tot1 = m.NewBoolVar("ctot1_%s_%s_%s" % (cid, d, half))
                 m.Add(tot == 1).OnlyEnforceIf(b_tot1)
                 m.Add(tot != 1).OnlyEnforceIf(b_tot1.Not())
@@ -374,47 +534,85 @@ def build(s, units, rescue=False):
                 m.AddBoolOr([b_tot1.Not(), b_cnt1.Not()]).OnlyEnforceIf(solo.Not())
                 penalties.append((W.get("class_one_hour_session", 85), solo))
 
+    # ---- S3: hard subjects belong in the morning -------------------------
+    hard_sess = [se for se in sessions
+                 if s.subjects.get(se.subject_id, {}).get("difficulty") == "hard"]
+    ev_ix = [i for i, (d, p) in enumerate(slots) if p in evening]
+    if hard_sess and ev_ix:
+        terms = [v for i in ev_ix for v in occs(hard_sess, i)]
+        if terms:
+            n_ev = m.NewIntVar(0, len(terms), "hard_in_evening")
+            m.Add(n_ev == sum(terms))
+            penalties.append((W["hard_subject_evening"], n_ev))
+
+    # ---- S12: daylight subjects PREFER the morning -----------------------
+    # "morning and max 14h to 16h" - the late window is a fallback, not the
+    # target. Penalise every daylight-limited hour that lands outside morning.
+    daylight = [se for se in sessions
+                if (s.subjects.get(se.subject_id, {}).get("latest_period") or 0)]
+    morning = set(s.cfg.morning)
+    late_ix = [i for i, (d, p) in enumerate(slots) if p not in morning]
+    if daylight and late_ix:
+        terms = [v for i in late_ix for v in occs(daylight, i)]
+        if terms:
+            n_late = m.NewIntVar(0, len(terms), "daylight_outside_morning")
+            m.Add(n_late == sum(terms))
+            penalties.append((W.get("daylight_not_morning", 45), n_late))
+
+    # ---- S6: sessions of one subject avoid consecutive days ---------------
+    # Circular III.2: subjects taught 2 h/week must not fall on consecutive
+    # days; the inspectorate repeats it for English, History-Geo and Arabic.
+    # With H9 keeping every block on its own day, "spread" now means: no two
+    # sessions of one subject on neighbouring days.
+    for key, dps in day_pres_row.items():
+        for da, db in zip(days, days[1:]):
+            if da in dps and db in dps:
+                both = m.NewIntVar(0, 1, "adj_%s_%s_%s" % (key[0], key[1], da))
+                m.Add(both >= dps[da] + dps[db] - 1)
+                penalties.append((W.get("same_subject_adjacent_days", 50), both))
+
     # ---- S16: subject-specific late-hour avoidance ------------------------
     # Soft cousin of H15. Ministry: Maths avoids the evening and never after
     # 16:00 if it must (M-MA3); Physics avoids 17:00-18:00 (M-PH5).
-    for u in units:
-        aa = s.subjects.get(u.subject_id, {}).get("avoid_after") or 0
+    for se in sessions:
+        aa = s.subjects.get(se.subject_id, {}).get("avoid_after") or 0
         if not aa:
             continue
-        late = [i for i, (d, p) in enumerate(slots) if p > aa]
-        for i in late:
-            penalties.append((W.get("late_subject", 50), x[u.uid, i]))
+        for i, (d, p) in enumerate(slots):
+            if p > aa and (se.sid, i) in occ:
+                penalties.append((W.get("late_subject", 50), occ[se.sid, i]))
 
     # ---- S14: the last period of the day is a slot of last resort ---------
     # Majd: "try to avoid 17 to 18 as much as possible its late". Ministry
     # backing: the inspectorate tells Physics the same (M-PH5). Applies to
     # everyone; soft, because banning it would cost too much capacity.
     last_p = s.cfg.periods_per_day
-    last_ix = [i for i, (d, p) in enumerate(slots) if p == last_p]
-    for u in units:
-        for i in last_ix:
-            penalties.append((W.get("last_period", 55), x[u.uid, i]))
+    for se in sessions:
+        for i, (d, p) in enumerate(slots):
+            if p == last_p and (se.sid, i) in occ:
+                penalties.append((W.get("last_period", 55), occ[se.sid, i]))
 
     # ---- S13: no Friday evening for bac classes (local preference) --------
     # ---- S17: bac classes get a free afternoon Mon-Thu (circular I.6) -----
-    first_four = s.cfg.days[:4]
-    for cid, us in by_class.items():
+    first_four = days[:4]
+    for cid, ss in by_class.items():
         if s.classes.get(cid, {}).get("is_bac", "") != "yes":
             continue
         fri_ev = [i for i, (d, p) in enumerate(slots)
                   if d == "Fri" and p in evening]
-        for u in us:
-            for i in fri_ev:
-                penalties.append((W.get("bac_friday_evening", 30), x[u.uid, i]))
+        for i in fri_ev:
+            for v in occs(ss, i):
+                penalties.append((W.get("bac_friday_evening", 30), v))
         # S17: at least one of the first four days' evenings entirely free
         free_days = []
         for d in first_four:
             ix = [i for i, (dd, p) in enumerate(slots) if dd == d and p in evening]
             if not ix:
                 continue
+            terms = [v for i in ix for v in occs(ss, i)]
             b = m.NewBoolVar("bacfree_%s_%s" % (cid, d))
-            m.Add(sum(x[u.uid, i] for u in us for i in ix) == 0).OnlyEnforceIf(b)
-            m.Add(sum(x[u.uid, i] for u in us for i in ix) >= 1).OnlyEnforceIf(b.Not())
+            m.Add(sum(terms) == 0).OnlyEnforceIf(b)
+            m.Add(sum(terms) >= 1).OnlyEnforceIf(b.Not())
             free_days.append(b)
         if free_days:
             none_free = m.NewBoolVar("bacnofree_%s" % cid)
@@ -422,53 +620,22 @@ def build(s, units, rescue=False):
             m.AddBoolOr(free_days).OnlyEnforceIf(none_free.Not())
             penalties.append((W.get("bac_no_free_afternoon", 70), none_free))
 
-    # ---- S3: hard subjects belong in the morning -------------------------
-    hard_units = [u for u in units
-                  if s.subjects.get(u.subject_id, {}).get("difficulty") == "hard"]
-    ev_ix = [i for i, (d, p) in enumerate(slots) if p in evening]
-    if hard_units and ev_ix:
-        n_ev = m.NewIntVar(0, len(hard_units), "hard_in_evening")
-        m.Add(n_ev == sum(x[u.uid, i] for u in hard_units for i in ev_ix))
-        penalties.append((W["hard_subject_evening"], n_ev))
-
-    # ---- S12: daylight subjects PREFER the morning -----------------------
-    # "morning and max 14h to 16h" - the late window is a fallback, not the
-    # target. Penalise every daylight-limited hour that lands outside morning.
-    daylight_units = [u for u in units
-                      if (s.subjects.get(u.subject_id, {}).get("latest_period") or 0)]
-    morning = set(s.cfg.morning)
-    late_ix = [i for i, (d, p) in enumerate(slots) if p not in morning]
-    if daylight_units and late_ix:
-        n_late = m.NewIntVar(0, len(daylight_units), "daylight_outside_morning")
-        m.Add(n_late == sum(x[u.uid, i] for u in daylight_units for i in late_ix))
-        penalties.append((W.get("daylight_not_morning", 45), n_late))
-
-    # ---- S6: spread a subject across the week ----------------------------
-    per_cs = collections.defaultdict(list)
-    for u in units:
-        per_cs[u.class_id, u.subject_id].append(u)
-    for (cid, sid), us in per_cs.items():
-        if len(us) < 2:
-            continue
-        for d in s.cfg.days:
-            ix = [i for i, (dd, p) in enumerate(slots) if dd == d]
-            extra = m.NewIntVar(0, len(us), "twice_%s_%s_%s" % (cid, sid, d))
-            m.Add(extra >= sum(x[u.uid, i] for u in us for i in ix) - 1)
-            penalties.append((W["same_subject_twice_a_day"], extra))
-
     m.Minimize(sum(w * v for w, v in penalties))
-    return m, x, slots, viols
+    return m, x, starts_of, viols
 
 
-def assign_rooms(s, units, placement):
-    """Turn 'a room of type X' into a concrete room id.
+def assign_rooms(s, sessions, placement):
+    """Turn 'a room of type X' into a concrete room id, per SESSION.
 
-    The model guaranteed enough rooms of each type exist in every slot, so a
-    simple pass always succeeds. Home rooms are preferred to reduce moving.
+    A double hour should not change room halfway through, so rooms are
+    chosen per session, kept identical across its hours where possible.
+    The model guaranteed enough rooms of each type exist in every slot; if
+    the same-room-for-the-whole-session preference cannot be met, the
+    session falls back to per-hour assignment, which always succeeds.
     """
-    by_slot = collections.defaultdict(list)
-    for u in units:
-        by_slot[placement[u.uid]].append(u)
+    def hour_uids(se):
+        return ["%s|%s|%d" % (se.class_id, se.subject_id, se.hour_offset + t)
+                for t in range(se.length)]
 
     rooms_by_type = collections.defaultdict(list)
     for r in s.rooms.values():
@@ -476,27 +643,46 @@ def assign_rooms(s, units, placement):
     for k in rooms_by_type:
         rooms_by_type[k].sort()
 
+    taken = collections.defaultdict(set)      # (day, period) -> room ids
     out = {}
-    for slot, us in by_slot.items():
-        taken = set()
-        # first pass: give each class its home room when the type is right
+
+    def slot_of(uid):
+        d, p = placement[uid]
+        return (d, p)
+
+    def try_room(se, rid):
+        us = hour_uids(se)
+        if any(rid in taken[slot_of(u)] for u in us):
+            return False
         for u in us:
-            home = s.classes.get(u.class_id, {}).get("home_room", "")
-            if (home and home in s.rooms and home not in taken
-                    and s.rooms[home]["type"] == u.room_type):
-                out[u.uid] = home
-                taken.add(home)
-        # second pass: anything free of the right type
-        for u in us:
-            if u.uid in out:
-                continue
-            for rid in rooms_by_type.get(u.room_type, []):
-                if rid not in taken:
-                    out[u.uid] = rid
-                    taken.add(rid)
-                    break
-            else:
-                out[u.uid] = ""  # should never happen; verify.py will catch it
+            out[u] = rid
+            taken[slot_of(u)].add(rid)
+        return True
+
+    ordered = sorted(sessions, key=lambda se: -se.length)
+    # first pass: home rooms, longest sessions first
+    for se in ordered:
+        home = s.classes.get(se.class_id, {}).get("home_room", "")
+        if (home and home in s.rooms
+                and s.rooms[home]["type"] == se.room_type):
+            try_room(se, home)
+    # second pass: any room of the right type, same room across the session
+    for se in ordered:
+        if hour_uids(se)[0] in out:
+            continue
+        for rid in rooms_by_type.get(se.room_type, []):
+            if try_room(se, rid):
+                break
+        else:
+            # fall back to per-hour rooms; H3/H6 still hold
+            for u in hour_uids(se):
+                for rid in rooms_by_type.get(se.room_type, []):
+                    if rid not in taken[slot_of(u)]:
+                        out[u] = rid
+                        taken[slot_of(u)].add(rid)
+                        break
+                else:
+                    out[u] = ""  # should never happen; verify.py will catch it
     return out
 
 
@@ -531,7 +717,7 @@ def report(s, units, placement, rooms, solver, status, elapsed, exceptions=None)
           "before it could prove no better one exists. Raise `time_limit_seconds` "
           "in config.json to let it keep improving.*")
     A("")
-    A("- %d lessons placed" % len(units))
+    A("- %d lesson-hours placed" % len(units))
     A("- %d teachers, %d classes, %d rooms, %d open periods per week"
       % (len(s.teachers), len(s.classes), len(s.rooms), len(slots)))
     A("- total penalty score: **%d** (lower is better; 0 is perfect)"
@@ -542,7 +728,7 @@ def report(s, units, placement, rooms, solver, status, elapsed, exceptions=None)
     t_slots = collections.defaultdict(set)
     for u in units:
         if u.teacher_id:
-            t_slots[u.teacher_id].add(placement[u.uid])
+            t_slots[u.teacher_id].add(tuple(placement[u.uid]))
 
     gaps, solos, days_used = [], [], {}
     for tid, sl in t_slots.items():
@@ -606,10 +792,21 @@ def report(s, units, placement, rooms, solver, status, elapsed, exceptions=None)
         A("No subjects are marked `hard` in the Subjects sheet.")
     A("")
 
+    A("## H9 - block patterns")
+    A("")
+    by_day_subj = collections.defaultdict(list)
+    for u in units:
+        d, p = placement[u.uid]
+        by_day_subj[u.class_id, u.subject_id, d].append(p)
+    n_multi = sum(1 for ps in by_day_subj.values() if len(ps) > 1)
+    A("%d multi-hour blocks were placed as consecutive runs on a single day "
+      "(checked independently by verify.py)." % n_multi)
+    A("")
+
     A("## S7 - holes in a pupil's day")
     c_slots = collections.defaultdict(set)
     for u in units:
-        c_slots[u.class_id].add(placement[u.uid])
+        c_slots[u.class_id].add(tuple(placement[u.uid]))
     cgap = 0
     for cid, sl in c_slots.items():
         byday = collections.defaultdict(list)
@@ -623,7 +820,6 @@ def report(s, units, placement, rooms, solver, status, elapsed, exceptions=None)
     A("")
 
     A("## S15 - classes coming in for a single hour (circular I.2)")
-    ev = set(s.cfg.evening)
     lone = []
     by_class_day = collections.defaultdict(list)
     for u in units:
@@ -646,7 +842,7 @@ def report(s, units, placement, rooms, solver, status, elapsed, exceptions=None)
 
     A("## Room usage")
     A("")
-    use = collections.Counter(placement[u.uid] for u in units)
+    use = collections.Counter(tuple(placement[u.uid]) for u in units)
     busiest = use.most_common(1)[0][1] if use else 0
     A("- busiest period uses **%d of %d** rooms" % (busiest, len(s.rooms)))
     A("- average %.1f rooms in use per open period"
@@ -679,11 +875,14 @@ def main():
         print("\nFix the data first. Nothing was solved.")
         return 1
 
-    units = expand(s)
-    print("\nPlacing %d lesson-hours into %d open periods across %d rooms."
-          % (len(units), len(s.cfg.slots), len(s.rooms)))
+    sessions = expand(s)
+    n_hours = sum(se.length for se in sessions)
+    n_blocks = sum(1 for se in sessions if se.length > 1)
+    print("\nPlacing %d lesson-hours (%d sessions, %d multi-hour blocks) into "
+          "%d open periods across %d rooms."
+          % (n_hours, len(sessions), n_blocks, len(s.cfg.slots), len(s.rooms)))
     print("Building the model...", flush=True)
-    m, x, slots, viols = build(s, units)
+    m, x, starts_of, viols = build(s, sessions)
 
     def on_sigint(signum, frame):
         global STOP
@@ -708,22 +907,23 @@ def main():
             with open(prev, encoding="utf-8") as f:
                 saved = json.load(f)
             place = saved.get("placement", {})
-            slot_ix = {sl: i for i, sl in enumerate(slots)}
             hinted = 0
-            for u in units:
-                got = place.get(u.uid)
+            for se in sessions:
+                uid0 = "%s|%s|%d" % (se.class_id, se.subject_id, se.hour_offset)
+                got = place.get(uid0)
                 if not got:
                     continue
-                i = slot_ix.get((got[0], got[1]))
-                if i is not None:
-                    m.AddHint(x[u.uid, i], 1)
-                    hinted += 1
+                for j, (d, p0, ixs) in enumerate(starts_of(se)):
+                    if d == got[0] and p0 == got[1]:
+                        m.AddHint(x[se.sid, j], 1)
+                        hinted += 1
+                        break
             print("Resuming from out/solution.json - penalty %s, %d of %d "
-                  "lessons hinted." % (saved.get("penalty"), hinted, len(units)))
+                  "sessions hinted." % (saved.get("penalty"), hinted, len(sessions)))
         else:
             print("--continue given but no out/solution.json yet; starting fresh.")
 
-    cb = Progress(t0, units=units, x=x, slots=slots)
+    cb = Progress(t0, sessions=sessions, x=x, starts_of=starts_of, slots=s.cfg.slots)
     status = solver.Solve(m, cb)
     cb.save(force=True)
 
@@ -736,17 +936,17 @@ def main():
         # The strict rules admit no timetable at all. Rather than stop dead,
         # retry with the RELAXABLE rules (H7 day off / training day, H17
         # 6h/day cap) allowed to break at enormous cost. Clashes, the lunch
-        # break, H8 declarations, daylight limits and locks stay absolute.
-        # Every exception taken is listed in the report - nothing is hidden.
+        # break, H8 declarations, daylight limits, H9 blocks and locks stay
+        # absolute. Every exception taken is listed in the report.
         print("\nNo timetable exists under the strict rules.")
         print("RESCUE MODE: retrying with livable exceptions allowed")
         print("(day off / training day / 6h-day cap only - never clashes,")
         print("never the lunch break). Every exception will be reported.")
-        m, x, slots, viols = build(s, units, rescue=True)
+        m, x, starts_of, viols = build(s, sessions, rescue=True)
         solver = cp_model.CpSolver()
         solver.parameters.max_time_in_seconds = float(cfg.time_limit)
         solver.parameters.num_search_workers = os.cpu_count() or 8
-        cb = Progress(t0, units=units, x=x, slots=slots)
+        cb = Progress(t0, sessions=sessions, x=x, starts_of=starts_of, slots=s.cfg.slots)
         status = solver.Solve(m, cb)
         cb.save(force=True)
         name = solver.StatusName(status)
@@ -780,13 +980,10 @@ def main():
 
     elapsed = time.time() - t0
 
-    placement = {}
-    for u in units:
-        for i in range(len(slots)):
-            if solver.Value(x[u.uid, i]):
-                placement[u.uid] = slots[i]
-                break
-    rooms = assign_rooms(s, units, placement)
+    placement = placement_from_solver(solver.Value, sessions, x, starts_of,
+                                      s.cfg.slots)
+    units = hour_units(sessions)
+    rooms = assign_rooms(s, sessions, placement)
 
     os.makedirs(OUT, exist_ok=True)
     xml_path = os.path.join(OUT, "timetable.xml")

@@ -134,10 +134,13 @@ def build(n_classes=40):
     # hand each class+subject to the least loaded qualified teacher
     load = {t[0]: 0 for t in teachers}
     curriculum = []
+    # H9 block patterns, in the ministry's style: Arabic and Maths get a
+    # double + singles, Physics a plain double. Everything else single hours.
+    BLOCKS = {"MATH": "2+1", "ARAB": "2+1", "PHYS": "2"}
     for cid, sid, h in plan:
         best = min(pool[sid], key=lambda t: (load[t], t))
         load[best] += h
-        blocks = "+".join(["1"] * h)
+        blocks = BLOCKS.get(sid, "+".join(["1"] * h))
         # Columns: class_id, subject_id, hours, teacher_id, blocks, groups,
         # room_type - matching the workbook header.
         curriculum.append((cid, sid, h, best, blocks, 1, ""))
