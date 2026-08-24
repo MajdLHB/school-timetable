@@ -81,7 +81,11 @@ def build(n_classes=40):
         avoid = {"MATH": 8, "PHYS": 9}.get(sid, "")
         exempt = "yes" if sid == "SPORT" else ""
         gap24 = "yes" if sid == "SPORT" else ""
-        ws.append([sid, name, short, diff, rt, latest, avoid, exempt, gap24, ""])
+        nature = {"ARAB": "literary", "FREN": "literary", "MATH": "scientific",
+                  "PHYS": "scientific", "SCI": "scientific",
+                  "HIST": "social"}.get(sid, "")
+        ws.append([sid, name, short, diff, rt, latest, avoid, exempt, gap24,
+                   "", nature])
 
     # ---------------- classes ----------------
     # Columns: id, name, grade, stream, size, is_bac, home_room, cohort -
@@ -142,9 +146,10 @@ def build(n_classes=40):
         best = min(pool[sid], key=lambda t: (load[t], t))
         load[best] += h
         blocks = BLOCKS.get(sid, "+".join(["1"] * h))
+        core = "yes" if sid in ("ARAB", "FREN", "MATH") else ""
         # Columns: class_id, subject_id, hours, teacher_id, blocks, groups,
-        # room_type - matching the workbook header.
-        curriculum.append((cid, sid, h, best, blocks, 1, ""))
+        # room_type, core - matching the workbook header.
+        curriculum.append((cid, sid, h, best, blocks, 1, "", core))
 
     ws = wb["Teachers"]
     for t in teachers:

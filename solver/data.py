@@ -224,6 +224,10 @@ def load_school(xlsx=None, cfg=None):
             # after PE - so PHIL carries not_after=SPORT. ; separated ids.
             not_after=[v for v in (r.get("not_after") or "").replace(",", ";").split(";")
                        if v.strip()],
+            # S4 / M-P6: the subject's nature (literary / scientific /
+            # social). Two DIFFERENT subjects of the same nature back to
+            # back are penalised; a double of one subject is fine.
+            nature=(r.get("nature") or "").strip().lower(),
         )
     for r in _rows(wb["Curriculum"]):
         s.curriculum.append(dict(
@@ -238,6 +242,9 @@ def load_school(xlsx=None, cfg=None):
             # splitting for Natural Sciences and Physics.
             groups=max(1, _int(r.get("groups"), 1)),
             room_type=r.get("room_type", ""),
+            # S19, circular III.2: core / stream-specific subjects get three
+            # quarters of their hours in the morning. yes = this row is one.
+            core=(r.get("core") or "").strip().lower(),
         ))
     if "Unavailable" in wb.sheetnames:
         for r in _rows(wb["Unavailable"]):

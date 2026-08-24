@@ -620,6 +620,69 @@ def build(s, sessions, rescue=False):
                     m.Add(both >= sum(va) + sum(vb) - 1)
                     penalties.append((W.get("not_after", 60), both))
 
+    # ---- S4 / M-P6: no two same-nature subjects back to back --------------
+    # Inspectorate pupil-rule 8: avoid consecutive subjects of the same
+    # nature (literary / scientific / social). A DOUBLE of one subject is a
+    # prescribed pattern and stays allowed - only a DIFFERENT same-nature
+    # subject in the next period is penalised. Inert until the Subjects
+    # sheet carries the `nature` column.
+    for cid, ss in by_class.items():
+        by_nat = collections.defaultdict(lambda: collections.defaultdict(list))
+        for se in ss:
+            nat = s.subjects.get(se.subject_id, {}).get("nature", "")
+            if nat:
+                by_nat[nat][se.subject_id].append(se)
+        for nat, subj_map in by_nat.items():
+            if len(subj_map) < 2:
+                continue
+            for i, (d, p) in enumerate(slots):
+                i2 = slot_ix.get((d, p + 1))
+                if i2 is None:
+                    continue
+                for sid_b, ses_b in subj_map.items():
+                    vb = occs(ses_b, i2)
+                    if not vb:
+                        continue
+                    others = [se for osid, oss in subj_map.items()
+                              if osid != sid_b for se in oss]
+                    va = occs(others, i)
+                    if not va:
+                        continue
+                    pair = m.NewIntVar(0, 1, "nat_%s_%s_%s_%d" % (cid, nat, sid_b, i))
+                    m.Add(pair >= sum(va) + sum(vb) - 1)
+                    penalties.append((W.get("same_nature_adjacent", 80), pair))
+
+    # ---- S19: core subjects get three quarters of their hours in the ------
+    # morning (circular III.2). Rows flagged core=yes in the Curriculum
+    # sheet may sit in the evening for at most a quarter of their hours.
+    row_core = {(c["class_id"], c["subject_id"]): c.get("core", "") == "yes"
+                for c in s.curriculum}
+    ev_ix_all = [i for i, (d, p) in enumerate(slots) if p in evening]
+    for key, ss in by_row.items():
+        if not row_core.get(key):
+            continue
+        hours = sum(se.length for se in ss)
+        allowed_ev = hours // 4
+        terms = [v for i in ev_ix_all for v in occs(ss, i)]
+        if not terms:
+            continue
+        over = m.NewIntVar(0, hours, "core_ev_%s_%s" % key)
+        m.Add(over >= sum(terms) - allowed_ev)
+        penalties.append((W.get("core_morning", 65), over))
+
+    # ---- S10: last-period fairness for teachers ---------------------------
+    # Nobody is stuck with the final period every single day: beyond two
+    # last-period days a week, each further one is penalised.
+    last_p_num = s.cfg.periods_per_day
+    last_ix_all = [i for i, (d, p) in enumerate(slots) if p == last_p_num]
+    for tid, ss in by_teacher.items():
+        terms = [v for i in last_ix_all for v in occs(ss, i)]
+        if len(terms) <= 2:
+            continue
+        over = m.NewIntVar(0, len(terms), "lastfair_%s" % tid)
+        m.Add(over >= sum(terms) - 2)
+        penalties.append((W.get("last_period_fairness", 35), over))
+
     # ---- S16: subject-specific late-hour avoidance ------------------------
     # Soft cousin of H15. Ministry: Maths avoids the evening and never after
     # 16:00 if it must (M-MA3); Physics avoids 17:00-18:00 (M-PH5).

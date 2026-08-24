@@ -62,6 +62,7 @@ Regenerate a blank workbook: `python tools/make_workbook.py`
 | `minmax_exempt` | `yes` = exempt from the minimum-2-hours rules (S15) - PE and optional subjects, as circular I.2 says |
 | `gap24` | `yes` = 24 hours between this subject's sessions (H19) - Sport, circular III.2 |
 | `not_after` | subject ids this one must not directly follow (S18) - Philosophy carries `SPORT` |
+| `nature` | `literary` / `scientific` / `social` (S4/M-P6) - two different subjects of one nature never back to back |
 
 ### `data/curriculum.csv` - the big one
 One row per **class + subject**. This is what must be taught.
@@ -71,8 +72,10 @@ One row per **class + subject**. This is what must be taught.
 | `subject_id` | from subjects.csv |
 | `hours` | periods per week |
 | `teacher_id` | who teaches it (blank = solver may choose from qualified staff) |
-| `blocks` | how the hours split, e.g. `1+1+1` (3 singles) or `2+1` (a double + a single) |
+| `blocks` | how the hours split, e.g. `1+1+1` (3 singles) or `2+1` (a double + a single). **H9 enforces the written pattern exactly**: each block is consecutive periods on its own day, never across the lunch break. Blank = free single hours |
+| `groups` | 1 = whole class (default), 2 = split into groups - H16: no split at 24 pupils or fewer |
 | `room_type` | override the subject default, or blank |
+| `core` | `yes` = core/stream-specific subject: three quarters of its hours in the morning (S19, circular III.2) |
 
 ### `data/unavailable.csv` - teacher constraints beyond the day off
 One row per blocked slot. Leave empty if there are none.
