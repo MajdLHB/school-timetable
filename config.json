@@ -73,8 +73,11 @@
     "daylight_not_morning": 45,
     "bac_friday_evening": 30,
     "travel_pair": 70,
-    "bac_no_free_afternoon": 70,
-    "tp_groups_same_day": 45
+    "bac_no_free_afternoon": 200,
+    "tp_groups_same_day": 45,
+    "pupil_day_over6": 120,
+    "pupil_half_over4": 100
   },
-  "weeks_per_cycle": 1
+  "_weeks_comment": "2 = the aSc project MUST be set to 2 weeks (A/B) before importing, or every card is dropped silently - the same mask-length trap as the day masks.",
+  "weeks_per_cycle": 2
 }

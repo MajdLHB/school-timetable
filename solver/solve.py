@@ -198,6 +198,8 @@ class Progress(cp_model.CpSolverSolutionCallback):
         self.every = every
         self.last_save = 0.0
         self.best = None
+        self.last_exc = None
+        self.last_soft = None
         # rescue mode only: the exception variables, so every printed version
         # says how many rule exceptions it still carries (Majd asked to watch
         # this number fall live until he stops the run or it turns OPTIMAL)
@@ -235,6 +237,9 @@ class Progress(cp_model.CpSolverSolutionCallback):
         exc_hours = sum(int(self.Value(v)) for _, _, _, v, _ in self.viols)
         exc_cases = sum(1 for _, _, _, v, _ in self.viols if self.Value(v))
         soft = int(self.ObjectiveValue()) - RESCUE_WEIGHT * exc_hours
+        # the heartbeat timer thread reads these to describe the best so far
+        self.last_exc = exc_hours
+        self.last_soft = soft
         if self.n == 1:
             print("   FIRST COMPLETE TIMETABLE:", flush=True)
         print("   %6.1fs  version %-4d exceptions %3d hours (%d teacher-days)"
@@ -767,20 +772,38 @@ def build(s, sessions, rescue=False):
             return {0: ss}
         return {g: [se for se in ss if se.group in (0, g)] for g in gs}
 
+    halves = {"am": [p for p in range(1, s.cfg.periods_per_day + 1)
+                     if p not in evening],
+              "pm": sorted(evening)}
     for cid, ss in by_class.items():
         for g, part in class_parts(ss).items():
             for w in weeks_of(part):
                 key = "C%s.g%s%s" % (cid, g, w)
                 pres = presence(part, key, w)
                 add_gap_penalty(pres, key, W["class_gap"])
+                # T26/T27 (circular I.2): a PUPIL's day beyond 6 hours, or a
+                # half-day beyond 4, is heavily penalised. Counted per group
+                # view - group machinery made pupil-hours countable at last.
+                # Majd 2026-08-25: the 10-min table was "too full" - this is
+                # the rule that fights exactly that.
+                for d in s.cfg.days:
+                    dps = [p for (dd, p) in slots if dd == d]
+                    if len(dps) > 6:
+                        over6 = m.NewIntVar(0, len(dps), "pup6_%s_%s" % (key, d))
+                        m.Add(over6 >= sum(pres[d, p] for p in dps) - 6)
+                        penalties.append((W.get("pupil_day_over6", 120), over6))
+                    for half, hp in halves.items():
+                        hps = [p for p in dps if p in hp]
+                        if len(hps) > 4:
+                            o4 = m.NewIntVar(0, len(hps),
+                                             "pup4_%s_%s_%s" % (key, d, half))
+                            m.Add(o4 >= sum(pres[d, p] for p in hps) - 4)
+                            penalties.append((W.get("pupil_half_over4", 100), o4))
 
     # ---- S15: a class never comes in for a single lone hour ---------------
     # Circular I.2: minimum 2 hours in any morning or evening - for pupils
     # too. The circular exempts PE and optional subjects (minmax_exempt=yes
     # in the Subjects sheet): a lone PE hour is fine.
-    halves = {"am": [p for p in range(1, s.cfg.periods_per_day + 1)
-                     if p not in evening],
-              "pm": sorted(evening)}
     for cid, ss in by_class.items():
         for g, part in class_parts(ss).items():
             for w in weeks_of(part):
@@ -1321,8 +1344,43 @@ def main():
     solver.parameters.max_time_in_seconds = float(cfg.time_limit)
     solver.parameters.num_search_workers = n_workers()
     solver.parameters.log_search_progress = False
-    print("Solving (limit %ds, Ctrl+C keeps the best found so far):"
-          % cfg.time_limit, flush=True)
+
+    # Honest time guidance, MEASURED on this school (2026-08-25 runs), not
+    # promised: CP-SAT cannot predict when it will finish, but experience
+    # with this size (about 1300 hours, 40 classes) says roughly this.
+    # Majd asked for it after the 10-minute table came out rough.
+    print("""
+  How long for a good table? (measured on this school, not a promise)
+     10 min   -> a first DRAFT. Rough: comfort rules still losing.
+     1-2 h    -> usable: most comfort rules settle down.
+     4-8 h    -> good: run it during the evening.
+     overnight-> best this data allows. Ctrl+C always keeps the best.
+  The real fix for quality is missing DATA (real days off, training
+  days, sizes) - time alone cannot beat missing data.""")
+    print("Solving (limit %ds = %dmin, Ctrl+C keeps the best found so far):"
+          % (cfg.time_limit, cfg.time_limit // 60), flush=True)
+
+    # heartbeat: one line per minute, even when no new version appears, so
+    # the terminal always shows a live TIMER of elapsed / limit
+    import threading
+    hb_stop = threading.Event()
+
+    cb_holder = {}
+
+    def heartbeat():
+        while not hb_stop.wait(60.0):
+            cb_ref = cb_holder.get("cb")
+            el = time.time() - t0
+            if cb_ref is not None and cb_ref.last_exc is not None:
+                best = ("best so far: %d exception-hours, soft %d"
+                        % (cb_ref.last_exc, cb_ref.last_soft))
+            else:
+                best = "no complete timetable yet - still building one"
+            print("   TIMER %2d:%02d / %d:00 min - %s"
+                  % (el // 60, el % 60, cfg.time_limit // 60, best),
+                  flush=True)
+
+    threading.Thread(target=heartbeat, daemon=True).start()
 
     # --continue: start from the last saved solution instead of from nothing.
     # AddHint is only a suggestion - it never overrides a constraint, so a
@@ -1350,6 +1408,7 @@ def main():
             print("--continue given but no out/solution.json yet; starting fresh.")
 
     cb = Progress(t0, sessions=sessions, x=x, starts_of=starts_of, slots=s.cfg.slots, viols=viols)
+    cb_holder["cb"] = cb
     status = solver.Solve(m, cb)
     cb.save(force=True)
 
@@ -1380,6 +1439,7 @@ def main():
         solver.parameters.max_time_in_seconds = float(cfg.time_limit)
         solver.parameters.num_search_workers = n_workers()
         cb = Progress(t0, sessions=sessions, x=x, starts_of=starts_of, slots=s.cfg.slots, viols=viols)
+        cb_holder["cb"] = cb
         status = solver.Solve(m, cb)
         cb.save(force=True)
         name = solver.StatusName(status)
@@ -1426,6 +1486,7 @@ def main():
         if os.path.exists(exc_path):
             os.remove(exc_path)
 
+    hb_stop.set()
     elapsed = time.time() - t0
 
     placement = placement_from_solver(solver.Value, sessions, x, starts_of,
