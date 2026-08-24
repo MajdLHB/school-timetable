@@ -249,6 +249,40 @@ def main():
             fail("H7", "teacher %s teaches on %s, their training day." % (t, d),
                  key=(t, d))
 
+    # --- H7-flex: a BLANK day_off means the solver CHOSE a day off ---------
+    # Majd's rule: flexible unless fixed in the data. The XML does not record
+    # which day was chosen, so verify the promise itself: at least one
+    # H18-legal day (never adjacent to the training day, Sunday wrap
+    # included) is completely free of lessons.
+    day_list = list(cfg.days)
+    taught_days = collections.defaultdict(set)
+    for (t, d, p), v in t_at.items():
+        taught_days[t].add(d)
+    for t in s.teachers.values():
+        if (t.get("day_off") or "").strip():
+            continue          # fixed day handled above; "(none)" = no day off
+        if t["id"] not in taught_days:
+            continue          # teaches nothing - trivially free
+        tr = t.get("training_day", "")
+        cands = []
+        for d in day_list:
+            if d == tr:
+                continue
+            if tr in day_list:
+                gap = abs(day_list.index(d) - day_list.index(tr))
+                if gap == 1 or gap == len(day_list) - 1:
+                    continue
+            cands.append(d)
+        if not cands or any(d not in taught_days[t["id"]] for d in cands):
+            continue
+        if any(("H7", t["id"], d) in accepted for d in cands):
+            excused.append("H7   teacher %s has no fully free legal day - "
+                           "declared rescue exception." % t["id"])
+        else:
+            fails.append("H7   teacher %s has NO fully free H18-legal day - "
+                         "a blank day_off promises one (solver-chosen)."
+                         % t["id"])
+
     # --- H17: never more than 6 teaching hours in one day ------------------
     day_load = collections.Counter()
     for (t, d, p), v in t_at.items():

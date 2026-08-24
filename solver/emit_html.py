@@ -31,10 +31,18 @@ def _time_of(p):
     return "%02d:00" % (7 + p)
 
 
-def _table(cfg, grid, second_line):
-    """One printable table. grid: (day, period) -> (subject, other, room)."""
+def _table(cfg, grid, second_line, day_tags=None):
+    """One printable table. grid: (day, period) -> (subject, other, room).
+
+    day_tags: {day: label} - e.g. يوم الراحة / يوم التكوين. The label prints
+    in the day's header and the whole column is shaded, so a lesson placed
+    there (a declared rescue exception) is instantly visible."""
+    day_tags = day_tags or {}
     L = ["<table><tr><th class='t'>التوقيت</th>"]
-    L += ["<th>%s</th>" % DAY_AR.get(d, d) for d in cfg.days]
+    for d in cfg.days:
+        tag = day_tags.get(d)
+        L.append("<th>%s%s</th>" % (DAY_AR.get(d, d),
+                 "<br><small>%s</small>" % _esc(tag) if tag else ""))
     L.append("</tr>")
     for p in range(1, cfg.periods_per_day + 1):
         L.append("<tr><td class='t'>%s</td>" % _time_of(p))
@@ -42,14 +50,16 @@ def _table(cfg, grid, second_line):
             if p in cfg.closed.get(d, []):
                 L.append("<td class='closed'></td>")
                 continue
+            free = " rest" if d in day_tags else ""
             cell = grid.get((d, p))
             if cell:
                 subj, other, room = cell
-                L.append("<td class='l'><b>%s</b><span>%s</span>"
+                L.append("<td class='l%s'><b>%s</b><span>%s</span>"
                          "<small>%s</small></td>"
-                         % (_esc(subj), _esc(second_line(other)), _esc(room)))
+                         % (free, _esc(subj), _esc(second_line(other)),
+                            _esc(room)))
             else:
-                L.append("<td></td>")
+                L.append("<td class='%s'></td>" % free.strip())
         L.append("</tr>")
     L.append("</table>")
     return "".join(L)

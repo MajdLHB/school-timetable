@@ -34,6 +34,10 @@ def write(s, units, placement, rooms, path, include_periods=True):
     days = s.cfg.days
     L = []
     A = L.append
+    # utf-8, and PROVEN working: Majd imported this into aSc on 2026-08-24
+    # and the grid showed full Arabic (an earlier ???? was an aSc-side
+    # setting, not this file). Do not "fix" the encoding to 1252/1256 -
+    # that mimicry was tried and reverted the same evening.
     A('<?xml version="1.0" encoding="UTF-8"?>')
     A('<timetable importtype="database" options="idprefix:%s">' % ID_PREFIX)
 

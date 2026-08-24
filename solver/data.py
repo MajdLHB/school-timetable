@@ -371,6 +371,13 @@ def check(s):
         # H17: at most 6 teaching hours on any one day (circular II.2)
         avail = sum(min(len(s.cfg.day_slots(d)), 6)
                     for d in s.cfg.days if d not in blocked)
+        # a BLANK day_off is the solver's flexible choice (Majd's rule) - it
+        # still costs one day; in the best case the cheapest legal day
+        if not (t["day_off"] or "").strip():
+            cand = [min(len(s.cfg.day_slots(d)), 6)
+                    for d in s.cfg.days if d not in blocked]
+            if cand:
+                avail -= min(cand)
         if hrs > avail:
             errs.append("Teacher " + tid + " needs " + str(hrs) + " hours but at most " +
                         str(avail) + " are reachable: max 6 per day (H17)" +

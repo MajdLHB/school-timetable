@@ -24,6 +24,13 @@ import time
 # so the best VALID timetable found so far is kept and written out.
 STOP = False
 
+# Windows consoles default to a legacy codepage that turns Arabic teacher
+# names into mojibake. The data is fine - only the console display breaks.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, ValueError):
+    pass
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ortools.sat.python import cp_model  # noqa: E402
@@ -383,6 +390,50 @@ def build(s, sessions, rescue=False):
                 penalties.append((RESCUE_WEIGHT, v))
                 viols.append(("H7", tid, off, v,
                               "teaches on their %s" % kind.replace("_", " ")))
+
+    # ---- H7-flex: a BLANK day_off means the solver CHOOSES the day off ----
+    # Majd 2026-08-24: "day off isnt just random, u prechoose it flexible, u
+    # can change it along the way unless in data its fixed - and in data let
+    # me say when its fixed and which day". So: a written day above is FIXED;
+    # "(none)" means no day off at all; BLANK means the teacher still gets
+    # exactly one fully free day but WHICH day is the solver's decision, free
+    # to differ between runs. Candidate days already obey H18 (never adjacent
+    # to the training day, Sunday wrap included).
+    day_off_choice = {}
+    day_list = list(s.cfg.days)
+    for tid, ss in by_teacher.items():
+        t = s.teachers.get(tid, {})
+        if (t.get("day_off") or "").strip():
+            continue          # fixed day, or explicit "(none)"
+        tr = t.get("training_day", "")
+        cands = []
+        for d in day_list:
+            if d == tr:
+                continue
+            if tr in day_list:
+                gap = abs(day_list.index(d) - day_list.index(tr))
+                if gap == 1 or gap == len(day_list) - 1:
+                    continue  # H18, Sunday wrap included
+            cands.append(d)
+        if not cands:
+            continue
+        offs = {d: m.NewBoolVar("off_%s_%s" % (tid, d)) for d in cands}
+        m.Add(sum(offs.values()) == 1)
+        day_off_choice[tid] = offs
+        for d in cands:
+            terms = [v for i, (dd, p) in enumerate(slots) if dd == d
+                     for v in occs(ss, i)]
+            if not terms:
+                continue
+            if not rescue:
+                m.Add(sum(terms) == 0).OnlyEnforceIf(offs[d])
+            else:
+                v = m.NewIntVar(0, len(terms), "vH7f_%s_%s" % (tid, d))
+                m.Add(v == sum(terms)).OnlyEnforceIf(offs[d])
+                m.Add(v == 0).OnlyEnforceIf(offs[d].Not())
+                penalties.append((RESCUE_WEIGHT, v))
+                viols.append(("H7", tid, d, v,
+                              "teaches on their chosen day off"))
 
     # ---- H17: a teacher never teaches more than 6 hours in one day --------
     # Circular 51/2018 II.2, repeated by the inspectorate text. Relaxable in
@@ -780,6 +831,10 @@ def build(s, sessions, rescue=False):
             penalties.append((W.get("bac_no_free_afternoon", 70), none_free))
 
     m.Minimize(sum(w * v for w, v in penalties))
+    # main() reads the flexible day-off choice from here after solving, to
+    # report which day each teacher was given. Kept as an attribute so the
+    # (m, x, starts_of, viols) signature the selftests rely on stays stable.
+    m.day_off_choice = day_off_choice
     return m, x, starts_of, viols
 
 
@@ -845,7 +900,8 @@ def assign_rooms(s, sessions, placement):
     return out
 
 
-def report(s, units, placement, rooms, solver, status, elapsed, exceptions=None):
+def report(s, units, placement, rooms, solver, status, elapsed, exceptions=None,
+           day_offs=None):
     """Plain-language explanation of what was and was not achieved."""
     slots = s.cfg.slots
     L = []
@@ -853,6 +909,25 @@ def report(s, units, placement, rooms, solver, status, elapsed, exceptions=None)
     A("# Timetable report")
     A("")
     A("Generated in %.1f seconds. Solver said: **%s**." % (elapsed, solver.StatusName(status)))
+    if day_offs:
+        A("")
+        A("## Day offs chosen by the solver")
+        A("")
+        A("A blank `day_off` in the Teachers sheet lets the solver pick the day")
+        A("(Majd's rule: flexible unless fixed in the data). This run chose:")
+        A("")
+        A("| day | teachers |")
+        A("|---|---|")
+        by_day = {}
+        for tid, d in sorted(day_offs.items()):
+            by_day.setdefault(d, []).append(
+                s.teachers.get(tid, {}).get("name", tid))
+        for d in s.cfg.days:
+            if d in by_day:
+                A("| %s | %s |" % (d, "، ".join(by_day[d])))
+        A("")
+        A("A DIFFERENT run may choose differently - to freeze a teacher's day,")
+        A("write it in the `day_off` column and it becomes a hard rule.")
     if exceptions:
         A("")
         A("## ⚠ RULE EXCEPTIONS - this timetable was built in RESCUE MODE")
@@ -1192,13 +1267,24 @@ def main():
     units = hour_units(sessions)
     rooms = assign_rooms(s, sessions, placement)
 
+    # which day off did the solver choose for each blank-day_off teacher?
+    chosen_offs = {}
+    for tid, offs in getattr(m, "day_off_choice", {}).items():
+        for d, var in offs.items():
+            if solver.Value(var):
+                chosen_offs[tid] = d
+                break
+    if chosen_offs:
+        print("  Flexible day offs chosen for %d teachers - the list is in "
+              "the report." % len(chosen_offs))
+
     os.makedirs(OUT, exist_ok=True)
     xml_path = os.path.join(OUT, "timetable.xml")
     emit_asc.write(s, units, placement, rooms, xml_path)
     emit_html.write(s, units, placement, rooms, os.path.join(OUT, "view.html"))
     emit_html.write_teachers(s, os.path.join(OUT, "teachers.html"))
     rep = report(s, units, placement, rooms, solver, status, elapsed,
-                 exceptions=exceptions)
+                 exceptions=exceptions, day_offs=chosen_offs)
     with open(os.path.join(OUT, "report.md"), "w", encoding="utf-8") as f:
         f.write(rep)
     emit_html.write_report_html(rep, os.path.join(OUT, "report.html"))

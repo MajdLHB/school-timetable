@@ -39,8 +39,8 @@ Related files: `docs/RULES.md` (what is decided) · `docs/OPEN_QUESTIONS.md`
 
 | id | task | status |
 |---|---|---|
-| T16 | Import `test/testC1_groups.xml` — split class, two groups in parallel | BLOCKED — needs you to run it |
-| T17 | Import `test/testC2_weeks_AB.xml` — the ministry `△1/(4)` pattern | BLOCKED — needs you, and the aSc project set to 2 weeks + 6 days |
+| T16 | Import `test/testC1_groups.xml` — split class, two groups in parallel | **PASSED 2026-08-24 (UNSURE on details)** — screenshot shows all 3 cards placed, the two groups stacked in one period. Still to confirm: no clash warning, unplaced list empty |
+| T17 | Import `test/testC2_weeks_AB.xml` — the ministry `△1/(4)` pattern | **FAILED 2026-08-24, cause known** — imported into a 1-week project (weeks box unchecked in wizard), masks silently dropped. Redo in a new 2-week project |
 | T18 | Teach the emitter to write groups and weeks | BLOCKED by T16, T17 |
 
 **Nothing gets built on these until they are proven by import.** The day-mask

@@ -58,7 +58,9 @@ real data.
 - [ ] **H14 option groups** pooled across classes; **S20** aligned doubles
 - [ ] Rooms and Curriculum sheets (being pre-filled from last year /
       distribution - Majd will verify)
-- [ ] Teacher `day_off` - still blank for everyone (see Q10)
+- [x] Teacher `day_off` - blank IS the design now: the solver chooses each
+      teacher's free day per run (Q10 RESOLVED); Majd writes a day only to
+      fix it
 - [ ] The Sport distribution is **synthetic test data** (no 2026/27 sheet yet)
 
 ---
@@ -124,17 +126,16 @@ real data.
 
 # BLOCKING QUESTIONS
 
-## Q10. Days off - what Majd sent is TRAINING days, not days off
+## Q10. RESOLVED - the day off is the solver's flexible choice
 
-The file that arrived is the delegation's **training-day** circular (see Q11) -
-it fixes يوم التكوين per subject. The per-teacher **day off** (يوم الراحة) is a
-different thing: H18 now constrains which days are even possible (never
-adjacent to the training day, Sunday wrap included), but somebody still has to
-pick each teacher's day off - or tell the solver to choose freely.
-
-**Majd: if you meant this circular to BE the days-off answer, say so** - then
-`day_off` stays empty and only the training day is blocked. Otherwise the
-`day_off` column is still blank for all 93+ teachers.
+Majd (2026-08-24, second answer): *"day off isnt just random, u prechoose it
+flexible, u can change it along the way unless in data its fixed - and in
+data let me say when its fixed and which day"*. Coded into H7: blank
+`day_off` = the solver picks one fully free H18-legal day per teacher (listed
+in each run's report, may differ between runs); a written day = fixed hard;
+`(none)` = no day off. The training-day circular (Q11) stays a separate,
+fixed input. **Whenever Majd fixes a teacher's day, he writes it in the
+`day_off` column - nothing else needed.**
 
 ## Q5. Group splitting - the real practice here
 

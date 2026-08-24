@@ -56,7 +56,10 @@ def tiny(days=("Mon", "Tue"), periods=2, closed=None):
     return s
 
 
-def teacher(s, tid, hours=40, day_off="", training=""):
+def teacher(s, tid, hours=40, day_off="(none)", training=""):
+    # day_off defaults to "(none)" - NO day off - because a BLANK day_off now
+    # means "the solver chooses one" (Majd's flexible-day-off rule), and the
+    # tiny 2-day test schools here mostly cannot afford to lose a day.
     s.teachers[tid] = dict(id=tid, name=tid, short=tid, subjects=[],
                            hours=hours, day_off=day_off, training_day=training,
                            compact="", notes="")
@@ -160,14 +163,15 @@ def case_H6_room_type():
 
 def case_H7_day_off():
     """Teacher owes 4 hours; his day off removes half the week.
-    RELAX: no day off."""
+    RELAX: "(none)" - explicitly no day off. (A BLANK day_off is no longer
+    "no day off": it now means the solver chooses one - Majd's rule.)"""
     def base(off):
         s = tiny()
         teacher(s, "T1", day_off=off)
         klass(s, "C1")
         teach(s, "C1", "MA", 4, "T1")
         return s
-    return base("Mon"), base("")
+    return base("Mon"), base("(none)")
 
 
 def case_H8_unavailable():
@@ -270,6 +274,20 @@ def case_H18_adjacent_free_days():
         teach(s, "C1", "AR", 1, "T1")
         return s
     return base("Tue"), base("")
+
+
+def case_H7_flexible_day_off():
+    """Majd: a BLANK day_off means the solver picks the day - but a real day
+    off still exists. BREAK: 2-day week, 3 hours to teach - keeping one day
+    completely free leaves only 2 slots. RELAX: 2 hours fit into one day and
+    the other day becomes the (solver-chosen) day off."""
+    def base(h):
+        s = tiny()
+        teacher(s, "T1", day_off="")     # blank = flexible, solver chooses
+        klass(s, "C1")
+        teach(s, "C1", "MA", h, "T1")
+        return s
+    return base(3), base(2)
 
 
 def case_H18_sunday_wrap():
@@ -408,6 +426,7 @@ CASES = [
     ("H17 max 6 hours a day", case_H17_six_hour_day, "solver"),
     # Like H10, H18 is a property of the DATA (which days are free), so the
     # validator must catch it; a solver constraint would be a no-op.
+    ("H7  flexible day off (solver picks)", case_H7_flexible_day_off, "solver"),
     ("H18 adjacent free days", case_H18_adjacent_free_days, "validator"),
     ("H18 Sat/Mon through Sunday", case_H18_sunday_wrap, "validator"),
     ("H19 24h between PE sessions", case_H19_pe_24h_gap, "solver"),
