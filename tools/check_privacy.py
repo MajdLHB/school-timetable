@@ -69,6 +69,39 @@ def real_names():
     return sorted(names), False
 
 
+def names_from_reference():
+    """Harvest real names from any aSc XML sitting in data/reference/.
+
+    Added after 2026-08-24, when a real export (101 teachers) was dropped in a
+    folder outside data/ and was committed. File-level rules now block it, but
+    we also want to catch any of those names pasted into a doc or a comment.
+    """
+    import re
+    out = set()
+    root = os.path.join(HERE, "data", "reference")
+    if not os.path.isdir(root):
+        return out
+    for dirpath, _dirs, files in os.walk(root):
+        for fn in files:
+            if not fn.lower().endswith(".xml"):
+                continue
+            try:
+                raw = open(os.path.join(dirpath, fn), "rb").read()
+            except OSError:
+                continue
+            # aSc labels its export encoding="windows-1252" but writes Arabic
+            # in windows-1256. Decoding as utf-8 silently DELETES every Arabic
+            # name (verified 2026-08-24: 101 names -> 0). cp1256 recovers them.
+            text = raw.decode("cp1256", errors="ignore")
+            # Only PEOPLE. Matching every name= attribute also caught the
+            # file's own header ("aSc Timetables 2012 XML") - a false alarm.
+            for tag in ("teacher", "student"):
+                pat = '<' + tag + '[^>]*name="([^"]{4,60})"'
+                for m in re.findall(pat, text):
+                    out.add(m.strip())
+    return out
+
+
 def main():
     problems = []
     tracked = git("ls-files")
@@ -83,6 +116,7 @@ def main():
             problems.append("TRACKED DATA FILE TYPE: " + f)
 
     names, is_demo = real_names()
+    names = sorted(set(names) | names_from_reference())
     if names:
         for f in tracked:
             p = os.path.join(HERE, f)

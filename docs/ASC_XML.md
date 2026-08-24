@@ -201,3 +201,38 @@ Each contains ONE class, ONE teacher, and one lesson per day, named `Day1 Mon`,
   and `day_mask()` in emit_asc.py must be changed to match.
 
 This costs two minutes and removes all guesswork.
+
+---
+
+# ⚠️ ENCODING - aSc MISLABELS ITS OWN EXPORT (verified 2026-08-24)
+
+The 2012 XML export from the real school file begins:
+
+```xml
+<?xml version="1.0" encoding="windows-1252"?>
+<timetable ascttversion="2013.1.11" ...>
+```
+
+**That declaration is wrong.** The Arabic inside is **windows-1256**. Measured
+on the real 101-teacher export:
+
+| decoded as | teacher names found | names >= 4 chars | actual Arabic script |
+|---|---|---|---|
+| utf-8  | 101 | **0** | 0 |
+| cp1252 | 101 | 101 | **0** (mojibake) |
+| **cp1256** | 101 | 101 | **101** |
+
+## Consequences - these are not optional
+
+1. **Never trust the XML declaration.** Any standard parser obeys it and hands
+   back mojibake. Always read the bytes and decode as `cp1256`.
+2. **Never decode as utf-8 with errors="ignore".** It does not merely garble
+   Arabic - it DELETES it. Every Arabic name becomes an empty string, silently.
+   This is how a name-scan can report "0 names" on a file containing 101.
+3. When writing XML back to aSc, we emit UTF-8 with a correct declaration. That
+   worked in Test 1. If Arabic ever imports wrong, try cp1256 on output too.
+
+This is separate from the Windows display problem. The system locale (ACP 1252
+vs 1256) only affects what aSc SHOWS on screen. The bytes in the file are
+cp1256 either way, so we can read the file correctly no matter how the PC is
+configured.
