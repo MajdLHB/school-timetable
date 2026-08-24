@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- TEST C2: the full ministry pattern  triangle 1/(4).
+     Week A: one hour, whole class.
+     Week B: two hours per group, both groups in parallel.
+     This is the single hardest thing in the whole project. If aSc accepts it,
+     Week A/B and group splitting are both solved at once.
+
+     BEFORE IMPORTING: the aSc project must be set to 2 WEEKS (A and B) and
+     6 DAYS, or the masks will not match and cards will be dropped silently. -->
+<timetable importtype="database" options="idprefix:ABTEST">
+   <weeksdefs options="" columns="id,weeks,name,short">
+      <weeksdef id="WALL" weeks="11" name="All weeks" short="All"/>
+      <weeksdef id="WA" weeks="10" name="Week A" short="A"/>
+      <weeksdef id="WB" weeks="01" name="Week B" short="B"/>
+   </weeksdefs>
+   <teachers options="" columns="id,name,short">
+      <teacher id="T1" name="Prof Alpha" short="ALP"/>
+      <teacher id="T2" name="Prof Beta" short="BET"/>
+   </teachers>
+   <classes options="" columns="id,name,short">
+      <class id="C1" name="AB Test" short="AB"/>
+   </classes>
+   <groups options="" columns="id,classid,name,entireclass,divisiontag,studentcount">
+      <group id="G0" classid="C1" name="Entire class" entireclass="1" divisiontag="0" studentcount="30"/>
+      <group id="G1" classid="C1" name="Groupe 1" entireclass="0" divisiontag="1" studentcount="15"/>
+      <group id="G2" classid="C1" name="Groupe 2" entireclass="0" divisiontag="1" studentcount="15"/>
+   </groups>
+   <subjects options="" columns="id,name,short">
+      <subject id="SVT" name="Sciences Naturelles" short="SN"/>
+   </subjects>
+   <classrooms options="" columns="id,name,short">
+      <classroom id="R1" name="Labo 1" short="L1"/>
+      <classroom id="R2" name="Labo 2" short="L2"/>
+   </classrooms>
+   <lessons options="" columns="id,subjectid,classids,groupids,teacherids,weeksdefid,periodspercard,periodsperweek">
+      <lesson id="LW" subjectid="SVT" classids="C1" groupids="G0" teacherids="T1" weeksdefid="WA" periodspercard="1" periodsperweek="1"/>
+      <lesson id="LA" subjectid="SVT" classids="C1" groupids="G1" teacherids="T1" weeksdefid="WB" periodspercard="2" periodsperweek="2"/>
+      <lesson id="LB" subjectid="SVT" classids="C1" groupids="G2" teacherids="T2" weeksdefid="WB" periodspercard="2" periodsperweek="2"/>
+   </lessons>
+   <cards options="" columns="lessonid,period,days,weeks,classroomids">
+      <card lessonid="LW" period="1" days="100000" weeks="10" classroomids="R1"/>
+      <card lessonid="LA" period="3" days="100000" weeks="01" classroomids="R1"/>
+      <card lessonid="LB" period="3" days="100000" weeks="01" classroomids="R2"/>
+   </cards>
+</timetable>
