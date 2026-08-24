@@ -72,6 +72,7 @@
     "extra_day_present": 40,
     "daylight_not_morning": 45,
     "bac_friday_evening": 30,
+    "travel_pair": 70,
     "bac_no_free_afternoon": 70
   },
   "weeks_per_cycle": 1

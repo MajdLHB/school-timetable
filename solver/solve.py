@@ -475,7 +475,11 @@ def build(s, sessions, rescue=False):
         return pres
 
     def add_gap_penalty(pres, key, weight, also_one_hour=False, also_day_count=False):
-        """S1/S7 no holes, S2 no 1-hour days, S8-compact fewest days."""
+        """S1/S7 no holes, S2 no 1-hour days, S8-compact fewest days.
+
+        Returns {day: here-bool} so S21 (shared transport) can compare two
+        teachers' presence day by day without rebuilding it."""
+        days_here = {}
         for d in s.cfg.days:
             ps = [p for (dd, p) in slots if dd == d]
             if len(ps) < 2:
@@ -486,6 +490,7 @@ def build(s, sessions, rescue=False):
             here = m.NewBoolVar("here_%s_%s" % (key, d))
             m.Add(taught >= 1).OnlyEnforceIf(here)
             m.Add(taught == 0).OnlyEnforceIf(here.Not())
+            days_here[d] = here
 
             first = m.NewIntVar(lo, hi, "first_%s_%s" % (key, d))
             last = m.NewIntVar(lo, hi, "last_%s_%s" % (key, d))
@@ -505,17 +510,20 @@ def build(s, sessions, rescue=False):
                 penalties.append((W["one_hour_day"], solo))
             if also_day_count:
                 penalties.append((W["extra_day_present"], here))
+        return days_here
 
     # S1 teacher holes, S2 one-hour days. S8 is the MINISTRY version
     # (circular II.2: hours balanced across working days): by default a
     # teacher's overloaded days are penalised, which spreads the week.
     # compact=yes in the Teachers sheet keeps the old packed week instead -
     # the exception Majd grants to teachers with long journeys.
+    teacher_days = {}
     for tid, ss in by_teacher.items():
         pres = presence(ss, "T" + tid)
         compact = s.teachers.get(tid, {}).get("compact", "") == "yes"
-        add_gap_penalty(pres, "T" + tid, W["teacher_gap"],
-                        also_one_hour=True, also_day_count=compact)
+        teacher_days[tid] = add_gap_penalty(pres, "T" + tid, W["teacher_gap"],
+                                            also_one_hour=True,
+                                            also_day_count=compact)
         if not compact:
             # S8 (ministry): every taught hour beyond 4 on one day is a
             # sign of cramming; H17 caps the day at 6 outright.
@@ -538,6 +546,31 @@ def build(s, sessions, rescue=False):
             m.Add(imb >= mh - eh - 2)
             m.Add(imb >= eh - mh - 2)
             penalties.append((W.get("morning_evening_imbalance", 60), imb))
+
+    # ---- S21: shared transport - paired teachers come in on the same days.
+    # travels_with in the Teachers sheet names the partner (one side is
+    # enough, the pair is symmetric). Soft: each day where one is present
+    # and the other is not costs travel_pair points. Majd asked whether this
+    # is possible - it is, and this is the whole of it.
+    seen_pairs = set()
+    for tid, t in s.teachers.items():
+        other = (t.get("travels_with") or "").strip()
+        if not other:
+            continue
+        pair = tuple(sorted((tid, other)))
+        if pair in seen_pairs or pair[0] not in teacher_days \
+                or pair[1] not in teacher_days:
+            continue
+        seen_pairs.add(pair)
+        for d in s.cfg.days:
+            a = teacher_days[pair[0]].get(d)
+            b = teacher_days[pair[1]].get(d)
+            if a is None or b is None:
+                continue
+            diff = m.NewBoolVar("pair_%s_%s_%s" % (pair[0], pair[1], d))
+            m.Add(a != b).OnlyEnforceIf(diff)
+            m.Add(a == b).OnlyEnforceIf(diff.Not())
+            penalties.append((W.get("travel_pair", 70), diff))
 
     # S7 pupils get no holes either
     for cid, ss in by_class.items():
@@ -1163,10 +1196,12 @@ def main():
     xml_path = os.path.join(OUT, "timetable.xml")
     emit_asc.write(s, units, placement, rooms, xml_path)
     emit_html.write(s, units, placement, rooms, os.path.join(OUT, "view.html"))
+    emit_html.write_teachers(s, os.path.join(OUT, "teachers.html"))
     rep = report(s, units, placement, rooms, solver, status, elapsed,
                  exceptions=exceptions)
     with open(os.path.join(OUT, "report.md"), "w", encoding="utf-8") as f:
         f.write(rep)
+    emit_html.write_report_html(rep, os.path.join(OUT, "report.html"))
 
     # Timestamped archive, so a good result is never silently overwritten by a
     # worse one on the next run. Keeps the XML, the report and the raw solution.
@@ -1189,9 +1224,10 @@ def main():
                   % (e["rule"], e["teacher_id"], e["day"], e["what"], e["amount"]))
         print("  Full list in out/report.md. Fix the cause and re-run for a")
         print("  fully legal timetable.")
-    print("  out/timetable.xml  -> import into aSc TimeTables")
-    print("  out/view.html      -> open in a browser: view, print, save as PDF")
-    print("  out/report.md      -> what it could and could not satisfy")
+    print("  out/timetable.xml  -> import into aSc TimeTables (the real table)")
+    print("  out/view.html      -> printable timetable per class / teacher")
+    print("  out/teachers.html  -> who teaches what, hours vs contract")
+    print("  out/report.html    -> the stats: exceptions, soft rules, load")
     print("\nNow run:  python solver/verify.py")
     return 0
 

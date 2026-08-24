@@ -177,6 +177,9 @@ def load_school(xlsx=None, cfg=None):
             # compact=yes keeps the packed week - the exception Majd grants to
             # teachers with long journeys. Blank = ministry default.
             compact=(r.get("compact") or "").strip().lower(),
+            # S21 shared transport: the partner's teacher id. Filling one
+            # side is enough - the pair is symmetric.
+            travels_with=(r.get("travels_with") or "").strip(),
             notes=r.get("notes", ""),
         )
     for r in _rows(wb["Classes"]):
@@ -309,6 +312,13 @@ def check(s):
         if off and off not in days and off != "(none)":
             errs.append("Teacher " + t["id"] + " has day_off '" + off +
                         "' which is not a school day (" + ", ".join(s.cfg.days) + ").")
+        tw = t.get("travels_with", "")
+        if tw and tw not in s.teachers:
+            errs.append("Teacher " + t["id"] + " travels_with '" + tw +
+                        "' which is not a teacher id in the Teachers sheet.")
+        if tw and tw == t["id"]:
+            errs.append("Teacher " + t["id"] + " travels_with themselves - "
+                        "name the OTHER teacher of the pair.")
         tr = t.get("training_day", "")
         if tr and tr not in days and tr != "(none)":
             errs.append("Teacher " + t["id"] + " has training_day '" + tr +
