@@ -170,6 +170,11 @@ def load_school(xlsx=None, cfg=None):
             hours=_int(r.get("hours")),
             teacher_id=r.get("teacher_id", ""),
             blocks=r.get("blocks", ""),
+            # How many groups this class splits into for THIS subject.
+            # Default 1 - never assume a split. Proved necessary by last
+            # year's file: 4رياضيات1 ran Computer Science whole-class while
+            # splitting for Natural Sciences and Physics.
+            groups=max(1, _int(r.get("groups"), 1)),
             room_type=r.get("room_type", ""),
         ))
     if "Unavailable" in wb.sheetnames:
@@ -255,6 +260,16 @@ def check(s):
         if cl[cid] > week:
             errs.append("Class " + cid + " needs " + str(cl[cid]) +
                         " hours but the week only has " + str(week) + " open periods.")
+
+    # H16: the ministry says do not split a class of 24 pupils or fewer
+    for c in s.curriculum:
+        if c.get("groups", 1) > 1:
+            size = s.classes.get(c["class_id"], {}).get("size", 0)
+            if size and size <= 24:
+                notes.append("Class " + c["class_id"] + " has " + str(size) +
+                             " pupils but " + c["subject_id"] + " is set to split into " +
+                             str(c["groups"]) + " groups. The ministry says not to split at "
+                             "24 or fewer (H16). Set groups=1 unless there is a reason.")
 
     # H15: a daylight limit that no timetable could satisfy
     for sid, sub in s.subjects.items():

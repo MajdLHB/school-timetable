@@ -47,7 +47,8 @@
           ],
           "pupil_hours": 5.0,
           "teacher_hours": 5.0,
-          "card_hours": 5.0
+          "card_hours": 5.0,
+          "_no_groups": true
         },
         "FREN": {
           "sessions": [
@@ -63,7 +64,8 @@
           ],
           "pupil_hours": 4.0,
           "teacher_hours": 4.0,
-          "card_hours": 4.0
+          "card_hours": 4.0,
+          "_no_groups": true
         },
         "ENGL": {
           "sessions": [
@@ -79,7 +81,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "HIST": {
           "sessions": [
@@ -95,7 +98,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "PISL": {
           "sessions": [
@@ -108,7 +112,8 @@
           ],
           "pupil_hours": 1.5,
           "teacher_hours": 1.5,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         },
         "CIV": {
           "sessions": [
@@ -121,7 +126,8 @@
           ],
           "pupil_hours": 1.5,
           "teacher_hours": 1.5,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         },
         "MATH": {
           "sessions": [
@@ -137,7 +143,8 @@
           ],
           "pupil_hours": 4.0,
           "teacher_hours": 4.0,
-          "card_hours": 4.0
+          "card_hours": 4.0,
+          "_no_groups": true
         },
         "PHYS": {
           "sessions": [
@@ -152,8 +159,14 @@
             }
           ],
           "pupil_hours": 3.0,
-          "teacher_hours": 4.0,
-          "card_hours": 4.0
+          "if_split_2_groups": {
+            "teacher_hours": 4.0,
+            "card_hours": 4.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 3.0,
+            "card_hours": 3.0
+          }
         },
         "IT": {
           "sessions": [
@@ -162,8 +175,14 @@
             }
           ],
           "pupil_hours": 1.0,
-          "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "if_split_2_groups": {
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 1.0,
+            "card_hours": 1.0
+          }
         },
         "SVT": {
           "sessions": [
@@ -172,8 +191,14 @@
             }
           ],
           "pupil_hours": 1.5,
-          "teacher_hours": 2.5,
-          "card_hours": 5.0
+          "if_split_2_groups": {
+            "teacher_hours": 2.5,
+            "card_hours": 5.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 1.5,
+            "card_hours": 3.0
+          }
         },
         "TECH": {
           "sessions": [
@@ -182,8 +207,14 @@
             }
           ],
           "pupil_hours": 2.0,
-          "teacher_hours": 4.0,
-          "card_hours": 4.0
+          "if_split_2_groups": {
+            "teacher_hours": 4.0,
+            "card_hours": 4.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          }
         },
         "SPORT": {
           "sessions": [
@@ -193,7 +224,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         }
       }
     },
@@ -219,7 +251,8 @@
               ],
               "pupil_hours": 5.0,
               "teacher_hours": 5.0,
-              "card_hours": 5.0
+              "card_hours": 5.0,
+              "_no_groups": true
             },
             "FREN": {
               "sessions": [
@@ -238,7 +271,8 @@
               ],
               "pupil_hours": 5.0,
               "teacher_hours": 5.0,
-              "card_hours": 5.0
+              "card_hours": 5.0,
+              "_no_groups": true
             },
             "ENGL": {
               "sessions": [
@@ -257,7 +291,8 @@
               ],
               "pupil_hours": 4.0,
               "teacher_hours": 4.0,
-              "card_hours": 4.0
+              "card_hours": 4.0,
+              "_no_groups": true
             },
             "HIST": {
               "sessions": [
@@ -273,7 +308,8 @@
               ],
               "pupil_hours": 3.0,
               "teacher_hours": 3.0,
-              "card_hours": 3.0
+              "card_hours": 3.0,
+              "_no_groups": true
             },
             "PISL": {
               "sessions": [
@@ -286,7 +322,8 @@
               ],
               "pupil_hours": 1.5,
               "teacher_hours": 1.5,
-              "card_hours": 2.0
+              "card_hours": 2.0,
+              "_no_groups": true
             },
             "CIV": {
               "sessions": [
@@ -299,7 +336,8 @@
               ],
               "pupil_hours": 1.5,
               "teacher_hours": 1.5,
-              "card_hours": 2.0
+              "card_hours": 2.0,
+              "_no_groups": true
             },
             "MATH": {
               "sessions": [
@@ -312,7 +350,8 @@
               ],
               "pupil_hours": 2.0,
               "teacher_hours": 2.0,
-              "card_hours": 2.0
+              "card_hours": 2.0,
+              "_no_groups": true
             },
             "SVT": {
               "sessions": [
@@ -321,8 +360,14 @@
                 }
               ],
               "pupil_hours": 1.5,
-              "teacher_hours": 2.5,
-              "card_hours": 5.0
+              "if_split_2_groups": {
+                "teacher_hours": 2.5,
+                "card_hours": 5.0
+              },
+              "if_whole_class": {
+                "teacher_hours": 1.5,
+                "card_hours": 3.0
+              }
             },
             "SPORT": {
               "sessions": [
@@ -332,7 +377,8 @@
               ],
               "pupil_hours": 2.0,
               "teacher_hours": 2.0,
-              "card_hours": 2.0
+              "card_hours": 2.0,
+              "_no_groups": true
             }
           }
         },
@@ -353,7 +399,8 @@
               ],
               "pupil_hours": 4.0,
               "teacher_hours": 4.0,
-              "card_hours": 4.0
+              "card_hours": 4.0,
+              "_no_groups": true
             },
             "FREN": {
               "sessions": [
@@ -369,7 +416,8 @@
               ],
               "pupil_hours": 4.0,
               "teacher_hours": 4.0,
-              "card_hours": 4.0
+              "card_hours": 4.0,
+              "_no_groups": true
             },
             "ENGL": {
               "sessions": [
@@ -385,7 +433,8 @@
               ],
               "pupil_hours": 3.0,
               "teacher_hours": 3.0,
-              "card_hours": 3.0
+              "card_hours": 3.0,
+              "_no_groups": true
             },
             "HIST": {
               "sessions": [
@@ -398,7 +447,8 @@
               ],
               "pupil_hours": 2.0,
               "teacher_hours": 2.0,
-              "card_hours": 2.0
+              "card_hours": 2.0,
+              "_no_groups": true
             },
             "PISL": {
               "sessions": [
@@ -411,7 +461,8 @@
               ],
               "pupil_hours": 1.5,
               "teacher_hours": 1.5,
-              "card_hours": 2.0
+              "card_hours": 2.0,
+              "_no_groups": true
             },
             "CIV": {
               "sessions": [
@@ -424,7 +475,8 @@
               ],
               "pupil_hours": 1.5,
               "teacher_hours": 1.5,
-              "card_hours": 2.0
+              "card_hours": 2.0,
+              "_no_groups": true
             },
             "MATH": {
               "sessions": [
@@ -454,7 +506,8 @@
               ],
               "pupil_hours": 5.0,
               "teacher_hours": 5.0,
-              "card_hours": 5.0
+              "card_hours": 5.0,
+              "_no_groups": true
             },
             "PHYS": {
               "sessions": [
@@ -469,8 +522,14 @@
                 }
               ],
               "pupil_hours": 4.0,
-              "teacher_hours": 5.5,
-              "card_hours": 7.0
+              "if_split_2_groups": {
+                "teacher_hours": 5.5,
+                "card_hours": 7.0
+              },
+              "if_whole_class": {
+                "teacher_hours": 4.0,
+                "card_hours": 5.5
+              }
             },
             "SVT": {
               "sessions": [
@@ -485,8 +544,14 @@
                 }
               ],
               "pupil_hours": 3.5,
-              "teacher_hours": 6.0,
-              "card_hours": 7.0
+              "if_split_2_groups": {
+                "teacher_hours": 6.0,
+                "card_hours": 7.0
+              },
+              "if_whole_class": {
+                "teacher_hours": 3.5,
+                "card_hours": 4.0
+              }
             },
             "TECH": {
               "sessions": [
@@ -495,8 +560,14 @@
                 }
               ],
               "pupil_hours": 2.0,
-              "teacher_hours": 4.0,
-              "card_hours": 4.0
+              "if_split_2_groups": {
+                "teacher_hours": 4.0,
+                "card_hours": 4.0
+              },
+              "if_whole_class": {
+                "teacher_hours": 2.0,
+                "card_hours": 2.0
+              }
             },
             "SPORT": {
               "sessions": [
@@ -506,7 +577,8 @@
               ],
               "pupil_hours": 2.0,
               "teacher_hours": 2.0,
-              "card_hours": 2.0
+              "card_hours": 2.0,
+              "_no_groups": true
             }
           }
         },
@@ -524,7 +596,8 @@
               ],
               "pupil_hours": 3.0,
               "teacher_hours": 3.0,
-              "card_hours": 3.0
+              "card_hours": 3.0,
+              "_no_groups": true
             },
             "FREN": {
               "sessions": [
@@ -537,7 +610,8 @@
               ],
               "pupil_hours": 3.0,
               "teacher_hours": 3.0,
-              "card_hours": 3.0
+              "card_hours": 3.0,
+              "_no_groups": true
             },
             "ENGL": {
               "sessions": [
@@ -553,7 +627,8 @@
               ],
               "pupil_hours": 3.0,
               "teacher_hours": 3.0,
-              "card_hours": 3.0
+              "card_hours": 3.0,
+              "_no_groups": true
             },
             "HIST": {
               "sessions": [
@@ -566,7 +641,8 @@
               ],
               "pupil_hours": 2.0,
               "teacher_hours": 2.0,
-              "card_hours": 2.0
+              "card_hours": 2.0,
+              "_no_groups": true
             },
             "PISL": {
               "sessions": [
@@ -579,7 +655,8 @@
               ],
               "pupil_hours": 1.5,
               "teacher_hours": 1.5,
-              "card_hours": 2.0
+              "card_hours": 2.0,
+              "_no_groups": true
             },
             "CIV": {
               "sessions": [
@@ -592,7 +669,8 @@
               ],
               "pupil_hours": 1.5,
               "teacher_hours": 1.5,
-              "card_hours": 2.0
+              "card_hours": 2.0,
+              "_no_groups": true
             },
             "MATH": {
               "sessions": [
@@ -622,7 +700,8 @@
               ],
               "pupil_hours": 5.0,
               "teacher_hours": 5.0,
-              "card_hours": 5.0
+              "card_hours": 5.0,
+              "_no_groups": true
             },
             "PHYS": {
               "sessions": [
@@ -637,8 +716,14 @@
                 }
               ],
               "pupil_hours": 4.0,
-              "teacher_hours": 5.5,
-              "card_hours": 7.0
+              "if_split_2_groups": {
+                "teacher_hours": 5.5,
+                "card_hours": 7.0
+              },
+              "if_whole_class": {
+                "teacher_hours": 4.0,
+                "card_hours": 5.5
+              }
             },
             "TECH": {
               "sessions": [
@@ -647,8 +732,14 @@
                 }
               ],
               "pupil_hours": 2.0,
-              "teacher_hours": 4.0,
-              "card_hours": 4.0
+              "if_split_2_groups": {
+                "teacher_hours": 4.0,
+                "card_hours": 4.0
+              },
+              "if_whole_class": {
+                "teacher_hours": 2.0,
+                "card_hours": 2.0
+              }
             },
             "IT": {
               "sessions": [
@@ -663,8 +754,14 @@
                 }
               ],
               "pupil_hours": 5.0,
-              "teacher_hours": 10.0,
-              "card_hours": 12.0
+              "if_split_2_groups": {
+                "teacher_hours": 10.0,
+                "card_hours": 12.0
+              },
+              "if_whole_class": {
+                "teacher_hours": 5.0,
+                "card_hours": 6.0
+              }
             },
             "SPORT": {
               "sessions": [
@@ -674,7 +771,8 @@
               ],
               "pupil_hours": 2.0,
               "teacher_hours": 2.0,
-              "card_hours": 2.0
+              "card_hours": 2.0,
+              "_no_groups": true
             }
           }
         },
@@ -695,7 +793,8 @@
               ],
               "pupil_hours": 4.0,
               "teacher_hours": 4.0,
-              "card_hours": 4.0
+              "card_hours": 4.0,
+              "_no_groups": true
             },
             "FREN": {
               "sessions": [
@@ -711,7 +810,8 @@
               ],
               "pupil_hours": 4.0,
               "teacher_hours": 4.0,
-              "card_hours": 4.0
+              "card_hours": 4.0,
+              "_no_groups": true
             },
             "ENGL": {
               "sessions": [
@@ -730,7 +830,8 @@
               ],
               "pupil_hours": 4.0,
               "teacher_hours": 4.0,
-              "card_hours": 4.0
+              "card_hours": 4.0,
+              "_no_groups": true
             },
             "HIST": {
               "sessions": [
@@ -746,7 +847,8 @@
               ],
               "pupil_hours": 3.0,
               "teacher_hours": 3.0,
-              "card_hours": 3.0
+              "card_hours": 3.0,
+              "_no_groups": true
             },
             "PISL": {
               "sessions": [
@@ -759,7 +861,8 @@
               ],
               "pupil_hours": 1.5,
               "teacher_hours": 1.5,
-              "card_hours": 2.0
+              "card_hours": 2.0,
+              "_no_groups": true
             },
             "CIV": {
               "sessions": [
@@ -772,7 +875,8 @@
               ],
               "pupil_hours": 1.5,
               "teacher_hours": 1.5,
-              "card_hours": 2.0
+              "card_hours": 2.0,
+              "_no_groups": true
             },
             "ECO": {
               "sessions": [
@@ -785,7 +889,8 @@
               ],
               "pupil_hours": 3.0,
               "teacher_hours": 3.0,
-              "card_hours": 3.0
+              "card_hours": 3.0,
+              "_no_groups": true
             },
             "GEST": {
               "sessions": [
@@ -798,7 +903,8 @@
               ],
               "pupil_hours": 3.0,
               "teacher_hours": 3.0,
-              "card_hours": 4.0
+              "card_hours": 4.0,
+              "_no_groups": true
             },
             "MATH": {
               "sessions": [
@@ -811,7 +917,8 @@
               ],
               "pupil_hours": 3.0,
               "teacher_hours": 3.0,
-              "card_hours": 3.0
+              "card_hours": 3.0,
+              "_no_groups": true
             },
             "IT": {
               "sessions": [
@@ -820,8 +927,14 @@
                 }
               ],
               "pupil_hours": 2.0,
-              "teacher_hours": 4.0,
-              "card_hours": 4.0
+              "if_split_2_groups": {
+                "teacher_hours": 4.0,
+                "card_hours": 4.0
+              },
+              "if_whole_class": {
+                "teacher_hours": 2.0,
+                "card_hours": 2.0
+              }
             },
             "SPORT": {
               "sessions": [
@@ -831,7 +944,8 @@
               ],
               "pupil_hours": 2.0,
               "teacher_hours": 2.0,
-              "card_hours": 2.0
+              "card_hours": 2.0,
+              "_no_groups": true
             }
           }
         }
@@ -853,7 +967,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "FREN": {
           "sessions": [
@@ -869,7 +984,8 @@
           ],
           "pupil_hours": 4.0,
           "teacher_hours": 4.0,
-          "card_hours": 4.0
+          "card_hours": 4.0,
+          "_no_groups": true
         },
         "ENGL": {
           "sessions": [
@@ -885,7 +1001,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "HIST": {
           "sessions": [
@@ -898,7 +1015,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         },
         "PISL": {
           "sessions": [
@@ -908,7 +1026,8 @@
           ],
           "pupil_hours": 1.0,
           "teacher_hours": 1.0,
-          "card_hours": 1.0
+          "card_hours": 1.0,
+          "_no_groups": true
         },
         "PHIL": {
           "sessions": [
@@ -918,7 +1037,8 @@
           ],
           "pupil_hours": 1.0,
           "teacher_hours": 1.0,
-          "card_hours": 1.0
+          "card_hours": 1.0,
+          "_no_groups": true
         },
         "MATH": {
           "sessions": [
@@ -937,7 +1057,8 @@
           ],
           "pupil_hours": 7.0,
           "teacher_hours": 7.0,
-          "card_hours": 7.0
+          "card_hours": 7.0,
+          "_no_groups": true
         },
         "PHYS": {
           "sessions": [
@@ -966,8 +1087,14 @@
             }
           ],
           "pupil_hours": 5.0,
-          "teacher_hours": 6.5,
-          "card_hours": 7.0
+          "if_split_2_groups": {
+            "teacher_hours": 6.5,
+            "card_hours": 7.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 5.0,
+            "card_hours": 5.5
+          }
         },
         "SVT": {
           "sessions": [
@@ -976,8 +1103,14 @@
             }
           ],
           "pupil_hours": 1.5,
-          "teacher_hours": 2.5,
-          "card_hours": 5.0
+          "if_split_2_groups": {
+            "teacher_hours": 2.5,
+            "card_hours": 5.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 1.5,
+            "card_hours": 3.0
+          }
         },
         "IT": {
           "sessions": [
@@ -986,8 +1119,14 @@
             }
           ],
           "pupil_hours": 1.5,
-          "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "if_split_2_groups": {
+            "teacher_hours": 3.0,
+            "card_hours": 3.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 1.5,
+            "card_hours": 1.5
+          }
         },
         "SPORT": {
           "sessions": [
@@ -997,7 +1136,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         },
         "_optional": {
           "LANG3": {
@@ -1011,7 +1151,8 @@
             ],
             "pupil_hours": 3.0,
             "teacher_hours": 3.0,
-            "card_hours": 3.0
+            "card_hours": 3.0,
+            "_no_groups": true
           },
           "MUS": {
             "sessions": [
@@ -1021,7 +1162,8 @@
             ],
             "pupil_hours": 2.0,
             "teacher_hours": 2.0,
-            "card_hours": 2.0
+            "card_hours": 2.0,
+            "_no_groups": true
           },
           "TASH": {
             "sessions": [
@@ -1031,7 +1173,8 @@
             ],
             "pupil_hours": 2.0,
             "teacher_hours": 2.0,
-            "card_hours": 2.0
+            "card_hours": 2.0,
+            "_no_groups": true
           }
         }
       },
@@ -1047,7 +1190,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         },
         "FREN": {
           "sessions": [
@@ -1060,7 +1204,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "ENGL": {
           "sessions": [
@@ -1076,7 +1221,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "PHIL": {
           "sessions": [
@@ -1089,7 +1235,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "MATH": {
           "sessions": [
@@ -1108,7 +1255,8 @@
           ],
           "pupil_hours": 7.0,
           "teacher_hours": 7.0,
-          "card_hours": 7.0
+          "card_hours": 7.0,
+          "_no_groups": true
         },
         "PHYS": {
           "sessions": [
@@ -1137,8 +1285,14 @@
             }
           ],
           "pupil_hours": 5.0,
-          "teacher_hours": 6.5,
-          "card_hours": 7.0
+          "if_split_2_groups": {
+            "teacher_hours": 6.5,
+            "card_hours": 7.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 5.0,
+            "card_hours": 5.5
+          }
         },
         "SVT": {
           "sessions": [
@@ -1147,8 +1301,14 @@
             }
           ],
           "pupil_hours": 1.5,
-          "teacher_hours": 2.5,
-          "card_hours": 5.0
+          "if_split_2_groups": {
+            "teacher_hours": 2.5,
+            "card_hours": 5.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 1.5,
+            "card_hours": 3.0
+          }
         },
         "IT": {
           "sessions": [
@@ -1157,8 +1317,14 @@
             }
           ],
           "pupil_hours": 2.0,
-          "teacher_hours": 4.0,
-          "card_hours": 4.0
+          "if_split_2_groups": {
+            "teacher_hours": 4.0,
+            "card_hours": 4.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          }
         },
         "SPORT": {
           "sessions": [
@@ -1168,7 +1334,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         },
         "_optional": {
           "LANG3": {
@@ -1182,7 +1349,8 @@
             ],
             "pupil_hours": 3.0,
             "teacher_hours": 3.0,
-            "card_hours": 3.0
+            "card_hours": 3.0,
+            "_no_groups": true
           },
           "MUS": {
             "sessions": [
@@ -1192,7 +1360,8 @@
             ],
             "pupil_hours": 2.0,
             "teacher_hours": 2.0,
-            "card_hours": 2.0
+            "card_hours": 2.0,
+            "_no_groups": true
           },
           "TASH": {
             "sessions": [
@@ -1202,7 +1371,8 @@
             ],
             "pupil_hours": 2.0,
             "teacher_hours": 2.0,
-            "card_hours": 2.0
+            "card_hours": 2.0,
+            "_no_groups": true
           }
         }
       }
@@ -1224,7 +1394,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "FREN": {
           "sessions": [
@@ -1240,7 +1411,8 @@
           ],
           "pupil_hours": 4.0,
           "teacher_hours": 4.0,
-          "card_hours": 4.0
+          "card_hours": 4.0,
+          "_no_groups": true
         },
         "ENGL": {
           "sessions": [
@@ -1256,7 +1428,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "HIST": {
           "sessions": [
@@ -1269,7 +1442,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         },
         "PISL": {
           "sessions": [
@@ -1279,7 +1453,8 @@
           ],
           "pupil_hours": 1.0,
           "teacher_hours": 1.0,
-          "card_hours": 1.0
+          "card_hours": 1.0,
+          "_no_groups": true
         },
         "PHIL": {
           "sessions": [
@@ -1289,7 +1464,8 @@
           ],
           "pupil_hours": 1.0,
           "teacher_hours": 1.0,
-          "card_hours": 1.0
+          "card_hours": 1.0,
+          "_no_groups": true
         },
         "MATH": {
           "sessions": [
@@ -1305,7 +1481,8 @@
           ],
           "pupil_hours": 5.0,
           "teacher_hours": 5.0,
-          "card_hours": 5.0
+          "card_hours": 5.0,
+          "_no_groups": true
         },
         "PHYS": {
           "sessions": [
@@ -1323,8 +1500,14 @@
             }
           ],
           "pupil_hours": 5.0,
-          "teacher_hours": 6.5,
-          "card_hours": 7.0
+          "if_split_2_groups": {
+            "teacher_hours": 6.5,
+            "card_hours": 7.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 5.0,
+            "card_hours": 5.5
+          }
         },
         "SVT": {
           "sessions": [
@@ -1336,8 +1519,14 @@
             }
           ],
           "pupil_hours": 4.0,
-          "teacher_hours": 6.0,
-          "card_hours": 6.0
+          "if_split_2_groups": {
+            "teacher_hours": 6.0,
+            "card_hours": 6.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 4.0,
+            "card_hours": 4.0
+          }
         },
         "IT": {
           "sessions": [
@@ -1346,8 +1535,14 @@
             }
           ],
           "pupil_hours": 1.5,
-          "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "if_split_2_groups": {
+            "teacher_hours": 3.0,
+            "card_hours": 3.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 1.5,
+            "card_hours": 1.5
+          }
         },
         "SPORT": {
           "sessions": [
@@ -1357,7 +1552,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         }
       },
       "Y4": {
@@ -1372,7 +1568,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         },
         "FREN": {
           "sessions": [
@@ -1385,7 +1582,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "ENGL": {
           "sessions": [
@@ -1401,7 +1599,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "PHIL": {
           "sessions": [
@@ -1414,7 +1613,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "MATH": {
           "sessions": [
@@ -1430,7 +1630,8 @@
           ],
           "pupil_hours": 5.0,
           "teacher_hours": 5.0,
-          "card_hours": 5.0
+          "card_hours": 5.0,
+          "_no_groups": true
         },
         "PHYS": {
           "sessions": [
@@ -1448,8 +1649,14 @@
             }
           ],
           "pupil_hours": 5.0,
-          "teacher_hours": 6.5,
-          "card_hours": 7.0
+          "if_split_2_groups": {
+            "teacher_hours": 6.5,
+            "card_hours": 7.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 5.0,
+            "card_hours": 5.5
+          }
         },
         "SVT": {
           "sessions": [
@@ -1464,8 +1671,14 @@
             }
           ],
           "pupil_hours": 5.0,
-          "teacher_hours": 7.0,
-          "card_hours": 7.0
+          "if_split_2_groups": {
+            "teacher_hours": 7.0,
+            "card_hours": 7.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 5.0,
+            "card_hours": 5.0
+          }
         },
         "IT": {
           "sessions": [
@@ -1474,8 +1687,14 @@
             }
           ],
           "pupil_hours": 2.0,
-          "teacher_hours": 4.0,
-          "card_hours": 4.0
+          "if_split_2_groups": {
+            "teacher_hours": 4.0,
+            "card_hours": 4.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          }
         },
         "SPORT": {
           "sessions": [
@@ -1485,7 +1704,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         }
       }
     },
@@ -1506,7 +1726,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "FREN": {
           "sessions": [
@@ -1519,7 +1740,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "ENGL": {
           "sessions": [
@@ -1535,7 +1757,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "HIST": {
           "sessions": [
@@ -1548,7 +1771,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         },
         "PHIL": {
           "sessions": [
@@ -1558,7 +1782,8 @@
           ],
           "pupil_hours": 1.0,
           "teacher_hours": 1.0,
-          "card_hours": 1.0
+          "card_hours": 1.0,
+          "_no_groups": true
         },
         "MATH": {
           "sessions": [
@@ -1574,7 +1799,8 @@
           ],
           "pupil_hours": 5.0,
           "teacher_hours": 5.0,
-          "card_hours": 5.0
+          "card_hours": 5.0,
+          "_no_groups": true
         },
         "PHYS": {
           "sessions": [
@@ -1592,8 +1818,14 @@
             }
           ],
           "pupil_hours": 5.0,
-          "teacher_hours": 6.5,
-          "card_hours": 7.0
+          "if_split_2_groups": {
+            "teacher_hours": 6.5,
+            "card_hours": 7.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 5.0,
+            "card_hours": 5.5
+          }
         },
         "TECH": {
           "sessions": [
@@ -1602,8 +1834,14 @@
             }
           ],
           "pupil_hours": 4.0,
-          "teacher_hours": 8.0,
-          "card_hours": 8.0
+          "if_split_2_groups": {
+            "teacher_hours": 8.0,
+            "card_hours": 8.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 4.0,
+            "card_hours": 4.0
+          }
         },
         "IT": {
           "sessions": [
@@ -1612,8 +1850,14 @@
             }
           ],
           "pupil_hours": 1.5,
-          "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "if_split_2_groups": {
+            "teacher_hours": 3.0,
+            "card_hours": 3.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 1.5,
+            "card_hours": 1.5
+          }
         },
         "SPORT": {
           "sessions": [
@@ -1623,7 +1867,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         }
       },
       "Y4": {
@@ -1638,7 +1883,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         },
         "FREN": {
           "sessions": [
@@ -1656,7 +1902,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         },
         "ENGL": {
           "sessions": [
@@ -1669,7 +1916,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         },
         "PHIL": {
           "sessions": [
@@ -1682,7 +1930,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "MATH": {
           "sessions": [
@@ -1698,7 +1947,8 @@
           ],
           "pupil_hours": 5.0,
           "teacher_hours": 5.0,
-          "card_hours": 5.0
+          "card_hours": 5.0,
+          "_no_groups": true
         },
         "PHYS": {
           "sessions": [
@@ -1716,8 +1966,14 @@
             }
           ],
           "pupil_hours": 5.0,
-          "teacher_hours": 6.5,
-          "card_hours": 7.0
+          "if_split_2_groups": {
+            "teacher_hours": 6.5,
+            "card_hours": 7.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 5.0,
+            "card_hours": 5.5
+          }
         },
         "TECH": {
           "sessions": [
@@ -1726,8 +1982,14 @@
             }
           ],
           "pupil_hours": 4.0,
-          "teacher_hours": 8.0,
-          "card_hours": 8.0
+          "if_split_2_groups": {
+            "teacher_hours": 8.0,
+            "card_hours": 8.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 4.0,
+            "card_hours": 4.0
+          }
         },
         "IT": {
           "sessions": [
@@ -1736,8 +1998,14 @@
             }
           ],
           "pupil_hours": 2.0,
-          "teacher_hours": 4.0,
-          "card_hours": 4.0
+          "if_split_2_groups": {
+            "teacher_hours": 4.0,
+            "card_hours": 4.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          }
         },
         "SPORT": {
           "sessions": [
@@ -1747,7 +2015,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         }
       }
     },
@@ -1767,7 +2036,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "FREN": {
           "sessions": [
@@ -1780,7 +2050,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "ENGL": {
           "sessions": [
@@ -1796,7 +2067,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "HIST": {
           "sessions": [
@@ -1809,7 +2081,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         },
         "PHIL": {
           "sessions": [
@@ -1819,7 +2092,8 @@
           ],
           "pupil_hours": 1.0,
           "teacher_hours": 1.0,
-          "card_hours": 1.0
+          "card_hours": 1.0,
+          "_no_groups": true
         },
         "MATH": {
           "sessions": [
@@ -1835,7 +2109,8 @@
           ],
           "pupil_hours": 5.0,
           "teacher_hours": 5.0,
-          "card_hours": 5.0
+          "card_hours": 5.0,
+          "_no_groups": true
         },
         "PHYS": {
           "sessions": [
@@ -1853,8 +2128,14 @@
             }
           ],
           "pupil_hours": 5.0,
-          "teacher_hours": 6.5,
-          "card_hours": 7.0
+          "if_split_2_groups": {
+            "teacher_hours": 6.5,
+            "card_hours": 7.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 5.0,
+            "card_hours": 5.5
+          }
         },
         "ALGO": {
           "sessions": [
@@ -1866,9 +2147,15 @@
             }
           ],
           "pupil_hours": 4.0,
-          "teacher_hours": 8.0,
           "name_ar": "الخوارزميات والبرمجة",
-          "card_hours": 8.0
+          "if_split_2_groups": {
+            "teacher_hours": 8.0,
+            "card_hours": 8.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 4.0,
+            "card_hours": 4.0
+          }
         },
         "ICT": {
           "sessions": [
@@ -1877,9 +2164,15 @@
             }
           ],
           "pupil_hours": 2.0,
-          "teacher_hours": 4.0,
           "name_ar": "تكنولوجيات المعلومات والاتصال",
-          "card_hours": 4.0
+          "if_split_2_groups": {
+            "teacher_hours": 4.0,
+            "card_hours": 4.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          }
         },
         "NET": {
           "sessions": [
@@ -1888,9 +2181,15 @@
             }
           ],
           "pupil_hours": 2.0,
-          "teacher_hours": 4.0,
           "name_ar": "الأنظمة والشبكات",
-          "card_hours": 4.0
+          "if_split_2_groups": {
+            "teacher_hours": 4.0,
+            "card_hours": 4.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          }
         },
         "SPORT": {
           "sessions": [
@@ -1900,7 +2199,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         }
       },
       "Y4": {
@@ -1915,7 +2215,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         },
         "FREN": {
           "sessions": [
@@ -1928,7 +2229,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "ENGL": {
           "sessions": [
@@ -1944,7 +2246,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "PHIL": {
           "sessions": [
@@ -1957,7 +2260,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "MATH": {
           "sessions": [
@@ -1973,7 +2277,8 @@
           ],
           "pupil_hours": 5.0,
           "teacher_hours": 5.0,
-          "card_hours": 5.0
+          "card_hours": 5.0,
+          "_no_groups": true
         },
         "PHYS": {
           "sessions": [
@@ -1991,8 +2296,14 @@
             }
           ],
           "pupil_hours": 5.0,
-          "teacher_hours": 6.5,
-          "card_hours": 7.0
+          "if_split_2_groups": {
+            "teacher_hours": 6.5,
+            "card_hours": 7.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 5.0,
+            "card_hours": 5.5
+          }
         },
         "ALGO": {
           "sessions": [
@@ -2004,9 +2315,15 @@
             }
           ],
           "pupil_hours": 4.0,
-          "teacher_hours": 8.0,
           "name_ar": "الخوارزميات والبرمجة",
-          "card_hours": 8.0
+          "if_split_2_groups": {
+            "teacher_hours": 8.0,
+            "card_hours": 8.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 4.0,
+            "card_hours": 4.0
+          }
         },
         "ICT": {
           "sessions": [
@@ -2015,9 +2332,15 @@
             }
           ],
           "pupil_hours": 2.0,
-          "teacher_hours": 4.0,
           "name_ar": "تكنولوجيات المعلومات والاتصال",
-          "card_hours": 4.0
+          "if_split_2_groups": {
+            "teacher_hours": 4.0,
+            "card_hours": 4.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          }
         },
         "DB": {
           "sessions": [
@@ -2026,9 +2349,15 @@
             }
           ],
           "pupil_hours": 2.0,
-          "teacher_hours": 4.0,
           "name_ar": "قواعد البيانات",
-          "card_hours": 4.0
+          "if_split_2_groups": {
+            "teacher_hours": 4.0,
+            "card_hours": 4.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          }
         },
         "SPORT": {
           "sessions": [
@@ -2038,7 +2367,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         }
       }
     },
@@ -2059,7 +2389,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "FREN": {
           "sessions": [
@@ -2075,7 +2406,8 @@
           ],
           "pupil_hours": 4.0,
           "teacher_hours": 4.0,
-          "card_hours": 4.0
+          "card_hours": 4.0,
+          "_no_groups": true
         },
         "ENGL": {
           "sessions": [
@@ -2091,7 +2423,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "HIST": {
           "sessions": [
@@ -2107,7 +2440,8 @@
           ],
           "pupil_hours": 3.5,
           "teacher_hours": 3.5,
-          "card_hours": 4.0
+          "card_hours": 4.0,
+          "_no_groups": true
         },
         "PHIL": {
           "sessions": [
@@ -2117,7 +2451,8 @@
           ],
           "pupil_hours": 1.0,
           "teacher_hours": 1.0,
-          "card_hours": 1.0
+          "card_hours": 1.0,
+          "_no_groups": true
         },
         "ECO": {
           "sessions": [
@@ -2133,7 +2468,8 @@
           ],
           "pupil_hours": 5.0,
           "teacher_hours": 5.0,
-          "card_hours": 5.0
+          "card_hours": 5.0,
+          "_no_groups": true
         },
         "GEST": {
           "sessions": [
@@ -2149,7 +2485,8 @@
           ],
           "pupil_hours": 5.0,
           "teacher_hours": 5.0,
-          "card_hours": 6.0
+          "card_hours": 6.0,
+          "_no_groups": true
         },
         "MATH": {
           "sessions": [
@@ -2173,7 +2510,8 @@
           ],
           "pupil_hours": 4.0,
           "teacher_hours": 4.0,
-          "card_hours": 4.0
+          "card_hours": 4.0,
+          "_no_groups": true
         },
         "IT": {
           "sessions": [
@@ -2182,8 +2520,14 @@
             }
           ],
           "pupil_hours": 1.0,
-          "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "if_split_2_groups": {
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 1.0,
+            "card_hours": 1.0
+          }
         },
         "SPORT": {
           "sessions": [
@@ -2193,7 +2537,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         }
       },
       "Y4": {
@@ -2208,7 +2553,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         },
         "FREN": {
           "sessions": [
@@ -2221,7 +2567,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "ENGL": {
           "sessions": [
@@ -2237,7 +2584,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "HIST": {
           "sessions": [
@@ -2250,7 +2598,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "PHIL": {
           "sessions": [
@@ -2263,7 +2612,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "ECO": {
           "sessions": [
@@ -2278,8 +2628,14 @@
             }
           ],
           "pupil_hours": 4.25,
-          "teacher_hours": 4.5,
-          "card_hours": 5.0
+          "if_split_2_groups": {
+            "teacher_hours": 4.5,
+            "card_hours": 5.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 4.25,
+            "card_hours": 4.5
+          }
         },
         "GEST": {
           "sessions": [
@@ -2294,8 +2650,14 @@
             }
           ],
           "pupil_hours": 5.0,
-          "teacher_hours": 6.0,
-          "card_hours": 8.0
+          "if_split_2_groups": {
+            "teacher_hours": 6.0,
+            "card_hours": 8.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 5.0,
+            "card_hours": 6.0
+          }
         },
         "MATH": {
           "sessions": [
@@ -2319,7 +2681,8 @@
           ],
           "pupil_hours": 4.0,
           "teacher_hours": 4.0,
-          "card_hours": 4.0
+          "card_hours": 4.0,
+          "_no_groups": true
         },
         "IT": {
           "sessions": [
@@ -2328,8 +2691,14 @@
             }
           ],
           "pupil_hours": 1.5,
-          "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "if_split_2_groups": {
+            "teacher_hours": 3.0,
+            "card_hours": 3.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 1.5,
+            "card_hours": 1.5
+          }
         },
         "SPORT": {
           "sessions": [
@@ -2339,7 +2708,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         }
       }
     },
@@ -2363,7 +2733,8 @@
           ],
           "pupil_hours": 4.0,
           "teacher_hours": 4.0,
-          "card_hours": 4.0
+          "card_hours": 4.0,
+          "_no_groups": true
         },
         "PISL": {
           "sessions": [
@@ -2376,7 +2747,8 @@
           ],
           "pupil_hours": 1.5,
           "teacher_hours": 1.5,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         },
         "CIV": {
           "sessions": [
@@ -2386,7 +2758,8 @@
           ],
           "pupil_hours": 1.0,
           "teacher_hours": 1.0,
-          "card_hours": 1.0
+          "card_hours": 1.0,
+          "_no_groups": true
         },
         "PHIL": {
           "sessions": [
@@ -2399,7 +2772,8 @@
           ],
           "pupil_hours": 3.0,
           "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "card_hours": 3.0,
+          "_no_groups": true
         },
         "IT": {
           "sessions": [
@@ -2408,8 +2782,14 @@
             }
           ],
           "pupil_hours": 1.0,
-          "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "if_split_2_groups": {
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 1.0,
+            "card_hours": 1.0
+          }
         },
         "SPORT": {
           "sessions": [
@@ -2419,7 +2799,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         },
         "_optional": {
           "MATH": {
@@ -2430,7 +2811,8 @@
             ],
             "pupil_hours": 2.0,
             "teacher_hours": 2.0,
-            "card_hours": 2.0
+            "card_hours": 2.0,
+            "_no_groups": true
           },
           "SVT": {
             "sessions": [
@@ -2440,7 +2822,8 @@
             ],
             "pupil_hours": 2.0,
             "teacher_hours": 2.0,
-            "card_hours": 2.0
+            "card_hours": 2.0,
+            "_no_groups": true
           },
           "LANG3": {
             "sessions": [
@@ -2453,7 +2836,8 @@
             ],
             "pupil_hours": 3.0,
             "teacher_hours": 3.0,
-            "card_hours": 3.0
+            "card_hours": 3.0,
+            "_no_groups": true
           },
           "MUS": {
             "sessions": [
@@ -2463,7 +2847,8 @@
             ],
             "pupil_hours": 2.0,
             "teacher_hours": 2.0,
-            "card_hours": 2.0
+            "card_hours": 2.0,
+            "_no_groups": true
           },
           "TASH": {
             "sessions": [
@@ -2473,7 +2858,8 @@
             ],
             "pupil_hours": 2.0,
             "teacher_hours": 2.0,
-            "card_hours": 2.0
+            "card_hours": 2.0,
+            "_no_groups": true
           }
         },
         "ARAB": {
@@ -2488,11 +2874,12 @@
               "whole": 1
             }
           ],
-          "pupil_hours": 5,
-          "teacher_hours": 5,
+          "pupil_hours": 5.0,
           "_source": "last year's timetable, NOT the circular",
           "name_ar": "عربية",
-          "card_hours": 5.0
+          "teacher_hours": 5.0,
+          "card_hours": 5.0,
+          "_no_groups": true
         },
         "FREN": {
           "sessions": [
@@ -2506,11 +2893,12 @@
               "whole": 1
             }
           ],
-          "pupil_hours": 5,
-          "teacher_hours": 5,
+          "pupil_hours": 5.0,
           "_source": "last year's timetable, NOT the circular",
           "name_ar": "فرنسية",
-          "card_hours": 5.0
+          "teacher_hours": 5.0,
+          "card_hours": 5.0,
+          "_no_groups": true
         },
         "ENGL": {
           "sessions": [
@@ -2524,11 +2912,12 @@
               "whole": 1
             }
           ],
-          "pupil_hours": 5,
-          "teacher_hours": 5,
+          "pupil_hours": 5.0,
           "_source": "last year's timetable, NOT the circular",
           "name_ar": "انجليزية",
-          "card_hours": 5.0
+          "teacher_hours": 5.0,
+          "card_hours": 5.0,
+          "_no_groups": true
         }
       },
       "Y4": {
@@ -2546,7 +2935,8 @@
           ],
           "pupil_hours": 4.0,
           "teacher_hours": 4.0,
-          "card_hours": 4.0
+          "card_hours": 4.0,
+          "_no_groups": true
         },
         "PISL": {
           "sessions": [
@@ -2556,7 +2946,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         },
         "PHIL": {
           "sessions": [
@@ -2574,8 +2965,14 @@
             }
           ],
           "pupil_hours": 6.0,
-          "teacher_hours": 7.0,
-          "card_hours": 8.0
+          "if_split_2_groups": {
+            "teacher_hours": 7.0,
+            "card_hours": 8.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 6.0,
+            "card_hours": 7.0
+          }
         },
         "IT": {
           "sessions": [
@@ -2584,8 +2981,14 @@
             }
           ],
           "pupil_hours": 1.5,
-          "teacher_hours": 3.0,
-          "card_hours": 3.0
+          "if_split_2_groups": {
+            "teacher_hours": 3.0,
+            "card_hours": 3.0
+          },
+          "if_whole_class": {
+            "teacher_hours": 1.5,
+            "card_hours": 1.5
+          }
         },
         "SPORT": {
           "sessions": [
@@ -2595,7 +2998,8 @@
           ],
           "pupil_hours": 2.0,
           "teacher_hours": 2.0,
-          "card_hours": 2.0
+          "card_hours": 2.0,
+          "_no_groups": true
         },
         "_optional": {
           "MATH": {
@@ -2606,7 +3010,8 @@
             ],
             "pupil_hours": 2.0,
             "teacher_hours": 2.0,
-            "card_hours": 2.0
+            "card_hours": 2.0,
+            "_no_groups": true
           },
           "SVT": {
             "sessions": [
@@ -2616,7 +3021,8 @@
             ],
             "pupil_hours": 2.0,
             "teacher_hours": 2.0,
-            "card_hours": 2.0
+            "card_hours": 2.0,
+            "_no_groups": true
           },
           "LANG3": {
             "sessions": [
@@ -2629,7 +3035,8 @@
             ],
             "pupil_hours": 3.0,
             "teacher_hours": 3.0,
-            "card_hours": 3.0
+            "card_hours": 3.0,
+            "_no_groups": true
           },
           "MUS": {
             "sessions": [
@@ -2639,7 +3046,8 @@
             ],
             "pupil_hours": 2.0,
             "teacher_hours": 2.0,
-            "card_hours": 2.0
+            "card_hours": 2.0,
+            "_no_groups": true
           },
           "TASH": {
             "sessions": [
@@ -2649,7 +3057,8 @@
             ],
             "pupil_hours": 2.0,
             "teacher_hours": 2.0,
-            "card_hours": 2.0
+            "card_hours": 2.0,
+            "_no_groups": true
           }
         },
         "ARAB": {
@@ -2664,11 +3073,12 @@
               "whole": 1
             }
           ],
-          "pupil_hours": 5,
-          "teacher_hours": 5,
+          "pupil_hours": 5.0,
           "_source": "last year's timetable, NOT the circular",
           "name_ar": "عربية",
-          "card_hours": 5.0
+          "teacher_hours": 5.0,
+          "card_hours": 5.0,
+          "_no_groups": true
         },
         "FREN": {
           "sessions": [
@@ -2682,11 +3092,12 @@
               "whole": 1
             }
           ],
-          "pupil_hours": 5,
-          "teacher_hours": 5,
+          "pupil_hours": 5.0,
           "_source": "last year's timetable, NOT the circular",
           "name_ar": "فرنسية",
-          "card_hours": 5.0
+          "teacher_hours": 5.0,
+          "card_hours": 5.0,
+          "_no_groups": true
         },
         "ENGL": {
           "sessions": [
@@ -2700,11 +3111,12 @@
               "whole": 1
             }
           ],
-          "pupil_hours": 5,
-          "teacher_hours": 5,
+          "pupil_hours": 5.0,
           "_source": "last year's timetable, NOT the circular",
           "name_ar": "انجليزية",
-          "card_hours": 5.0
+          "teacher_hours": 5.0,
+          "card_hours": 5.0,
+          "_no_groups": true
         }
       }
     }
@@ -2729,10 +3141,6 @@
     ],
     "_streams_source": "Read from last year's real aSc export: 41 classes."
   },
-  "_groups": {
-    "count": 2,
-    "note": "All figures assume a class splits into TWO groups. If any subject here uses three, its numbers change. Open question Q23."
-  },
   "_three_measures": {
     "card_hours": "Hours of CARDS across the two-week cycle. This is what aSc shows and what last year's export counts per class. Use this when filling the Curriculum sheet.",
     "pupil_hours": "What one pupil actually sits through in an average week.",
@@ -2743,5 +3151,11 @@
     "method": "Derived card_hours compared against last year's real aSc export for the two Maths classes (3رياضبات1 and 4رياضيات1).",
     "result": "Arabic, French, English, History-Geography, Maths (7h), Philosophy, Islamic Thought, Sport and Computer Science all match EXACTLY. Physics matches at 7 card-hours (1+3+2+1). Natural Sciences matches at 5 card-hours (1+4, the weekly alternation). Only 4th-year Computer Science differs, by one hour.",
     "conclusion": "The transcription of the circular agrees with what the school actually ran. The two apparent mismatches were unit confusion - a weekly average compared against a two-week card count - not transcription errors."
+  },
+  "_groups": {
+    "_finding_2026_08_24": "Whether a class SPLITS is a property of the class, not the subject. Proved from last year's real file for 4رياضيات1: its aSc groups are 'Entire class', then المجموعة 1 / المجموعة 2 under divisiontag 1 (the lab split), then اسبانيّة / ألمانيّة / ايطاليّة / ت. تشكيليّة under divisiontag 2 (the OPTION groups - rule H14, in the data).",
+    "_what_actually_split": "Natural Sciences ran as 1 whole-class card + 2 group cards. Physics the same. But Computer Science ran WHOLE CLASS, unsplit - which is what Majd meant by 'we were few to the point that we were treated as one group'.",
+    "_ministry_rule": "لا داعي إلى تقسيم التلاميذ إلى فوجين إذا لم يتجاوز عدد التلاميذ في القسم 24 - no need to split a class of 24 pupils or fewer. Recorded as H16.",
+    "_how_to_use": "Every entry with a group session now gives BOTH readings: if_whole_class and if_split_2_groups. The Curriculum sheet carries a 'groups' column per class+subject saying which applies. pupil_hours is the same either way - a pupil only ever attends their own group."
   }
 }

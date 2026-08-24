@@ -53,11 +53,15 @@ SHEETS = {
             "room_type": "normal,lab_phys,lab_chem,lab_sci,it,gym,tech"},
         width={"name": 30}),
     "Curriculum": dict(
-        cols=["class_id", "subject_id", "hours", "teacher_id", "blocks", "room_type"],
+        cols=["class_id", "subject_id", "hours", "teacher_id", "blocks",
+              "groups", "room_type"],
         hint=["from Classes", "from Subjects", "periods per week",
               "from Teachers (blank = solver picks)",
-              "e.g. 2+2+1 or 1+1+1", "blank = subject default"],
-        dv={"room_type": "normal,lab_phys,lab_chem,lab_sci,it,gym,tech"},
+              "e.g. 2+2+1 or 1+1+1",
+              "1 = whole class, 2 = split. Ministry: do not split at 24 pupils or fewer",
+              "blank = subject default"],
+        dv={"room_type": "normal,lab_phys,lab_chem,lab_sci,it,gym,tech",
+            "groups": "1,2,3"},
         width={"blocks": 16}),
     "Unavailable": dict(
         cols=["teacher_id", "day", "period", "hard", "reason"],
