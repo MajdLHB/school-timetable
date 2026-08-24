@@ -1,46 +1,202 @@
 {
   "_source": "دليل توزيع حصص التدريس في جداول الأوقات - September 2018, annex to circular 51/2018. Read page by page from the scanned PDF in rules/.",
   "_read_status": "Guide pages 10/2 to 10/10 all read. Page 10/5 (3rd+4th Letters) had its TOP ROWS CUT OFF in the scan - Arabic, French and English are missing for that stream and must be supplied separately.",
-
   "_notation": {
     "_comment": "A session pattern is a LIST of sessions. Order does not matter - what matters is how many sessions there are and how long each is. This sidesteps the right-to-left ambiguity of the printed tables entirely.",
     "whole": "n hours, whole class together",
-    "group": "n hours, class split into groups. Each group attends n hours, so the TEACHER works n x (number of groups). This is why pupil hours and teacher hours differ.",
+    "group": "n = the TOTAL hours across all groups. Each group attends n/2 (with two groups), so the PUPIL sees n/2 and the TEACHER works n. The guide states this explicitly: 4 ساعات بنظام الأفواج (أي ساعتان لكل فوج).",
     "fortnight_whole": "n hours, whole class, every SECOND week (Week A / Week B)",
     "fortnight_group": "every second week, in groups. circled(2) = 1h per group ON THE SAME DAY. circled(4) = 2h per group.",
     "alt_whole_1_2": "alternates weekly: 1 hour one week, 2 hours the next, whole class",
     "alt_whole1_group4": "alternates weekly: week A = 1h whole class, week B = 4h in groups (2h per group). The two MUST sit in non-simultaneous slots across weeks A and B.",
     "pilot_only": "weekly group session that applies ONLY to pilot institutes (المعاهد النموذجية). See open question Q1.",
-    "alt_mech_elec": "two group sessions alternating between mechanical engineering (الهندسة الآلية) and electrical engineering (الهندسة الكهربائية)"
+    "alt_mech_elec": "two group sessions alternating between mechanical engineering (الهندسة الآلية) and electrical engineering (الهندسة الكهربائية)",
+    "_correction_2026_08_24": "This was recorded backwards at first - as if (n) meant n hours FOR EACH group. Majd challenged it. The guide's own parenthetical settles it: (4) = 4 total = 2 per group. The only evidence for the other reading was the sport-stream footnote, and the school has no sport stream, so that table is gone. All hour figures below are now DERIVED from the session lists rather than typed by hand."
   },
-
-  "_groups_assumption": {
-    "value": 2,
-    "warning": "Teacher hours below assume a class splits into TWO groups. The sport-stream table confirms it: Biology = 1h whole + 2h group -> pupil 3, teacher 5 (= 1 + 2x2). If this school ever uses three groups, every teacher_hours figure changes. See open question Q5.",
-    "conflict": "Majd said a '3 hour' session at this school is really 1.5h per group because the lab is small. The ministry notation means the OPPOSITE: (3) = 3 hours FOR EACH group. Unresolved - see Q22."
-  },
-
   "streams": {
     "Y1_COMMON": {
       "name_ar": "السنة الأولى من التعليم الثانوي - جذع مشترك",
       "name_en": "1st year secondary - common core",
       "source_page": "10/2",
       "subjects": {
-        "ARAB":  {"sessions": [{"whole": 2}, {"whole": 1}, {"whole": 1}, {"whole": 1}], "alt_pattern": [{"whole": 2}, {"whole": 2}, {"whole": 1}], "pupil_hours": 5, "teacher_hours": 5},
-        "FREN":  {"sessions": [{"whole": 2}, {"whole": 1}, {"whole": 1}], "pupil_hours": 4, "teacher_hours": 4},
-        "ENGL":  {"sessions": [{"whole": 1}, {"whole": 1}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "HIST":  {"sessions": [{"whole": 1}, {"whole": 1}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "PISL":  {"sessions": [{"whole": 1}, {"fortnight_whole": 1}], "pupil_hours": 1.5, "teacher_hours": 1.5},
-        "CIV":   {"sessions": [{"whole": 1}, {"fortnight_whole": 1}], "pupil_hours": 1.5, "teacher_hours": 1.5},
-        "MATH":  {"sessions": [{"whole": 2}, {"whole": 1}, {"whole": 1}], "pupil_hours": 4, "teacher_hours": 4},
-        "PHYS":  {"sessions": [{"whole": 1}, {"whole": 1}, {"group": 2}], "pupil_hours": 4, "teacher_hours": 6},
-        "IT":    {"sessions": [{"group": 2}], "pupil_hours": 2, "teacher_hours": 4},
-        "SVT":   {"sessions": [{"alt_whole1_group4": true}], "pupil_hours": 2.5, "teacher_hours": 4.5},
-        "TECH":  {"sessions": [{"group": 4}], "pupil_hours": 4, "teacher_hours": 8},
-        "SPORT": {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2}
+        "ARAB": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "alt_pattern": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 5.0,
+          "teacher_hours": 5.0,
+          "card_hours": 5.0
+        },
+        "FREN": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 4.0,
+          "teacher_hours": 4.0,
+          "card_hours": 4.0
+        },
+        "ENGL": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "HIST": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "PISL": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "fortnight_whole": 1
+            }
+          ],
+          "pupil_hours": 1.5,
+          "teacher_hours": 1.5,
+          "card_hours": 2.0
+        },
+        "CIV": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "fortnight_whole": 1
+            }
+          ],
+          "pupil_hours": 1.5,
+          "teacher_hours": 1.5,
+          "card_hours": 2.0
+        },
+        "MATH": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 4.0,
+          "teacher_hours": 4.0,
+          "card_hours": 4.0
+        },
+        "PHYS": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            },
+            {
+              "group": 2
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 4.0,
+          "card_hours": 4.0
+        },
+        "IT": {
+          "sessions": [
+            {
+              "group": 2
+            }
+          ],
+          "pupil_hours": 1.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        },
+        "SVT": {
+          "sessions": [
+            {
+              "alt_whole1_group4": true
+            }
+          ],
+          "pupil_hours": 1.5,
+          "teacher_hours": 2.5,
+          "card_hours": 5.0
+        },
+        "TECH": {
+          "sessions": [
+            {
+              "group": 4
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 4.0,
+          "card_hours": 4.0
+        },
+        "SPORT": {
+          "sessions": [
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        }
       }
     },
-
     "Y2": {
       "name_ar": "السنة الثانية من التعليم الثانوي",
       "name_en": "2nd year secondary",
@@ -49,294 +205,2543 @@
         "LETTERS": {
           "name_ar": "آداب",
           "subjects": {
-            "ARAB": {"sessions": [{"whole": 2}, {"whole": 2}, {"whole": 1}], "pupil_hours": 5, "teacher_hours": 5},
-            "FREN": {"sessions": [{"whole": 2}, {"whole": 1}, {"whole": 1}, {"whole": 1}], "pupil_hours": 5, "teacher_hours": 5},
-            "ENGL": {"sessions": [{"whole": 1}, {"whole": 1}, {"whole": 1}, {"whole": 1}], "pupil_hours": 4, "teacher_hours": 4},
-            "HIST": {"sessions": [{"whole": 1}, {"whole": 1}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-            "PISL": {"sessions": [{"whole": 1}, {"fortnight_whole": 1}], "pupil_hours": 1.5, "teacher_hours": 1.5},
-            "CIV":  {"sessions": [{"whole": 1}, {"fortnight_whole": 1}], "pupil_hours": 1.5, "teacher_hours": 1.5},
-            "MATH": {"sessions": [{"whole": 1}, {"whole": 1}], "pupil_hours": 2, "teacher_hours": 2},
-            "SVT":  {"sessions": [{"alt_whole1_group4": true}], "pupil_hours": 2.5, "teacher_hours": 4.5},
-            "IT":   {"sessions": [{"pilot_only": 4}], "pupil_hours": 4, "teacher_hours": 8, "note": "boxed (4) - PILOT INSTITUTES ONLY"},
-            "SPORT": {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2}
+            "ARAB": {
+              "sessions": [
+                {
+                  "whole": 2
+                },
+                {
+                  "whole": 2
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 5.0,
+              "teacher_hours": 5.0,
+              "card_hours": 5.0
+            },
+            "FREN": {
+              "sessions": [
+                {
+                  "whole": 2
+                },
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 5.0,
+              "teacher_hours": 5.0,
+              "card_hours": 5.0
+            },
+            "ENGL": {
+              "sessions": [
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 4.0,
+              "teacher_hours": 4.0,
+              "card_hours": 4.0
+            },
+            "HIST": {
+              "sessions": [
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 3.0,
+              "teacher_hours": 3.0,
+              "card_hours": 3.0
+            },
+            "PISL": {
+              "sessions": [
+                {
+                  "whole": 1
+                },
+                {
+                  "fortnight_whole": 1
+                }
+              ],
+              "pupil_hours": 1.5,
+              "teacher_hours": 1.5,
+              "card_hours": 2.0
+            },
+            "CIV": {
+              "sessions": [
+                {
+                  "whole": 1
+                },
+                {
+                  "fortnight_whole": 1
+                }
+              ],
+              "pupil_hours": 1.5,
+              "teacher_hours": 1.5,
+              "card_hours": 2.0
+            },
+            "MATH": {
+              "sessions": [
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 2.0,
+              "teacher_hours": 2.0,
+              "card_hours": 2.0
+            },
+            "SVT": {
+              "sessions": [
+                {
+                  "alt_whole1_group4": true
+                }
+              ],
+              "pupil_hours": 1.5,
+              "teacher_hours": 2.5,
+              "card_hours": 5.0
+            },
+            "SPORT": {
+              "sessions": [
+                {
+                  "whole": 2
+                }
+              ],
+              "pupil_hours": 2.0,
+              "teacher_hours": 2.0,
+              "card_hours": 2.0
+            }
           }
         },
         "SCIENCES": {
           "name_ar": "علوم",
           "subjects": {
-            "ARAB": {"sessions": [{"whole": 2}, {"whole": 1}, {"whole": 1}], "pupil_hours": 4, "teacher_hours": 4},
-            "FREN": {"sessions": [{"whole": 2}, {"whole": 1}, {"whole": 1}], "pupil_hours": 4, "teacher_hours": 4},
-            "ENGL": {"sessions": [{"whole": 1}, {"whole": 1}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-            "HIST": {"sessions": [{"whole": 1}, {"whole": 1}], "pupil_hours": 2, "teacher_hours": 2},
-            "PISL": {"sessions": [{"whole": 1}, {"fortnight_whole": 1}], "pupil_hours": 1.5, "teacher_hours": 1.5},
-            "CIV":  {"sessions": [{"whole": 1}, {"fortnight_whole": 1}], "pupil_hours": 1.5, "teacher_hours": 1.5},
-            "MATH": {"sessions": [{"whole": 2}, {"whole": 1}, {"whole": 1}, {"whole": 1}], "alt_pattern": [{"whole": 2}, {"whole": 2}, {"whole": 1}], "pupil_hours": 5, "teacher_hours": 5},
-            "PHYS": {"sessions": [{"group": 3}, {"alt_whole_1_2": true}, {"whole": 1}], "pupil_hours": 5.5, "teacher_hours": 8.5},
-            "SVT":  {"sessions": [{"fortnight_group": 2}, {"group": 4}, {"whole": 1}], "pupil_hours": 6, "teacher_hours": 11},
-            "TECH": {"sessions": [{"group": 4}], "pupil_hours": 4, "teacher_hours": 8},
-            "IT":   {"sessions": [{"pilot_only": 4}], "pupil_hours": 4, "teacher_hours": 8, "note": "boxed (4) - PILOT INSTITUTES ONLY"},
-            "SPORT": {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2}
+            "ARAB": {
+              "sessions": [
+                {
+                  "whole": 2
+                },
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 4.0,
+              "teacher_hours": 4.0,
+              "card_hours": 4.0
+            },
+            "FREN": {
+              "sessions": [
+                {
+                  "whole": 2
+                },
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 4.0,
+              "teacher_hours": 4.0,
+              "card_hours": 4.0
+            },
+            "ENGL": {
+              "sessions": [
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 3.0,
+              "teacher_hours": 3.0,
+              "card_hours": 3.0
+            },
+            "HIST": {
+              "sessions": [
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 2.0,
+              "teacher_hours": 2.0,
+              "card_hours": 2.0
+            },
+            "PISL": {
+              "sessions": [
+                {
+                  "whole": 1
+                },
+                {
+                  "fortnight_whole": 1
+                }
+              ],
+              "pupil_hours": 1.5,
+              "teacher_hours": 1.5,
+              "card_hours": 2.0
+            },
+            "CIV": {
+              "sessions": [
+                {
+                  "whole": 1
+                },
+                {
+                  "fortnight_whole": 1
+                }
+              ],
+              "pupil_hours": 1.5,
+              "teacher_hours": 1.5,
+              "card_hours": 2.0
+            },
+            "MATH": {
+              "sessions": [
+                {
+                  "whole": 2
+                },
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "alt_pattern": [
+                {
+                  "whole": 2
+                },
+                {
+                  "whole": 2
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 5.0,
+              "teacher_hours": 5.0,
+              "card_hours": 5.0
+            },
+            "PHYS": {
+              "sessions": [
+                {
+                  "group": 3
+                },
+                {
+                  "alt_whole_1_2": true
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 4.0,
+              "teacher_hours": 5.5,
+              "card_hours": 7.0
+            },
+            "SVT": {
+              "sessions": [
+                {
+                  "fortnight_group": 2
+                },
+                {
+                  "group": 4
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 3.5,
+              "teacher_hours": 6.0,
+              "card_hours": 7.0
+            },
+            "TECH": {
+              "sessions": [
+                {
+                  "group": 4
+                }
+              ],
+              "pupil_hours": 2.0,
+              "teacher_hours": 4.0,
+              "card_hours": 4.0
+            },
+            "SPORT": {
+              "sessions": [
+                {
+                  "whole": 2
+                }
+              ],
+              "pupil_hours": 2.0,
+              "teacher_hours": 2.0,
+              "card_hours": 2.0
+            }
           }
         },
         "IT_TECH": {
           "name_ar": "تكنولوجيا الإعلامية",
           "subjects": {
-            "ARAB": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-            "FREN": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-            "ENGL": {"sessions": [{"whole": 1}, {"whole": 1}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-            "HIST": {"sessions": [{"whole": 1}, {"whole": 1}], "pupil_hours": 2, "teacher_hours": 2},
-            "PISL": {"sessions": [{"whole": 1}, {"fortnight_whole": 1}], "pupil_hours": 1.5, "teacher_hours": 1.5},
-            "CIV":  {"sessions": [{"whole": 1}, {"fortnight_whole": 1}], "pupil_hours": 1.5, "teacher_hours": 1.5},
-            "MATH": {"sessions": [{"whole": 2}, {"whole": 1}, {"whole": 1}, {"whole": 1}], "alt_pattern": [{"whole": 2}, {"whole": 2}, {"whole": 1}], "pupil_hours": 5, "teacher_hours": 5},
-            "PHYS": {"sessions": [{"group": 3}, {"alt_whole_1_2": true}, {"whole": 1}], "pupil_hours": 5.5, "teacher_hours": 8.5},
-            "TECH": {"sessions": [{"group": 4}], "pupil_hours": 4, "teacher_hours": 8},
-            "IT":   {"sessions": [{"fortnight_group": 4}, {"group": 4}, {"group": 4}], "pupil_hours": 10, "teacher_hours": 20},
-            "SPORT": {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2}
+            "ARAB": {
+              "sessions": [
+                {
+                  "whole": 2
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 3.0,
+              "teacher_hours": 3.0,
+              "card_hours": 3.0
+            },
+            "FREN": {
+              "sessions": [
+                {
+                  "whole": 2
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 3.0,
+              "teacher_hours": 3.0,
+              "card_hours": 3.0
+            },
+            "ENGL": {
+              "sessions": [
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 3.0,
+              "teacher_hours": 3.0,
+              "card_hours": 3.0
+            },
+            "HIST": {
+              "sessions": [
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 2.0,
+              "teacher_hours": 2.0,
+              "card_hours": 2.0
+            },
+            "PISL": {
+              "sessions": [
+                {
+                  "whole": 1
+                },
+                {
+                  "fortnight_whole": 1
+                }
+              ],
+              "pupil_hours": 1.5,
+              "teacher_hours": 1.5,
+              "card_hours": 2.0
+            },
+            "CIV": {
+              "sessions": [
+                {
+                  "whole": 1
+                },
+                {
+                  "fortnight_whole": 1
+                }
+              ],
+              "pupil_hours": 1.5,
+              "teacher_hours": 1.5,
+              "card_hours": 2.0
+            },
+            "MATH": {
+              "sessions": [
+                {
+                  "whole": 2
+                },
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "alt_pattern": [
+                {
+                  "whole": 2
+                },
+                {
+                  "whole": 2
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 5.0,
+              "teacher_hours": 5.0,
+              "card_hours": 5.0
+            },
+            "PHYS": {
+              "sessions": [
+                {
+                  "group": 3
+                },
+                {
+                  "alt_whole_1_2": true
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 4.0,
+              "teacher_hours": 5.5,
+              "card_hours": 7.0
+            },
+            "TECH": {
+              "sessions": [
+                {
+                  "group": 4
+                }
+              ],
+              "pupil_hours": 2.0,
+              "teacher_hours": 4.0,
+              "card_hours": 4.0
+            },
+            "IT": {
+              "sessions": [
+                {
+                  "fortnight_group": 4
+                },
+                {
+                  "group": 4
+                },
+                {
+                  "group": 4
+                }
+              ],
+              "pupil_hours": 5.0,
+              "teacher_hours": 10.0,
+              "card_hours": 12.0
+            },
+            "SPORT": {
+              "sessions": [
+                {
+                  "whole": 2
+                }
+              ],
+              "pupil_hours": 2.0,
+              "teacher_hours": 2.0,
+              "card_hours": 2.0
+            }
           }
         },
         "ECONOMY": {
           "name_ar": "اقتصاد",
           "subjects": {
-            "ARAB": {"sessions": [{"whole": 2}, {"whole": 1}, {"whole": 1}], "pupil_hours": 4, "teacher_hours": 4},
-            "FREN": {"sessions": [{"whole": 2}, {"whole": 1}, {"whole": 1}], "pupil_hours": 4, "teacher_hours": 4},
-            "ENGL": {"sessions": [{"whole": 1}, {"whole": 1}, {"whole": 1}, {"whole": 1}], "pupil_hours": 4, "teacher_hours": 4},
-            "HIST": {"sessions": [{"whole": 1}, {"whole": 1}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-            "PISL": {"sessions": [{"whole": 1}, {"fortnight_whole": 1}], "pupil_hours": 1.5, "teacher_hours": 1.5},
-            "CIV":  {"sessions": [{"whole": 1}, {"fortnight_whole": 1}], "pupil_hours": 1.5, "teacher_hours": 1.5},
-            "ECO":  {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-            "GEST": {"sessions": [{"fortnight_whole": 2}, {"whole": 2}], "pupil_hours": 3, "teacher_hours": 3},
-            "MATH": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-            "IT":   {"sessions": [{"group": 4}], "pupil_hours": 4, "teacher_hours": 8},
-            "SPORT": {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2}
+            "ARAB": {
+              "sessions": [
+                {
+                  "whole": 2
+                },
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 4.0,
+              "teacher_hours": 4.0,
+              "card_hours": 4.0
+            },
+            "FREN": {
+              "sessions": [
+                {
+                  "whole": 2
+                },
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 4.0,
+              "teacher_hours": 4.0,
+              "card_hours": 4.0
+            },
+            "ENGL": {
+              "sessions": [
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 4.0,
+              "teacher_hours": 4.0,
+              "card_hours": 4.0
+            },
+            "HIST": {
+              "sessions": [
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 3.0,
+              "teacher_hours": 3.0,
+              "card_hours": 3.0
+            },
+            "PISL": {
+              "sessions": [
+                {
+                  "whole": 1
+                },
+                {
+                  "fortnight_whole": 1
+                }
+              ],
+              "pupil_hours": 1.5,
+              "teacher_hours": 1.5,
+              "card_hours": 2.0
+            },
+            "CIV": {
+              "sessions": [
+                {
+                  "whole": 1
+                },
+                {
+                  "fortnight_whole": 1
+                }
+              ],
+              "pupil_hours": 1.5,
+              "teacher_hours": 1.5,
+              "card_hours": 2.0
+            },
+            "ECO": {
+              "sessions": [
+                {
+                  "whole": 2
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 3.0,
+              "teacher_hours": 3.0,
+              "card_hours": 3.0
+            },
+            "GEST": {
+              "sessions": [
+                {
+                  "fortnight_whole": 2
+                },
+                {
+                  "whole": 2
+                }
+              ],
+              "pupil_hours": 3.0,
+              "teacher_hours": 3.0,
+              "card_hours": 4.0
+            },
+            "MATH": {
+              "sessions": [
+                {
+                  "whole": 2
+                },
+                {
+                  "whole": 1
+                }
+              ],
+              "pupil_hours": 3.0,
+              "teacher_hours": 3.0,
+              "card_hours": 3.0
+            },
+            "IT": {
+              "sessions": [
+                {
+                  "group": 4
+                }
+              ],
+              "pupil_hours": 2.0,
+              "teacher_hours": 4.0,
+              "card_hours": 4.0
+            },
+            "SPORT": {
+              "sessions": [
+                {
+                  "whole": 2
+                }
+              ],
+              "pupil_hours": 2.0,
+              "teacher_hours": 2.0,
+              "card_hours": 2.0
+            }
           }
         }
       }
     },
-
     "Y3_Y4_MATH": {
       "name_ar": "السنتان الثالثة والرابعة من شعبة الرياضيات",
       "name_en": "3rd and 4th year - Mathematics stream",
       "source_page": "10/6",
       "Y3": {
-        "ARAB": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "FREN": {"sessions": [{"whole": 2}, {"whole": 1}, {"whole": 1}], "pupil_hours": 4, "teacher_hours": 4},
-        "ENGL": {"sessions": [{"whole": 1}, {"whole": 1}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "HIST": {"sessions": [{"whole": 1}, {"whole": 1}], "pupil_hours": 2, "teacher_hours": 2},
-        "PISL": {"sessions": [{"whole": 1}], "pupil_hours": 1, "teacher_hours": 1},
-        "PHIL": {"sessions": [{"whole": 1}], "pupil_hours": 1, "teacher_hours": 1},
-        "MATH": {"sessions": [{"whole": 2}, {"whole": 2}, {"whole": 2}, {"whole": 1}], "pupil_hours": 7, "teacher_hours": 7},
-        "PHYS": {"sessions": [{"fortnight_whole": 1}, {"group": 3}, {"whole": 2}, {"whole": 1}], "alt_pattern": [{"group": 3}, {"whole": 2}, {"alt_whole_1_2": true}], "pupil_hours": 6.5, "teacher_hours": 9.5},
-        "SVT":  {"sessions": [{"alt_whole1_group4": true}], "pupil_hours": 2.5, "teacher_hours": 4.5},
-        "IT":   {"sessions": [{"group": 3}], "pupil_hours": 3, "teacher_hours": 6},
-        "SPORT": {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2},
+        "ARAB": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "FREN": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 4.0,
+          "teacher_hours": 4.0,
+          "card_hours": 4.0
+        },
+        "ENGL": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "HIST": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        },
+        "PISL": {
+          "sessions": [
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 1.0,
+          "teacher_hours": 1.0,
+          "card_hours": 1.0
+        },
+        "PHIL": {
+          "sessions": [
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 1.0,
+          "teacher_hours": 1.0,
+          "card_hours": 1.0
+        },
+        "MATH": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 7.0,
+          "teacher_hours": 7.0,
+          "card_hours": 7.0
+        },
+        "PHYS": {
+          "sessions": [
+            {
+              "fortnight_whole": 1
+            },
+            {
+              "group": 3
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "alt_pattern": [
+            {
+              "group": 3
+            },
+            {
+              "whole": 2
+            },
+            {
+              "alt_whole_1_2": true
+            }
+          ],
+          "pupil_hours": 5.0,
+          "teacher_hours": 6.5,
+          "card_hours": 7.0
+        },
+        "SVT": {
+          "sessions": [
+            {
+              "alt_whole1_group4": true
+            }
+          ],
+          "pupil_hours": 1.5,
+          "teacher_hours": 2.5,
+          "card_hours": 5.0
+        },
+        "IT": {
+          "sessions": [
+            {
+              "group": 3
+            }
+          ],
+          "pupil_hours": 1.5,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "SPORT": {
+          "sessions": [
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        },
         "_optional": {
-          "LANG3": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-          "MUS":   {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2},
-          "TASH":  {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2}
+          "LANG3": {
+            "sessions": [
+              {
+                "whole": 2
+              },
+              {
+                "whole": 1
+              }
+            ],
+            "pupil_hours": 3.0,
+            "teacher_hours": 3.0,
+            "card_hours": 3.0
+          },
+          "MUS": {
+            "sessions": [
+              {
+                "whole": 2
+              }
+            ],
+            "pupil_hours": 2.0,
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          },
+          "TASH": {
+            "sessions": [
+              {
+                "whole": 2
+              }
+            ],
+            "pupil_hours": 2.0,
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          }
         }
       },
       "Y4": {
-        "ARAB": {"sessions": [{"whole": 1}, {"whole": 1}], "pupil_hours": 2, "teacher_hours": 2},
-        "FREN": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "ENGL": {"sessions": [{"whole": 1}, {"whole": 1}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "PHIL": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "MATH": {"sessions": [{"whole": 2}, {"whole": 2}, {"whole": 2}, {"whole": 1}], "pupil_hours": 7, "teacher_hours": 7},
-        "PHYS": {"sessions": [{"fortnight_whole": 1}, {"group": 3}, {"whole": 2}, {"whole": 1}], "alt_pattern": [{"group": 3}, {"whole": 2}, {"alt_whole_1_2": true}], "pupil_hours": 6.5, "teacher_hours": 9.5},
-        "SVT":  {"sessions": [{"alt_whole1_group4": true}], "pupil_hours": 2.5, "teacher_hours": 4.5},
-        "IT":   {"sessions": [{"group": 4}], "pupil_hours": 4, "teacher_hours": 8},
-        "SPORT": {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2},
+        "ARAB": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        },
+        "FREN": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "ENGL": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "PHIL": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "MATH": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 7.0,
+          "teacher_hours": 7.0,
+          "card_hours": 7.0
+        },
+        "PHYS": {
+          "sessions": [
+            {
+              "fortnight_whole": 1
+            },
+            {
+              "group": 3
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "alt_pattern": [
+            {
+              "group": 3
+            },
+            {
+              "whole": 2
+            },
+            {
+              "alt_whole_1_2": true
+            }
+          ],
+          "pupil_hours": 5.0,
+          "teacher_hours": 6.5,
+          "card_hours": 7.0
+        },
+        "SVT": {
+          "sessions": [
+            {
+              "alt_whole1_group4": true
+            }
+          ],
+          "pupil_hours": 1.5,
+          "teacher_hours": 2.5,
+          "card_hours": 5.0
+        },
+        "IT": {
+          "sessions": [
+            {
+              "group": 4
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 4.0,
+          "card_hours": 4.0
+        },
+        "SPORT": {
+          "sessions": [
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        },
         "_optional": {
-          "LANG3": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-          "MUS":   {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2},
-          "TASH":  {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2}
+          "LANG3": {
+            "sessions": [
+              {
+                "whole": 2
+              },
+              {
+                "whole": 1
+              }
+            ],
+            "pupil_hours": 3.0,
+            "teacher_hours": 3.0,
+            "card_hours": 3.0
+          },
+          "MUS": {
+            "sessions": [
+              {
+                "whole": 2
+              }
+            ],
+            "pupil_hours": 2.0,
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          },
+          "TASH": {
+            "sessions": [
+              {
+                "whole": 2
+              }
+            ],
+            "pupil_hours": 2.0,
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          }
         }
       }
     },
-
     "Y3_Y4_EXPSCI": {
       "name_ar": "السنتان الثالثة والرابعة من شعبة العلوم التجريبية",
       "name_en": "3rd and 4th year - Experimental Sciences",
       "source_page": "10/7",
       "_same_as_MATH_except": "Maths is 2+2+1 (not 2+2+2+1); SVT is (4)+2 in Y3 and (4)+1+2 in Y4 instead of the alternating triangle.",
       "Y3": {
-        "ARAB": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "FREN": {"sessions": [{"whole": 2}, {"whole": 1}, {"whole": 1}], "pupil_hours": 4, "teacher_hours": 4},
-        "ENGL": {"sessions": [{"whole": 1}, {"whole": 1}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "HIST": {"sessions": [{"whole": 1}, {"whole": 1}], "pupil_hours": 2, "teacher_hours": 2},
-        "PISL": {"sessions": [{"whole": 1}], "pupil_hours": 1, "teacher_hours": 1},
-        "PHIL": {"sessions": [{"whole": 1}], "pupil_hours": 1, "teacher_hours": 1},
-        "MATH": {"sessions": [{"whole": 2}, {"whole": 2}, {"whole": 1}], "pupil_hours": 5, "teacher_hours": 5},
-        "PHYS": {"sessions": [{"fortnight_whole": 1}, {"group": 3}, {"whole": 2}, {"whole": 1}], "pupil_hours": 6.5, "teacher_hours": 9.5},
-        "SVT":  {"sessions": [{"group": 4}, {"whole": 2}], "pupil_hours": 6, "teacher_hours": 10},
-        "IT":   {"sessions": [{"group": 3}], "pupil_hours": 3, "teacher_hours": 6},
-        "SPORT": {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2}
+        "ARAB": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "FREN": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 4.0,
+          "teacher_hours": 4.0,
+          "card_hours": 4.0
+        },
+        "ENGL": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "HIST": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        },
+        "PISL": {
+          "sessions": [
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 1.0,
+          "teacher_hours": 1.0,
+          "card_hours": 1.0
+        },
+        "PHIL": {
+          "sessions": [
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 1.0,
+          "teacher_hours": 1.0,
+          "card_hours": 1.0
+        },
+        "MATH": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 5.0,
+          "teacher_hours": 5.0,
+          "card_hours": 5.0
+        },
+        "PHYS": {
+          "sessions": [
+            {
+              "fortnight_whole": 1
+            },
+            {
+              "group": 3
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 5.0,
+          "teacher_hours": 6.5,
+          "card_hours": 7.0
+        },
+        "SVT": {
+          "sessions": [
+            {
+              "group": 4
+            },
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 4.0,
+          "teacher_hours": 6.0,
+          "card_hours": 6.0
+        },
+        "IT": {
+          "sessions": [
+            {
+              "group": 3
+            }
+          ],
+          "pupil_hours": 1.5,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "SPORT": {
+          "sessions": [
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        }
       },
       "Y4": {
-        "ARAB": {"sessions": [{"whole": 1}, {"whole": 1}], "pupil_hours": 2, "teacher_hours": 2},
-        "FREN": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "ENGL": {"sessions": [{"whole": 1}, {"whole": 1}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "PHIL": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "MATH": {"sessions": [{"whole": 2}, {"whole": 2}, {"whole": 1}], "pupil_hours": 5, "teacher_hours": 5},
-        "PHYS": {"sessions": [{"fortnight_whole": 1}, {"group": 3}, {"whole": 2}, {"whole": 1}], "pupil_hours": 6.5, "teacher_hours": 9.5},
-        "SVT":  {"sessions": [{"group": 4}, {"whole": 1}, {"whole": 2}], "pupil_hours": 7, "teacher_hours": 11},
-        "IT":   {"sessions": [{"group": 4}], "pupil_hours": 4, "teacher_hours": 8},
-        "SPORT": {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2}
+        "ARAB": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        },
+        "FREN": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "ENGL": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "PHIL": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "MATH": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 5.0,
+          "teacher_hours": 5.0,
+          "card_hours": 5.0
+        },
+        "PHYS": {
+          "sessions": [
+            {
+              "fortnight_whole": 1
+            },
+            {
+              "group": 3
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 5.0,
+          "teacher_hours": 6.5,
+          "card_hours": 7.0
+        },
+        "SVT": {
+          "sessions": [
+            {
+              "group": 4
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 5.0,
+          "teacher_hours": 7.0,
+          "card_hours": 7.0
+        },
+        "IT": {
+          "sessions": [
+            {
+              "group": 4
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 4.0,
+          "card_hours": 4.0
+        },
+        "SPORT": {
+          "sessions": [
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        }
       }
     },
-
     "Y3_Y4_TECHSCI": {
       "name_ar": "السنتان الثالثة والرابعة من شعبة العلوم التقنية",
       "name_en": "3rd and 4th year - Technical Sciences",
       "source_page": "10/8",
       "_note": "TECH here is two group sessions ALTERNATING between mechanical and electrical engineering - notation alt_mech_elec.",
       "Y3": {
-        "ARAB": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "FREN": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "ENGL": {"sessions": [{"whole": 1}, {"whole": 1}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "HIST": {"sessions": [{"whole": 1}, {"whole": 1}], "pupil_hours": 2, "teacher_hours": 2},
-        "PHIL": {"sessions": [{"whole": 1}], "pupil_hours": 1, "teacher_hours": 1},
-        "MATH": {"sessions": [{"whole": 2}, {"whole": 2}, {"whole": 1}], "pupil_hours": 5, "teacher_hours": 5},
-        "PHYS": {"sessions": [{"fortnight_whole": 1}, {"group": 3}, {"whole": 2}, {"whole": 1}], "pupil_hours": 6.5, "teacher_hours": 9.5},
-        "TECH": {"sessions": [{"alt_mech_elec": 4}], "pupil_hours": 8, "teacher_hours": 16},
-        "IT":   {"sessions": [{"group": 3}], "pupil_hours": 3, "teacher_hours": 6},
-        "SPORT": {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2}
+        "ARAB": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "FREN": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "ENGL": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "HIST": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        },
+        "PHIL": {
+          "sessions": [
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 1.0,
+          "teacher_hours": 1.0,
+          "card_hours": 1.0
+        },
+        "MATH": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 5.0,
+          "teacher_hours": 5.0,
+          "card_hours": 5.0
+        },
+        "PHYS": {
+          "sessions": [
+            {
+              "fortnight_whole": 1
+            },
+            {
+              "group": 3
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 5.0,
+          "teacher_hours": 6.5,
+          "card_hours": 7.0
+        },
+        "TECH": {
+          "sessions": [
+            {
+              "alt_mech_elec": 4
+            }
+          ],
+          "pupil_hours": 4.0,
+          "teacher_hours": 8.0,
+          "card_hours": 8.0
+        },
+        "IT": {
+          "sessions": [
+            {
+              "group": 3
+            }
+          ],
+          "pupil_hours": 1.5,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "SPORT": {
+          "sessions": [
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        }
       },
       "Y4": {
-        "ARAB": {"sessions": [{"whole": 1}, {"whole": 1}], "pupil_hours": 2, "teacher_hours": 2},
-        "FREN": {"sessions": [{"whole": 1}, {"whole": 1}], "alt_pattern": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2},
-        "ENGL": {"sessions": [{"whole": 1}, {"whole": 1}], "pupil_hours": 2, "teacher_hours": 2},
-        "PHIL": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "MATH": {"sessions": [{"whole": 2}, {"whole": 2}, {"whole": 1}], "pupil_hours": 5, "teacher_hours": 5},
-        "PHYS": {"sessions": [{"fortnight_whole": 1}, {"group": 3}, {"whole": 2}, {"whole": 1}], "pupil_hours": 6.5, "teacher_hours": 9.5},
-        "TECH": {"sessions": [{"alt_mech_elec": 4}], "pupil_hours": 8, "teacher_hours": 16},
-        "IT":   {"sessions": [{"group": 4}], "pupil_hours": 4, "teacher_hours": 8},
-        "SPORT": {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2}
+        "ARAB": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        },
+        "FREN": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "alt_pattern": [
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        },
+        "ENGL": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        },
+        "PHIL": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "MATH": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 5.0,
+          "teacher_hours": 5.0,
+          "card_hours": 5.0
+        },
+        "PHYS": {
+          "sessions": [
+            {
+              "fortnight_whole": 1
+            },
+            {
+              "group": 3
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 5.0,
+          "teacher_hours": 6.5,
+          "card_hours": 7.0
+        },
+        "TECH": {
+          "sessions": [
+            {
+              "alt_mech_elec": 4
+            }
+          ],
+          "pupil_hours": 4.0,
+          "teacher_hours": 8.0,
+          "card_hours": 8.0
+        },
+        "IT": {
+          "sessions": [
+            {
+              "group": 4
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 4.0,
+          "card_hours": 4.0
+        },
+        "SPORT": {
+          "sessions": [
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        }
       }
     },
-
     "Y3_Y4_CS": {
       "name_ar": "السنتان الثالثة والرابعة من شعبة علوم الإعلامية",
       "name_en": "3rd and 4th year - Computer Science",
       "source_page": "10/9",
       "Y3": {
-        "ARAB": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "FREN": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "ENGL": {"sessions": [{"whole": 1}, {"whole": 1}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "HIST": {"sessions": [{"whole": 1}, {"whole": 1}], "pupil_hours": 2, "teacher_hours": 2},
-        "PHIL": {"sessions": [{"whole": 1}], "pupil_hours": 1, "teacher_hours": 1},
-        "MATH": {"sessions": [{"whole": 2}, {"whole": 2}, {"whole": 1}], "pupil_hours": 5, "teacher_hours": 5},
-        "PHYS": {"sessions": [{"fortnight_whole": 1}, {"group": 3}, {"whole": 2}, {"whole": 1}], "pupil_hours": 6.5, "teacher_hours": 9.5},
-        "ALGO": {"sessions": [{"group": 4}, {"group": 4}], "pupil_hours": 8, "teacher_hours": 16, "name_ar": "الخوارزميات والبرمجة"},
-        "ICT":  {"sessions": [{"group": 4}], "pupil_hours": 4, "teacher_hours": 8, "name_ar": "تكنولوجيات المعلومات والاتصال"},
-        "NET":  {"sessions": [{"group": 4}], "pupil_hours": 4, "teacher_hours": 8, "name_ar": "الأنظمة والشبكات"},
-        "SPORT": {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2}
+        "ARAB": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "FREN": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "ENGL": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "HIST": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        },
+        "PHIL": {
+          "sessions": [
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 1.0,
+          "teacher_hours": 1.0,
+          "card_hours": 1.0
+        },
+        "MATH": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 5.0,
+          "teacher_hours": 5.0,
+          "card_hours": 5.0
+        },
+        "PHYS": {
+          "sessions": [
+            {
+              "fortnight_whole": 1
+            },
+            {
+              "group": 3
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 5.0,
+          "teacher_hours": 6.5,
+          "card_hours": 7.0
+        },
+        "ALGO": {
+          "sessions": [
+            {
+              "group": 4
+            },
+            {
+              "group": 4
+            }
+          ],
+          "pupil_hours": 4.0,
+          "teacher_hours": 8.0,
+          "name_ar": "الخوارزميات والبرمجة",
+          "card_hours": 8.0
+        },
+        "ICT": {
+          "sessions": [
+            {
+              "group": 4
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 4.0,
+          "name_ar": "تكنولوجيات المعلومات والاتصال",
+          "card_hours": 4.0
+        },
+        "NET": {
+          "sessions": [
+            {
+              "group": 4
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 4.0,
+          "name_ar": "الأنظمة والشبكات",
+          "card_hours": 4.0
+        },
+        "SPORT": {
+          "sessions": [
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        }
       },
       "Y4": {
-        "ARAB": {"sessions": [{"whole": 1}, {"whole": 1}], "pupil_hours": 2, "teacher_hours": 2},
-        "FREN": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "ENGL": {"sessions": [{"whole": 1}, {"whole": 1}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "PHIL": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "MATH": {"sessions": [{"whole": 2}, {"whole": 2}, {"whole": 1}], "pupil_hours": 5, "teacher_hours": 5},
-        "PHYS": {"sessions": [{"fortnight_whole": 1}, {"group": 3}, {"whole": 2}, {"whole": 1}], "pupil_hours": 6.5, "teacher_hours": 9.5},
-        "ALGO": {"sessions": [{"group": 4}, {"group": 4}], "pupil_hours": 8, "teacher_hours": 16, "name_ar": "الخوارزميات والبرمجة"},
-        "ICT":  {"sessions": [{"group": 4}], "pupil_hours": 4, "teacher_hours": 8, "name_ar": "تكنولوجيات المعلومات والاتصال"},
-        "DB":   {"sessions": [{"group": 4}], "pupil_hours": 4, "teacher_hours": 8, "name_ar": "قواعد البيانات"},
-        "SPORT": {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2}
+        "ARAB": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        },
+        "FREN": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "ENGL": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "PHIL": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "MATH": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 5.0,
+          "teacher_hours": 5.0,
+          "card_hours": 5.0
+        },
+        "PHYS": {
+          "sessions": [
+            {
+              "fortnight_whole": 1
+            },
+            {
+              "group": 3
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 5.0,
+          "teacher_hours": 6.5,
+          "card_hours": 7.0
+        },
+        "ALGO": {
+          "sessions": [
+            {
+              "group": 4
+            },
+            {
+              "group": 4
+            }
+          ],
+          "pupil_hours": 4.0,
+          "teacher_hours": 8.0,
+          "name_ar": "الخوارزميات والبرمجة",
+          "card_hours": 8.0
+        },
+        "ICT": {
+          "sessions": [
+            {
+              "group": 4
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 4.0,
+          "name_ar": "تكنولوجيات المعلومات والاتصال",
+          "card_hours": 4.0
+        },
+        "DB": {
+          "sessions": [
+            {
+              "group": 4
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 4.0,
+          "name_ar": "قواعد البيانات",
+          "card_hours": 4.0
+        },
+        "SPORT": {
+          "sessions": [
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        }
       }
     },
-
     "Y3_Y4_ECO": {
       "name_ar": "السنتان الثالثة والرابعة من شعبة الاقتصاد والتصرف",
       "name_en": "3rd and 4th year - Economics and Management",
       "source_page": "10/10",
       "_answers_Q16": "اقتصاد (ECO) and تصرف (GEST) are listed as SEPARATE subjects with separate hours. The mapping in tools/import_profs.py is correct.",
       "Y3": {
-        "ARAB": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "FREN": {"sessions": [{"whole": 2}, {"whole": 1}, {"whole": 1}], "pupil_hours": 4, "teacher_hours": 4},
-        "ENGL": {"sessions": [{"whole": 1}, {"whole": 1}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "HIST": {"sessions": [{"fortnight_whole": 1}, {"whole": 2}, {"whole": 1}], "pupil_hours": 3.5, "teacher_hours": 3.5},
-        "PHIL": {"sessions": [{"whole": 1}], "pupil_hours": 1, "teacher_hours": 1},
-        "ECO":  {"sessions": [{"whole": 2}, {"whole": 2}, {"whole": 1}], "pupil_hours": 5, "teacher_hours": 5},
-        "GEST": {"sessions": [{"fortnight_whole": 2}, {"whole": 2}, {"whole": 2}], "pupil_hours": 5, "teacher_hours": 5},
-        "MATH": {"sessions": [{"whole": 2}, {"whole": 1}, {"whole": 1}], "alt_pattern": [{"whole": 2}, {"whole": 2}], "pupil_hours": 4, "teacher_hours": 4},
-        "IT":   {"sessions": [{"group": 2}], "pupil_hours": 2, "teacher_hours": 4},
-        "SPORT": {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2}
+        "ARAB": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "FREN": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 4.0,
+          "teacher_hours": 4.0,
+          "card_hours": 4.0
+        },
+        "ENGL": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "HIST": {
+          "sessions": [
+            {
+              "fortnight_whole": 1
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.5,
+          "teacher_hours": 3.5,
+          "card_hours": 4.0
+        },
+        "PHIL": {
+          "sessions": [
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 1.0,
+          "teacher_hours": 1.0,
+          "card_hours": 1.0
+        },
+        "ECO": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 5.0,
+          "teacher_hours": 5.0,
+          "card_hours": 5.0
+        },
+        "GEST": {
+          "sessions": [
+            {
+              "fortnight_whole": 2
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 5.0,
+          "teacher_hours": 5.0,
+          "card_hours": 6.0
+        },
+        "MATH": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "alt_pattern": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 4.0,
+          "teacher_hours": 4.0,
+          "card_hours": 4.0
+        },
+        "IT": {
+          "sessions": [
+            {
+              "group": 2
+            }
+          ],
+          "pupil_hours": 1.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        },
+        "SPORT": {
+          "sessions": [
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        }
       },
       "Y4": {
-        "ARAB": {"sessions": [{"whole": 1}, {"whole": 1}], "pupil_hours": 2, "teacher_hours": 2},
-        "FREN": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "ENGL": {"sessions": [{"whole": 1}, {"whole": 1}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "HIST": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "PHIL": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "ECO":  {"sessions": [{"fortnight_group": 1}, {"whole": 2}, {"whole": 2}], "pupil_hours": 5, "teacher_hours": 6},
-        "GEST": {"sessions": [{"fortnight_group": 4}, {"whole": 2}, {"whole": 2}], "pupil_hours": 6, "teacher_hours": 8},
-        "MATH": {"sessions": [{"whole": 2}, {"whole": 1}, {"whole": 1}], "alt_pattern": [{"whole": 2}, {"whole": 2}], "pupil_hours": 4, "teacher_hours": 4},
-        "IT":   {"sessions": [{"group": 3}], "pupil_hours": 3, "teacher_hours": 6},
-        "SPORT": {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2}
+        "ARAB": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        },
+        "FREN": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "ENGL": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "HIST": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "PHIL": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "ECO": {
+          "sessions": [
+            {
+              "fortnight_group": 1
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 4.25,
+          "teacher_hours": 4.5,
+          "card_hours": 5.0
+        },
+        "GEST": {
+          "sessions": [
+            {
+              "fortnight_group": 4
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 5.0,
+          "teacher_hours": 6.0,
+          "card_hours": 8.0
+        },
+        "MATH": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "alt_pattern": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 4.0,
+          "teacher_hours": 4.0,
+          "card_hours": 4.0
+        },
+        "IT": {
+          "sessions": [
+            {
+              "group": 3
+            }
+          ],
+          "pupil_hours": 1.5,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "SPORT": {
+          "sessions": [
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        }
       }
     },
-
     "Y3_Y4_LETTERS": {
       "name_ar": "السنتان الثالثة والرابعة من شعبة الآداب",
       "name_en": "3rd and 4th year - Letters",
       "source_page": "10/5",
-      "_INCOMPLETE": "The TOP of this scanned page is cut off. Arabic, French and English are MISSING for this stream and must be supplied separately before any Letters class can be scheduled.",
+      "_INCOMPLETE": "Page 10/5's top rows were cut off in the scan. Arabic, French and English below are taken from LAST YEAR'S REAL TIMETABLE, not from the circular - Majd's suggestion. Marked so nobody mistakes them for ministry figures.",
       "Y3": {
-        "HIST": {"sessions": [{"whole": 2}, {"whole": 1}, {"whole": 1}], "pupil_hours": 4, "teacher_hours": 4},
-        "PISL": {"sessions": [{"whole": 1}, {"fortnight_whole": 1}], "pupil_hours": 1.5, "teacher_hours": 1.5},
-        "CIV":  {"sessions": [{"whole": 1}], "pupil_hours": 1, "teacher_hours": 1},
-        "PHIL": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-        "IT":   {"sessions": [{"group": 2}], "pupil_hours": 2, "teacher_hours": 4},
-        "SPORT": {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2},
+        "HIST": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 4.0,
+          "teacher_hours": 4.0,
+          "card_hours": 4.0
+        },
+        "PISL": {
+          "sessions": [
+            {
+              "whole": 1
+            },
+            {
+              "fortnight_whole": 1
+            }
+          ],
+          "pupil_hours": 1.5,
+          "teacher_hours": 1.5,
+          "card_hours": 2.0
+        },
+        "CIV": {
+          "sessions": [
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 1.0,
+          "teacher_hours": 1.0,
+          "card_hours": 1.0
+        },
+        "PHIL": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 3.0,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "IT": {
+          "sessions": [
+            {
+              "group": 2
+            }
+          ],
+          "pupil_hours": 1.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        },
+        "SPORT": {
+          "sessions": [
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        },
         "_optional": {
-          "MATH":  {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2},
-          "SVT":   {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2},
-          "LANG3": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-          "MUS":   {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2},
-          "TASH":  {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2}
+          "MATH": {
+            "sessions": [
+              {
+                "whole": 2
+              }
+            ],
+            "pupil_hours": 2.0,
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          },
+          "SVT": {
+            "sessions": [
+              {
+                "whole": 2
+              }
+            ],
+            "pupil_hours": 2.0,
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          },
+          "LANG3": {
+            "sessions": [
+              {
+                "whole": 2
+              },
+              {
+                "whole": 1
+              }
+            ],
+            "pupil_hours": 3.0,
+            "teacher_hours": 3.0,
+            "card_hours": 3.0
+          },
+          "MUS": {
+            "sessions": [
+              {
+                "whole": 2
+              }
+            ],
+            "pupil_hours": 2.0,
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          },
+          "TASH": {
+            "sessions": [
+              {
+                "whole": 2
+              }
+            ],
+            "pupil_hours": 2.0,
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          }
+        },
+        "ARAB": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 5,
+          "teacher_hours": 5,
+          "_source": "last year's timetable, NOT the circular",
+          "name_ar": "عربية",
+          "card_hours": 5.0
+        },
+        "FREN": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 5,
+          "teacher_hours": 5,
+          "_source": "last year's timetable, NOT the circular",
+          "name_ar": "فرنسية",
+          "card_hours": 5.0
+        },
+        "ENGL": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 5,
+          "teacher_hours": 5,
+          "_source": "last year's timetable, NOT the circular",
+          "name_ar": "انجليزية",
+          "card_hours": 5.0
         }
       },
       "Y4": {
-        "HIST": {"sessions": [{"whole": 2}, {"whole": 1}, {"whole": 1}], "pupil_hours": 4, "teacher_hours": 4},
-        "PISL": {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2},
-        "PHIL": {"sessions": [{"group": 2}, {"fortnight_whole": 2}, {"whole": 2}, {"whole": 2}], "pupil_hours": 7, "teacher_hours": 9},
-        "IT":   {"sessions": [{"group": 3}], "pupil_hours": 3, "teacher_hours": 6},
-        "SPORT": {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2},
+        "HIST": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 4.0,
+          "teacher_hours": 4.0,
+          "card_hours": 4.0
+        },
+        "PISL": {
+          "sessions": [
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        },
+        "PHIL": {
+          "sessions": [
+            {
+              "group": 2
+            },
+            {
+              "fortnight_whole": 2
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 6.0,
+          "teacher_hours": 7.0,
+          "card_hours": 8.0
+        },
+        "IT": {
+          "sessions": [
+            {
+              "group": 3
+            }
+          ],
+          "pupil_hours": 1.5,
+          "teacher_hours": 3.0,
+          "card_hours": 3.0
+        },
+        "SPORT": {
+          "sessions": [
+            {
+              "whole": 2
+            }
+          ],
+          "pupil_hours": 2.0,
+          "teacher_hours": 2.0,
+          "card_hours": 2.0
+        },
         "_optional": {
-          "MATH":  {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2},
-          "SVT":   {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2},
-          "LANG3": {"sessions": [{"whole": 2}, {"whole": 1}], "pupil_hours": 3, "teacher_hours": 3},
-          "MUS":   {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2},
-          "TASH":  {"sessions": [{"whole": 2}], "pupil_hours": 2, "teacher_hours": 2}
+          "MATH": {
+            "sessions": [
+              {
+                "whole": 2
+              }
+            ],
+            "pupil_hours": 2.0,
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          },
+          "SVT": {
+            "sessions": [
+              {
+                "whole": 2
+              }
+            ],
+            "pupil_hours": 2.0,
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          },
+          "LANG3": {
+            "sessions": [
+              {
+                "whole": 2
+              },
+              {
+                "whole": 1
+              }
+            ],
+            "pupil_hours": 3.0,
+            "teacher_hours": 3.0,
+            "card_hours": 3.0
+          },
+          "MUS": {
+            "sessions": [
+              {
+                "whole": 2
+              }
+            ],
+            "pupil_hours": 2.0,
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          },
+          "TASH": {
+            "sessions": [
+              {
+                "whole": 2
+              }
+            ],
+            "pupil_hours": 2.0,
+            "teacher_hours": 2.0,
+            "card_hours": 2.0
+          }
+        },
+        "ARAB": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 5,
+          "teacher_hours": 5,
+          "_source": "last year's timetable, NOT the circular",
+          "name_ar": "عربية",
+          "card_hours": 5.0
+        },
+        "FREN": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 5,
+          "teacher_hours": 5,
+          "_source": "last year's timetable, NOT the circular",
+          "name_ar": "فرنسية",
+          "card_hours": 5.0
+        },
+        "ENGL": {
+          "sessions": [
+            {
+              "whole": 2
+            },
+            {
+              "whole": 2
+            },
+            {
+              "whole": 1
+            }
+          ],
+          "pupil_hours": 5,
+          "teacher_hours": 5,
+          "_source": "last year's timetable, NOT the circular",
+          "name_ar": "انجليزية",
+          "card_hours": 5.0
         }
       }
-    },
-
-    "SPORT_STREAM": {
-      "name_ar": "شعبة الرياضة",
-      "name_en": "Sport stream - all four years",
-      "source_page": "10/3",
-      "_note": "This is the only table printed with THREE columns per year: pupil hours, teacher hours, and the coefficient (الضارب). It is the proof that pupil and teacher hours differ.",
-      "_footnotes": {
-        "*": "optional subject from 4th year onwards",
-        "ح": "one hour whole class plus two hours in groups -> pupil 3, teacher 5",
-        "م": "group system -> pupil 1, teacher 2"
-      },
-      "coefficients_Y4": {
-        "ARAB": 1, "FREN": 1.5, "ENGL": 1.5, "HIST": 1, "GEO": 1,
-        "PHIL": 1.5, "MATH": 1, "PHYS": 1, "BIO": 3, "IT": 1,
-        "SPORT": 2, "SPORT_SPEC": 3
-      },
-      "Y4_pupil_hours": {
-        "ARAB": 1, "FREN": 2, "ENGL": 2, "HIST": 1, "GEO": 1,
-        "PHIL": 3, "MATH": 2, "PHYS": 2, "BIO": 3, "IT": 1.5,
-        "SPORT": 4, "SPORT_SPEC": 6
-      },
-      "Y4_teacher_hours": {
-        "ARAB": 1, "FREN": 2, "ENGL": 2, "HIST": 1, "GEO": 1,
-        "PHIL": 3, "MATH": 2, "PHYS": 2, "BIO": 5, "IT": 3,
-        "SPORT": 4, "SPORT_SPEC": 6
-      }
     }
+  },
+  "_school": {
+    "pilot_institute": false,
+    "_confirmed": "Majd, 2026-08-24. Every boxed-(4) pilot-only session has been REMOVED from this file.",
+    "sport_stream": false,
+    "_sport": "The school does not run شعبة الرياضة. Its table has been removed.",
+    "streams_present": [
+      "1st year common core",
+      "2 Letters",
+      "2 Economics and Services",
+      "2 Computer Technology",
+      "2 Sciences",
+      "3+4 Letters",
+      "3+4 Economics and Management",
+      "3+4 Maths",
+      "3+4 Computer Science",
+      "3+4 Experimental Sciences",
+      "3+4 Technical Sciences"
+    ],
+    "_streams_source": "Read from last year's real aSc export: 41 classes."
+  },
+  "_groups": {
+    "count": 2,
+    "note": "All figures assume a class splits into TWO groups. If any subject here uses three, its numbers change. Open question Q23."
+  },
+  "_three_measures": {
+    "card_hours": "Hours of CARDS across the two-week cycle. This is what aSc shows and what last year's export counts per class. Use this when filling the Curriculum sheet.",
+    "pupil_hours": "What one pupil actually sits through in an average week.",
+    "teacher_hours": "What the teacher actually works in an average week. Differs from pupil_hours wherever a class splits into groups.",
+    "_why_it_matters": "These are three different numbers for the same lesson. Comparing the wrong pair looks like a contradiction when nothing is wrong."
+  },
+  "_validation_2026_08_24": {
+    "method": "Derived card_hours compared against last year's real aSc export for the two Maths classes (3رياضبات1 and 4رياضيات1).",
+    "result": "Arabic, French, English, History-Geography, Maths (7h), Philosophy, Islamic Thought, Sport and Computer Science all match EXACTLY. Physics matches at 7 card-hours (1+3+2+1). Natural Sciences matches at 5 card-hours (1+4, the weekly alternation). Only 4th-year Computer Science differs, by one hour.",
+    "conclusion": "The transcription of the circular agrees with what the school actually ran. The two apparent mismatches were unit confusion - a weekly average compared against a two-week card count - not transcription errors."
   }
 }
