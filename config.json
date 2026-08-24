@@ -56,7 +56,7 @@
   "weights": {
     "teacher_gap": 100,
     "one_hour_day": 90,
-    "class_gap": 85,
+    "class_gap": 150,
     "class_one_hour_session": 85,
     "hard_subject_evening": 70,
     "morning_evening_imbalance": 60,
@@ -78,7 +78,8 @@
     "pupil_day_over6": 120,
     "pupil_half_over4": 100,
     "not_same_day": 60,
-    "double_not_at_start": 25
+    "double_not_at_start": 25,
+    "group_pair_swap": 35
   },
   "_weeks_comment": "2 = the aSc project MUST be set to 2 weeks (A/B) before importing, or every card is dropped silently - the same mask-length trap as the day masks.",
   "weeks_per_cycle": 2

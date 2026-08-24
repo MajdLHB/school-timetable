@@ -895,6 +895,34 @@ def build(s, sessions, rescue=False):
                     m.Add(both >= sum(va) + sum(vb) - 1)
                     penalties.append((W.get("not_after", 60), both))
 
+    # ---- S20: grouped subjects PAIR UP and swap (Majd 2026-08-25: "they ---
+    # alternate between tech and svt in groups"). While group 1 sits in
+    # subject A, group 2 sits in subject B in the same period, then they
+    # swap. Soft: every period where one grouped subject runs without the
+    # other costs group_pair_swap points. Judged per week view.
+    grouped_subj = collections.defaultdict(set)
+    for (cid, sid_, g) in by_row:
+        if g:
+            grouped_subj[cid].add(sid_)
+    for cid, sids in grouped_subj.items():
+        sids = sorted(sids)
+        for a_i in range(len(sids)):
+            for b_i in range(a_i + 1, len(sids)):
+                ga = [se for se in by_cs[cid, sids[a_i]] if se.group]
+                gb = [se for se in by_cs[cid, sids[b_i]] if se.group]
+                for w in weeks_of(ga + gb):
+                    for i in range(S):
+                        va = occs([se for se in ga if in_week(se, w)], i)
+                        vb = occs([se for se in gb if in_week(se, w)], i)
+                        if not va and not vb:
+                            continue
+                        diff = m.NewIntVar(0, max(len(va), len(vb)),
+                                           "s20_%s_%s_%s_%s_%d"
+                                           % (cid, sids[a_i], sids[b_i], w, i))
+                        m.Add(diff >= sum(va) - sum(vb))
+                        m.Add(diff >= sum(vb) - sum(va))
+                        penalties.append((W.get("group_pair_swap", 35), diff))
+
     # ---- T37: subject pairs that must not share a day (soft) --------------
     # Ministry: History and Geography never on the same day. Generic: any
     # subject may carry not_same_day=<ids> in the Subjects sheet; one side
@@ -1097,8 +1125,19 @@ def assign_rooms(s, sessions, placement):
     def room_free(se, rid, sl):
         return not (taken[sl].get(rid, set()) & wset(se))
 
+    # T45 room proximity (Majd 2026-08-25: "assume data is 0, will edit
+    # later"): the Rooms sheet zone column groups nearby rooms. When picking
+    # a room, prefer the zone of the class's neighbouring periods, so pupils
+    # do not cross the school between two lessons. All-blank zones = one big
+    # zone = zero effect, exactly as asked.
+    zone_of = {rid: (r.get("zone") or "") for rid, r in s.rooms.items()}
+    czone = {}   # (class_id, day, period) -> zone of the room used
+
     def take(se, rid, sl):
         taken[sl].setdefault(rid, set()).update(wset(se))
+        z = zone_of.get(rid, "")
+        if z:
+            czone[(se.class_id,) + sl] = z
 
     def try_room(se, rid):
         us = hour_uids(se)
@@ -1109,6 +1148,21 @@ def assign_rooms(s, sessions, placement):
             take(se, rid, slot_of(u))
         return True
 
+    def pref_rooms(se):
+        """Rooms of the right type, nearest zone first."""
+        cands = rooms_by_type.get(se.room_type, [])
+        near = set()
+        for u in hour_uids(se):
+            d, p = placement[u]
+            for q in (p - 1, p + 1):
+                z = czone.get((se.class_id, d, q))
+                if z:
+                    near.add(z)
+        if not near:
+            return cands
+        return sorted(cands,
+                      key=lambda rid: 0 if zone_of.get(rid, "") in near else 1)
+
     ordered = sorted(sessions, key=lambda se: -se.length)
     # first pass: home rooms, longest sessions first
     for se in ordered:
@@ -1116,17 +1170,18 @@ def assign_rooms(s, sessions, placement):
         if (home and home in s.rooms
                 and s.rooms[home]["type"] == se.room_type):
             try_room(se, home)
-    # second pass: any room of the right type, same room across the session
+    # second pass: any room of the right type (nearest zone first), same
+    # room across the session
     for se in ordered:
         if hour_uids(se)[0] in out:
             continue
-        for rid in rooms_by_type.get(se.room_type, []):
+        for rid in pref_rooms(se):
             if try_room(se, rid):
                 break
         else:
             # fall back to per-hour rooms; H3/H6 still hold
             for u in hour_uids(se):
-                for rid in rooms_by_type.get(se.room_type, []):
+                for rid in pref_rooms(se):
                     if room_free(se, rid, slot_of(u)):
                         out[u] = rid
                         take(se, rid, slot_of(u))
@@ -1308,6 +1363,20 @@ def report(s, units, placement, rooms, solver, status, elapsed, exceptions=None,
     else:
         A("**None.** No class travels in for a single hour "
           "(PE and optional subjects exempt, as the circular allows).")
+    A("")
+
+    A("## T45 - walks between zones")
+    A("")
+    zgrid = {}
+    for u in units:
+        d, p = placement[u.uid]
+        z = s.rooms.get(rooms.get(u.uid, ""), {}).get("zone", "")
+        if z:
+            zgrid[u.class_id, d, p] = z
+    walks = sum(1 for (cid, d, p), z in zgrid.items()
+                if zgrid.get((cid, d, p + 1), z) != z)
+    A("%d times a class changes zone between two consecutive periods "
+      "(stays 0 until the `zone` column of the Rooms sheet is filled)." % walks)
     A("")
 
     A("## Room usage")

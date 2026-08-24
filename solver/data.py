@@ -201,6 +201,9 @@ def load_school(xlsx=None, cfg=None):
             name=r.get("name") or r["id"],
             type=(r.get("type") or "normal").strip(),
             capacity=_int(r.get("capacity"), 999),
+            # T45 room proximity: rooms in the same zone are close. Blank =
+            # one big zone = the rule costs nothing (Majd fills them later).
+            zone=(r.get("zone") or "").strip(),
         )
     for r in _rows(wb["Subjects"]):
         s.subjects[r["id"]] = dict(
