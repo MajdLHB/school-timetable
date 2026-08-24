@@ -22,7 +22,7 @@
     10
   ],
   "closed": {
-    "_comment": "5-6 = lunch break every day. Sat afternoon also closed (CONFIRM).",
+    "_comment": "5-6 = lunch break every day. Sat afternoon closed - CONFIRMED by Majd 2026-08-24 ('no study on saturday afternoon').",
     "Mon": [
       5,
       6
@@ -52,7 +52,7 @@
       10
     ]
   },
-  "time_limit_seconds": 120,
+  "time_limit_seconds": 600,
   "weights": {
     "teacher_gap": 100,
     "one_hour_day": 90,

@@ -62,20 +62,30 @@ def write(s, units, placement, rooms, path, include_periods=True):
         A(_row("subject", id=sub["id"], name=sub["name"], short=sub["short"]))
     A('   </subjects>')
 
+    # aSc prints the SHORT in the grid cells. Majd wants Arabic there, not
+    # codes - so whenever the short is missing or is just the id (T001, C01),
+    # fall back to the real name instead.
+    def visible_short(short, rid, name):
+        short = (short or "").strip()
+        return short if short and short != rid else name
+
     A('   <teachers options="" columns="id,name,short">')
     for t in s.teachers.values():
-        A(_row("teacher", id=t["id"], name=t["name"], short=t["short"]))
+        A(_row("teacher", id=t["id"], name=t["name"],
+               short=visible_short(t.get("short"), t["id"], t["name"])))
     A('   </teachers>')
 
     A('   <classes options="" columns="id,name,short">')
     for c in s.classes.values():
-        A(_row("class", id=c["id"], name=c["name"], short=c.get("short") or c["id"]))
+        A(_row("class", id=c["id"], name=c["name"],
+               short=visible_short(c.get("short"), c["id"], c["name"])))
     A('   </classes>')
 
     A('   <classrooms options="" columns="id,name,short,capacity">')
     for r in s.rooms.values():
         A(_row("classroom", id=r["id"], name=r["name"],
-               short=r["id"], capacity=r["capacity"]))
+               short=visible_short(None, r["id"], r["name"]),
+               capacity=r["capacity"]))
     A('   </classrooms>')
 
     # ---- lessons: one per (class, subject, teacher) -----------------------

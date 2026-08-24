@@ -967,6 +967,20 @@ def report(s, units, placement, rooms, solver, status, elapsed, exceptions=None)
     return "\n".join(L)
 
 
+def n_workers():
+    """How many parallel search workers to run.
+
+    Default: half the CPUs, at most 4. On this 8 GB machine a full 8-worker
+    search on the real school ran out of memory and died with a segfault -
+    fewer workers search a little slower but never crash. Override with
+    --workers=N when the machine is free.
+    """
+    for a in sys.argv[1:]:
+        if a.startswith("--workers="):
+            return max(1, int(a.split("=", 1)[1]))
+    return max(1, min(4, (os.cpu_count() or 4) // 2))
+
+
 def main():
     t0 = time.time()
     cfg = D.load_config()
@@ -1005,7 +1019,7 @@ def main():
 
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = float(cfg.time_limit)
-    solver.parameters.num_search_workers = os.cpu_count() or 8
+    solver.parameters.num_search_workers = n_workers()
     solver.parameters.log_search_progress = False
     print("Solving (limit %ds, Ctrl+C keeps the best found so far):"
           % cfg.time_limit, flush=True)
@@ -1057,7 +1071,7 @@ def main():
         m, x, starts_of, viols = build(s, sessions, rescue=True)
         solver = cp_model.CpSolver()
         solver.parameters.max_time_in_seconds = float(cfg.time_limit)
-        solver.parameters.num_search_workers = os.cpu_count() or 8
+        solver.parameters.num_search_workers = n_workers()
         cb = Progress(t0, sessions=sessions, x=x, starts_of=starts_of, slots=s.cfg.slots)
         status = solver.Solve(m, cb)
         cb.save(force=True)

@@ -272,6 +272,22 @@ def case_H18_adjacent_free_days():
     return base("Tue"), base("")
 
 
+def case_H18_sunday_wrap():
+    """Majd 2026-08-24: a Saturday day off with a Monday training day is ALSO
+    forbidden - the Sunday rest day between them makes three free days in a
+    row. Coded as: the first and last school day count as adjacent. BREAK:
+    training on the first day, day off on the last. RELAX: drop the day off."""
+    def base(off):
+        s = tiny(days=("Mon", "Tue", "Wed"))
+        teacher(s, "T1", day_off=off, training="Mon")
+        teacher(s, "T2")
+        klass(s, "C1")
+        teach(s, "C1", "MA", 2, "T2")
+        teach(s, "C1", "AR", 1, "T1")
+        return s
+    return base("Wed"), base("")
+
+
 def case_H17_six_hour_day():
     """One 8-period day; a teacher owes 7 hours to one class. Any placement
     puts 7 hours in one day, over the ministry cap of 6 (circular II.2).
@@ -393,6 +409,7 @@ CASES = [
     # Like H10, H18 is a property of the DATA (which days are free), so the
     # validator must catch it; a solver constraint would be a no-op.
     ("H18 adjacent free days", case_H18_adjacent_free_days, "validator"),
+    ("H18 Sat/Mon through Sunday", case_H18_sunday_wrap, "validator"),
     ("H19 24h between PE sessions", case_H19_pe_24h_gap, "solver"),
     ("LOCK conflicting pins", case_LOCK_conflict, "solver"),
 ]

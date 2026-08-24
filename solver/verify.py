@@ -270,13 +270,16 @@ def main():
                            "unavailable (%s)." % (t, d, p, un["reason"] or "no reason given"))
 
     # --- H18: day off never adjacent to training day (inspector's rule) ----
+    # Majd 2026-08-24: the Sat/Mon pair is also forbidden - the Sunday rest
+    # day between them would make three free days in a row.
     day_list = list(cfg.days)
     for t in s.teachers.values():
         off, tr = t.get("day_off", ""), t.get("training_day", "")
         if off in day_list and tr in day_list and off != tr:
-            if abs(day_list.index(off) - day_list.index(tr)) == 1:
+            gap = abs(day_list.index(off) - day_list.index(tr))
+            if gap == 1 or gap == len(day_list) - 1:
                 fail("H18", "teacher %s has day_off %s adjacent to training_day "
-                            "%s - two consecutive free days." % (t["id"], off, tr))
+                            "%s - consecutive free days (Sunday counts)." % (t["id"], off, tr))
 
     # --- H10: contracted hours --------------------------------------------
     load = collections.Counter()

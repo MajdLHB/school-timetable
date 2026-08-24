@@ -322,11 +322,14 @@ def check(s):
         # ALL teachers. This is a data property - no placement can fix it.
         if off in days and tr in days and off != tr:
             day_list = list(s.cfg.days)
-            if abs(day_list.index(off) - day_list.index(tr)) == 1:
+            gap = abs(day_list.index(off) - day_list.index(tr))
+            # Majd 2026-08-24: Sat + Mon also count as adjacent - the Sunday
+            # rest day between them would make three free days in a row.
+            if gap == 1 or gap == len(day_list) - 1:
                 errs.append("Teacher " + t["id"] + ": day_off " + off +
                             " is right next to training_day " + tr +
-                            " - two consecutive free days (H18, inspector's "
-                            "rule). Pick a non-adjacent day off.")
+                            " - consecutive free days, Sunday included (H18, "
+                            "inspector's rule). Pick a non-adjacent day off.")
 
     needed = {s.room_type_for(c) for c in s.curriculum}
     have = {r["type"] for r in s.rooms.values()}

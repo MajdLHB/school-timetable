@@ -2,8 +2,10 @@
 
 The single live tracker. `RULES.md` is what is decided; this is what is not.
 
-Answer in any order - but the **BLOCKING** ones stop real work, and Q1 and Q2
-change which ministry rules apply at all.
+**Majd's standing instruction (2026-08-24): anything he has not confirmed 100%
+is marked UNSURE** - used for testing, never mistaken for fact, and re-asked
+before the final version. This is a demo/test phase; the final version gets the
+real data.
 
 ---
 
@@ -36,214 +38,192 @@ change which ministry rules apply at all.
 - [x] **Circular 51/2018 fully read** (all 13 pages), symbol notation decoded,
       curriculum transcribed to `rules/curriculum.json` and validated against
       last year's real timetable - see `docs/CIRCULAR_51_2018.md`.
-- [x] **`rules/rules.pdf` fully read** (all 21 pages, 2026-08-24). It is the
-      scanned original of the inspectorate recommendations already catalogued
-      in `docs/MINISTRY_RULES.md`. Verified page by page; two transcription
-      errors corrected (M-PH5 time window, M-PHI3/M-PHI8 swapped levels).
-      Provenance: edunet.tn, captured 2003 - so circular 51/2018 wins conflicts.
+- [x] **`rules/rules.pdf` fully read** (all 21 pages, 2026-08-24), verified
+      page by page against `docs/MINISTRY_RULES.md`; two transcription errors
+      corrected. Circular 51/2018 wins conflicts (it is newer).
+- [x] **H9 block patterns coded** - the solver places sessions (`2+1+1`), not
+      loose hours. H18, H19, rescue mode, S15-S20 family all coded; selftest
+      16/16.
+- [x] **The 2026/27 pedagogical distribution extracted and cross-verified**
+      (teachers' required hours, sections per stream, 41 classes) - see
+      `data/DISTRIBUTION_REPORT.md` for the per-subject verification and flags.
+- [x] **Training days written** for 77 teachers from the official delegation
+      circular (see Q11, RESOLVED).
+- [x] **The art (تشكيلية) 2026/27 sheet arrived and transcribed** - FLAG-7's
+      provisional data replaced with the official row (16h/16h, verified).
 
 ## Not done
-- [ ] **H9 block patterns** (`2+1+1`) - the biggest gap in the solver
-- [ ] **Week A / Week B** fortnightly sessions
+- [ ] **Week A / Week B** fortnightly sessions in the solver
 - [ ] **Group splitting**, and with it the pupil-hours vs teacher-hours problem
-- [ ] **H14 option groups** pooled across classes
-- [ ] Classes, Rooms, Curriculum sheets - all still empty
-- [ ] Teacher `hours` and `day_off` - blank, not in the ministry list
+- [ ] **H14 option groups** pooled across classes; **S20** aligned doubles
+- [ ] Rooms and Curriculum sheets (being pre-filled from last year /
+      distribution - Majd will verify)
+- [ ] Teacher `day_off` - still blank for everyone (see Q10)
+- [ ] The Sport distribution is **synthetic test data** (no 2026/27 sheet yet)
+
+---
+
+# ANSWERED 2026-08-24 (evening batch)
+
+- **Q1. NOT a pilot institute.** Majd: "no its not a pilot institue". The
+  boxed-④ group sessions do not apply anywhere. Closed.
+- **Q2. Lunch break + Saturday afternoon both CONFIRMED.** Periods 5-6
+  (12:00-14:00) closed every day; "no study on saturday afternoon" - the
+  config's Saturday closure is now fact, not guess.
+- **Q3. Streams CONFIRMED.** No sport stream. 1st year: common core. 2nd year:
+  آداب / علوم / اقتصاد / إعلامية. 3rd year and bac: آداب / رياضيات / علوم
+  (تجريبية) / إعلامية / تقنية / اقتصاد. Matches the 41-class structure read
+  from the distribution sheets exactly.
+- **Q11. Training days RESOLVED by the official circular** Majd dropped in
+  `data/reference/SCAN_20260814_140843760.pdf` (Bizerte delegation,
+  0000132-2151-07-2026): the pedagogical training day is fixed **per subject**
+  for 2026-27. Secondary-level column, as written to the Teachers sheet:
+  Thu = العربية، الرياضيات، التفكير الإسلامي، الاقتصاد ·
+  Wed = الفرنسية، العلوم الفيزيائية، الفلسفة ·
+  Tue = الإنقليزية، الألمانية، علوم الحياة والأرض، التاريخ والجغرافيا،
+  التربية المدنية، التصرف ·
+  Mon = الإسبانية، التربية التشكيلية · Sat = الإيطالية.
+  **Left open inside it:** الإعلامية and التربية التكنولوجية/الهندسة send HALF
+  the teachers Friday and half Saturday - the circular does not name the
+  halves (noted per teacher, UNSURE). Sport is absent from the circular.
+  Trainees (المتربصون والمدمجون دفعة 2025-2026) get separate days per subject -
+  useless until Q12 says who they are.
+- **Q14. Vacancies: "label them as new teachers until we know their name"**
+  (Majd). The two nameless ministry-list rows carry NO data at all (no subject,
+  no hours), so there is nothing to import; plausibly they are T094 /
+  T095 who appear on the 2026/27 sheets but not the ministry list
+  (UNSURE). Any future distribution row without a ministry match = new teacher.
+- **Q16. CONFIRMED** - اقتصاد and تصرف are two separate subjects.
+- **Q17. NO fixed all-school slots.** Closed.
+- **Q18. Devoirs run INSIDE normal lessons**, usually the 2-hour sessions
+  (example: Economics). New soft rule **S20**: same-level same-stream classes
+  should get their doubles at the same time so a devoir runs everywhere at
+  once - "try, if u couldnt get it its fine". SPEC, not yet coded.
+- **Q19. Teacher pairings (must/must-not overlap): UNSURE by design** - "leave
+  unsure until i am sure, im making a demo test". Final version will carry the
+  real list.
+- **Q20. Personal hard constraints: UNSURE for now.** One concrete note taken:
+  **T043 (التفكير الإسلامي, T043) teaches only in classroom 5** -
+  recorded in her Teachers row, marked unsure until confirmed.
+- **Q22. RESOLVED: the ministry reading wins** - "what ministry says is
+  usually right". `(3)` means 3 hours for EACH group; the teacher-hour figures
+  in `rules/curriculum.json` stand. (FLAG-6's engineering 1.5h×2 convention is
+  a separate question - see Q27 below.)
+- **Q24. Letters 3rd/4th year Arabic/French/English: from LAST YEAR, kept
+  UNSURE** exactly as Majd asked ("keep it as insure until official data
+  comes"). Both the curriculum transcription and an independent re-extraction
+  of last year's file give **5h / 5h / 5h** for both years. Replace with the
+  official page when it arrives.
+- **Q25. Period 5 stays CLOSED** (resolved earlier the same day - last year's
+  40 uses were human exceptions under time pressure, not policy).
+- **Q26. RESOLVED: yes** - H18 also forbids a Saturday day off with a Monday
+  training day (three free days in a row through Sunday). Coded in the data
+  check and verify.py, proven by a new selftest case (16/16).
 
 ---
 
 # BLOCKING QUESTIONS
 
-## Q1. Is معهد العالية a pilot institute (معهد نموذجي)?
+## Q10. Days off - what Majd sent is TRAINING days, not days off
 
-The circular has a symbol - **boxed (4)** - meaning *حصّة أسبوعيّة بنظام الأفواج
-تخصّ المعاهد النّموذجيّة*: a weekly group session **that applies only to pilot
-institutes**. In the 2nd-year table it appears for Computer Science in the
-Letters and Sciences streams.
+The file that arrived is the delegation's **training-day** circular (see Q11) -
+it fixes يوم التكوين per subject. The per-teacher **day off** (يوم الراحة) is a
+different thing: H18 now constrains which days are even possible (never
+adjacent to the training day, Sunday wrap included), but somebody still has to
+pick each teacher's day off - or tell the solver to choose freely.
 
-**If the school is a pilot institute, some classes get group sessions that
-otherwise do not exist** - changing hours, teacher workload and room needs.
-
-## Q2. RESOLVED - there IS a lunch break
-
-Periods **5 and 6 (12:00-14:00) are closed every day** in `config.json`,
-matching circular I.3's required two-hour separation. That leaves 4 morning +
-4 evening teaching periods - exactly the circular's "max 4 hours for a pupil in
-one session".
-
-*(I had recorded the opposite. Majd was twice pointing out that MY generated
-timetable had no break, not describing the school.)*
-
-Still to confirm: **is Saturday afternoon closed too?** Last year's file shows
-Saturday at roughly half the lessons of other days, so `config.json` currently
-closes Saturday afternoon as well. Guess, not fact.
-
-## Q3. Which streams and levels does the school actually run?
-
-High school, 1st to 4th year. Which of these exist here?
-
-- 1st year جذع مشترك (common core)
-- 2nd year: آداب / علوم / تكنولوجيا الإعلاميّة / اقتصاد / others?
-- 3rd year: which streams?
-- 4th year: which streams?
-- شعبة الرّياضة - the circular devotes a whole table to the sport stream. Do we
-  have it?
-
-**Every per-level rule needs this**, and the circular's hour tables are
-organised by exactly these streams.
-
-## Q4. The 45 rooms - what are they?
-
-Last year's file defines 45 classrooms and uses all 45. I need:
-
-- how many ordinary rooms
-- how many **Stad 1 / 2 / 3** (you said aSc models the stadium as rooms)
-- labs: physics, natural sciences, technology (mechanics? electricity?)
-- IT labs, and **how many computers in each** - a ministry rule caps pupils at
-  twice the number of computers
-- any music room, arts room, dedicated English room
+**Majd: if you meant this circular to BE the days-off answer, say so** - then
+`day_off` stays empty and only the training day is blocked. Otherwise the
+`day_off` column is still blank for all 93+ teachers.
 
 ## Q5. Group splitting - the real practice here
 
-The circular formalises it; I need what actually happens:
-
 - Which subjects split the class into groups at this school?
-- **How many groups per class** - always 2, or sometimes 3?
-- Class sizes - the rule says do not split at 24 pupils or fewer
-- When a class splits, what does the other half do? Another subject with
-  another teacher, or nothing?
+- How many groups per class - always 2, or sometimes 3? (Q23: all teacher-hour
+  figures assume 2.)
+- Class sizes - the ministry says do not split at 24 pupils or fewer, and the
+  `size` column is still empty for all 41 classes.
+- When a class splits, what does the other half do?
 
-## Q6. Week A / Week B - do you really run it?
+## Q6. Week A / Week B - which subjects use it now?
 
-Last year's file has **145 cards** marked Week A or Week B only, so it existed.
-Which subjects use it now, and is it described to staff as A/B or some other
-way?
+Last year's file has 145 cards marked Week A or Week B only, so it existed.
+
+## Q27 (was FLAG-6). Engineering hour model
+
+Each هندسة teacher covers both classes of one ع تقنية year at 16h (8h per
+class per discipline); the guide models mech+elec as 4 pupil-hours. Q22's
+answer ("ministry is right") probably applies here too, but the engineering
+sheets use their own convention - confirm before block patterns are written
+for هندسة آلية/كهربائية. UNSURE.
 
 ---
 
-# QUESTIONS ABOUT THE BUILDING
+# DATA STILL NEEDED (see docs/WHAT_I_NEED_FROM_YOU.md)
 
-You offered these - and they matter more than they sound.
+- **Class sizes** (`size` column) - needed for H16 splitting checks.
+- **Rooms**: being pre-filled from last year for Majd to verify ("rooms
+  usually same last year fill data in will see them and verify") - UNSURE
+  until he checks. Zones/walking distances whenever (Q7-Q9).
+- **Sport distribution 2026/27** - current data is synthetic round-robin
+  (FLAG-8), for testing only.
+- **Trainees (Q12)** - who they are; they must be free Saturday, and the
+  training circular gives them extra days.
+- **Second-school teachers (Q13)** - blocked slots. UNSURE/demo for now.
+- **Compact-timetable list** - Majd: "will leave it for final version". The
+  column exists, empty; everyone gets the ministry spread meanwhile.
+- **English FLAG-1** - the documented guess ([name removed]'s section moved
+  3ع إعلا → 3ع تج) stands until the corrected sheet.
+- **French FLAG (T018 T018)** - on the ministry list, on no
+  distribution sheet. Still unexplained.
+- **IT ±1h (FLAG-2)** - T082 / T084 printed totals differ by
+  one hour in opposite directions. Harmless for the grid; matters for pay.
+
+---
+
+# QUESTIONS ABOUT THE BUILDING (whenever)
 
 ## Q7. How are the rooms physically arranged?
-
-- Floors and buildings - are rooms numbered by floor?
-- **How long does it take a class to walk from one end to the other?** If it is
-  significant, back-to-back lessons in far-apart rooms have a real cost and the
-  solver should avoid them.
-- Are the specialised rooms **grouped together** or scattered? (The circular
-  asks for technology rooms to be adjacent.)
+Floors/buildings, walking time end to end, are specialised rooms grouped.
 
 ## Q8. The stadium
-
-- How far is it from the main building?
-- Does getting there eat into the lesson? If it costs 10 minutes each way, PE
-  placed next to another lesson is a problem.
-- Are Stad 1/2/3 genuinely separate spaces, or one field divided by convention?
-- What happens to PE when it rains?
+Distance, does travel eat into the lesson, are Stad 1/2/3 real separate
+spaces, what happens to PE when it rains.
 
 ## Q9. Rooms with restrictions
-
-- Any room shared with another institution, or unavailable at certain times?
-- Any room too small for a full class - half-group only?
-- Any room that is effectively somebody's, because they keep materials there?
-  (The music recommendation is exactly about this.)
-
----
-
-# QUESTIONS ABOUT PEOPLE
-
-## Q10. Teacher hours and days off
-
-The ministry list has neither. For 93 teachers I need contracted weekly hours
-and the day off, if any. Is there an existing document, or must it be typed?
-
-## Q11. The training day (يوم التّكوين)
-
-The circular says teachers must be free on their pedagogical training day, and
-that this day does **not** count when balancing the week.
-
-- Who has one, and which day?
-- Is it the same day for everyone in a subject?
-
-## Q12. Trainee teachers (المتربّصون)
-
-The inspectorate text says 1st and 2nd year trainees must be free on
-**Saturday**. Do we have trainees this year, and who?
-
-## Q13. Teachers at two institutions
-
-The circular asks for coordination between the two schools. Who works
-elsewhere, and do we know their other timetable? Their blocked slots go in the
-Unavailable sheet.
-
-## Q14. The two vacancies
-
-The ministry list has 2 numbered rows with no name. Not yet arrived, or posts
-that will stay empty?
-
-## Q15. Optional subjects (rule H14)
-
-You described pupils choosing Spanish / German / Italian / Tashkilia, pooled
-across classes.
-
-- Which subjects exactly are options?
-- Does every pupil take exactly one, or can they take none?
-- How many classes typically pool into one option group?
-- Must the pooled classes be the same level?
-- **Is this the same thing as "a teacher teaching 3 portions of 3 classes"?**
-
----
-
-# REMINDER LIST - things you said you would send
-
-- [ ] **The compact-timetable exception list.** The ministry rule wins by
-      default (hours spread across most days), but teachers who travel a long
-      way keep a compact timetable. You said you would give the names later. A
-      `compact` column will exist in the Teachers sheet, empty until then.
-- [ ] More rules, as they come up.
-- [x] **Friday evening for bac** - answered. It is a personal preference, and
-      is recorded as S13 marked exactly that way. Applying it to **all bac
-      streams** rather than bac maths alone is the defensible version; singling
-      out one stream is the kind of thing staff and pupils notice.
+Shared with another institution, too small for a full class, effectively
+somebody's room (the music recommendation; see also Q20 - classroom 5).
 
 ---
 
 # SMALLER QUESTIONS, WHENEVER
 
-- **Q16.** Two subject names in the teacher list, `اقتصاد` and `تصرف`, were
-  mapped as separate subjects (ECO and GEST). The circular's 2nd-year Economics
-  table lists them separately too, so this looks right - please confirm.
-- **Q17.** Are there fixed all-school slots - assembly, exams, ceremonies?
-- **Q18.** Do devoirs de contrôle / de synthèse need reserved slots, or do they
-  happen inside normal lessons?
-- **Q19.** Two teachers who must never be scheduled at the same time, or must
-  be (shared transport, a couple, one person covering two roles)?
-- **Q20.** Any teacher with a medical or personal constraint that should be
-  hard rather than a preference? **Only the constraint is needed - never the
-  reason.** See `docs/PRIVACY.md`.
-- **Q22. IMPORTANT.** You said a "3 hour" session here is really **1.5 hours
-  per group** because the lab is small. The ministry notation means the
-  opposite: `(3)` is **3 hours for EACH group**, so the teacher works 6. The
-  sport-stream table proves the ministry reading - Biology at 1h whole + 2h
-  group gives pupil 3 / teacher 5. So either this school deviates from the
-  circular, or "3 hours" in your data means something else. **Which is it?**
-  Every teacher workload number depends on the answer.
-- **Q23.** How many groups does a class split into here - always 2? All the
-  teacher-hour figures in `rules/curriculum.json` assume 2.
-- **Q24.** Page 10/5 of the guide (3rd + 4th year **Letters**) has its top rows
-  **cut off in the scan** - Arabic, French and English are missing for that
-  stream. Can you send that page again, or tell me those three?
-- **Q21.** Islamic Thought: the circular puts it in the morning, or 14:00-16:00
-  if it must be in the evening. Apply that cutoff, same as Sport? One cell.
-- **Q26.** H18 (day off never next to the training day) is coded for adjacent
-  weekdays: training Thursday blocks Wednesday and Friday, exactly the
-  inspector's example. Edge case: the week is Mon-Sat and Sunday is the rest
-  day - so a **Saturday day off with a Monday training day** gives three free
-  days in a row through Sunday. Should H18 also forbid that Sat/Mon pair, or
-  is the inspector's rule only about school-week neighbours? One word answer.
-- **Q25. RESOLVED 2026-08-24 - period 5 stays CLOSED.** Majd: *"it shouldnt
-  be open even if rare follow rules... last year due to time it was very hard
-  to make the sceduel so we made exceptions"*. The 40 cards in period 5 last
-  year were human exceptions under time pressure, not policy. The solver keeps
-  periods 5-6 (12:00-14:00) hard-closed every day.
+- **Q15 (H14 options).** Does every pupil take exactly one option or can they
+  take none? How many classes pool into one option group? Must they be the
+  same level? Is this "a teacher teaching 3 portions of 3 classes"?
+  *(The art sheet now gives real 2026/27 section counts for التشكيلية - 8
+  sections across 7 streams - which will pin part of this down.)*
+- **Q21, retried in plain words** (the first wording was bad, Majd is right):
+  The ministry text says Islamic Thought lessons should be **in the morning**;
+  if they must be in the afternoon, then **finish by 16:00** (like Sport's
+  daylight rule, but as a preference). Question: should I switch that on for
+  التفكير الإسلامي؟ **yes / no** - one word. It costs one cell in the
+  Subjects sheet (`avoid_after=8`).
+- **Q23.** Groups per class - always 2? (assumed everywhere).
+
+---
+
+# REMINDER LIST
+
+- [ ] **Compact-timetable exception list** - deferred to the final version
+      (Majd, 2026-08-24). Ministry spread applies to everyone meanwhile.
+- [ ] **Official page 10/5** (Letters 3rd/4th year) - replaces the Q24 unsure
+      figures when it comes.
+- [ ] **Sport 2026/27 distribution sheet** - replaces FLAG-8 synthetic data.
+- [ ] **Real day_off decisions** (or "solver picks") - Q10.
+- [x] **Friday evening for bac** - answered; recorded as S13, personal
+      preference, applied to all bac streams.
+- [x] **Art (تشكيلية) distribution** - arrived 2026-08-24, transcribed,
+      verified 16h = 8×2h.
+- [x] **Training days** - arrived 2026-08-24 (delegation circular), written to
+      the Teachers sheet.
