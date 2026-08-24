@@ -46,9 +46,11 @@ def tiny(days=("Mon", "Tue"), periods=2, closed=None):
     s = D.School(cfg=cfg)
     s.rooms["R1"] = dict(id="R1", name="R1", type="normal", capacity=99)
     s.subjects["MA"] = dict(id="MA", name="Maths", short="Ma",
-                            difficulty="hard", room_type="normal")
+                            difficulty="hard", room_type="normal",
+                            latest_period=0)
     s.subjects["AR"] = dict(id="AR", name="Arabe", short="Ar",
-                            difficulty="medium", room_type="normal")
+                            difficulty="medium", room_type="normal",
+                            latest_period=0)
     return s
 
 
@@ -191,6 +193,21 @@ def case_H10_contract_hours():
     return base(2), base(4)
 
 
+def case_H15_daylight():
+    """Sport needs 4 hours but may only use period 1, and there are 2 days -
+    so only 2 legal slots exist. RELAX: allow both periods."""
+    def base(latest):
+        s = tiny()
+        s.subjects["EP"] = dict(id="EP", name="Sport", short="EP",
+                                difficulty="easy", room_type="normal",
+                                latest_period=latest)
+        teacher(s, "T1")
+        klass(s, "C1")
+        teach(s, "C1", "EP", 4, "T1")
+        return s
+    return base(1), base(2)
+
+
 def case_LOCK_conflict():
     """Two different subjects of one class pinned to the same slot.
     RELAX: pin them to different slots."""
@@ -256,6 +273,7 @@ CASES = [
     # by verify.py on the finished file. A CP-SAT constraint here would always
     # be trivially true and would give false confidence.
     ("H10 over contracted hours", case_H10_contract_hours, "validator"),
+    ("H15 daylight cutoff", case_H15_daylight, "solver"),
     ("LOCK conflicting pins", case_LOCK_conflict, "solver"),
 ]
 

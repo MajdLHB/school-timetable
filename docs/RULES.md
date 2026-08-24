@@ -30,6 +30,7 @@ silently bends one.
 | H9 | Multi-hour blocks (double hours) stay consecutive and never straddle the lunch break. | SPEC |
 | H10 | A teacher never exceeds their contracted weekly hours. | SPEC |
 
+| H15 | **Daylight-only subjects.** Sport cannot run after **16:00** - the stadium has no lighting. With 10 periods of one hour from 08:00, 16:00 is the end of **period 8**, so Sport may occupy periods 1-8 and never 9 or 10. Stated by Majd 2026-08-24: "sport time window daylight meaning morning and max 14h to 16h". Generalised: any subject may carry a `latest_period` in the Subjects sheet. | SPEC |
 | H14 | **Optional-subject groups cross class boundaries.** Pupils choose one option (Spanish / German / Italian / Tashkilia). Within a single class the pupils do not all pick the same option, and it would waste a teacher to run a class of one or two. So pupils taking the same option are **pooled from several classes** into one group that studies together. While that option lesson runs, every class contributing pupils must be free at the same time - the option lessons of all those classes are locked to the same period. | SPEC |
 
 **H14 is stated by Majd, not inferred.** It also explains what was measured in
@@ -63,6 +64,7 @@ are first guesses - **we will tune them together after seeing the first result.*
 | S7 | **Compact days for classes.** Pupils get no free hour in the middle of their day either. | 85 | SPEC |
 | S8 | **Fewest days present.** If a teacher's hours fit in 4 days, do not spread them over 6. | 40 | SPEC |
 | S9 | **Room stability.** A class stays in its home room where possible; less moving around. | 30 | SPEC |
+| S12 | **Daylight subjects prefer the morning.** Majd said "morning and max 14h to 16h" - so 14:00-16:00 is the late acceptable window, not the target. Sport should land in the morning where possible and only use periods 7-8 when it must. | 45 | SPEC |
 | S10 | **Last-period fairness.** Nobody is stuck with the final period every single day. | 35 | SPEC |
 
 ---

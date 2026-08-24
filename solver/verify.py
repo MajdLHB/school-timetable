@@ -145,6 +145,17 @@ def main():
                 fail("H6", "%s/%s needs a '%s' room but sits in %s which is '%s'."
                      % (cid, L["subject"], want_t, r, s.rooms[r]["type"]))
 
+    # --- H15: daylight-only subjects ---------------------------------------
+    for d, p, r, lid in placed:
+        L = lessons.get(lid)
+        if not L:
+            continue
+        sub = s.subjects.get(L["subject"], {})
+        lp = sub.get("latest_period") or 0
+        if lp and p > lp:
+            fail("H15", "%s runs at %s period %d but may not go past period %d "
+                        "(no daylight)." % (L["subject"], d, p, lp))
+
     # --- H7: day off is empty ---------------------------------------------
     for (t, d, p), v in t_at.items():
         off = s.teachers.get(t, {}).get("day_off", "")
@@ -200,7 +211,7 @@ def main():
     print("ALL GREEN - every hard rule holds.")
     print("H1 no teacher clash | H2 no class clash | H3 no room clash")
     print("H4 room count | H5 hours exact | H6 room type | H7 day off")
-    print("H8 unavailable | H10 contract hours | LOCK pins honoured")
+    print("H8 unavailable | H10 contract hours | H15 daylight | LOCK pins honoured")
     return 0
 
 

@@ -186,6 +186,18 @@ def build(s, units):
             for u in us:
                 m.Add(x[u.uid, i] == 0)
 
+    # ---- H15: daylight-only subjects never run past latest_period --------
+    # Sport has no stadium lighting, so it may not sit after 16:00 (period 8
+    # in a 10-period day starting 08:00). Expressed generally so any subject
+    # can carry a time limit.
+    for u in units:
+        lp = s.subjects.get(u.subject_id, {}).get("latest_period") or 0
+        if not lp:
+            continue
+        for i, (d, p) in enumerate(slots):
+            if p > lp:
+                m.Add(x[u.uid, i] == 0)
+
     # ---- Locked sheet: the user's pinned placements are immovable --------
     locked_used = set()
     for lk in s.locked:
@@ -262,6 +274,18 @@ def build(s, units):
         n_ev = m.NewIntVar(0, len(hard_units), "hard_in_evening")
         m.Add(n_ev == sum(x[u.uid, i] for u in hard_units for i in ev_ix))
         penalties.append((W["hard_subject_evening"], n_ev))
+
+    # ---- S12: daylight subjects PREFER the morning -----------------------
+    # "morning and max 14h to 16h" - the late window is a fallback, not the
+    # target. Penalise every daylight-limited hour that lands outside morning.
+    daylight_units = [u for u in units
+                      if (s.subjects.get(u.subject_id, {}).get("latest_period") or 0)]
+    morning = set(s.cfg.morning)
+    late_ix = [i for i, (d, p) in enumerate(slots) if p not in morning]
+    if daylight_units and late_ix:
+        n_late = m.NewIntVar(0, len(daylight_units), "daylight_outside_morning")
+        m.Add(n_late == sum(x[u.uid, i] for u in daylight_units for i in late_ix))
+        penalties.append((W.get("daylight_not_morning", 45), n_late))
 
     # ---- S6: spread a subject across the week ----------------------------
     per_cs = collections.defaultdict(list)

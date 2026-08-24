@@ -1,7 +1,7 @@
 """Generate a FAKE school of roughly the real size, to test the tool.
 
 No real person appears here. Teachers are 'Prof 01'. This exists so we can
-measure how long solving actually takes at 40 classes / 20 rooms before any
+measure how long solving actually takes at 40 classes / 20 rooms (the real school has 45 - see docs/RULES.md) before any
 real data is loaded.
 
     python tools/make_demo.py            -> data/school.xlsx (40 classes)
@@ -73,7 +73,9 @@ def build(n_classes=40):
     # ---------------- subjects ----------------
     ws = wb["Subjects"]
     for sid, name, short, diff, rt, _h in SUBJECTS + [IT]:
-        ws.append([sid, name, short, diff, rt])
+        # Sport must finish by 16:00 - no stadium lighting (rule H15).
+        latest = 8 if sid == "SPORT" else ""
+        ws.append([sid, name, short, diff, rt, latest])
 
     # ---------------- classes ----------------
     classes = []

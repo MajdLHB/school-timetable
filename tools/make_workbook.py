@@ -40,9 +40,10 @@ SHEETS = {
         dv={"type": "normal,lab_phys,lab_chem,lab_sci,it,gym,tech"},
         width={"name": 26}),
     "Subjects": dict(
-        cols=["id", "name", "short", "difficulty", "room_type"],
+        cols=["id", "name", "short", "difficulty", "room_type", "latest_period"],
         hint=["MATH, PHYS...", "Arabic or French", "grid abbreviation",
-              "drives morning rule", "room needed"],
+              "drives morning rule", "room needed",
+              "last period allowed, blank = any (Sport=8, ends 16:00)"],
         dv={"difficulty": "hard,medium,easy",
             "room_type": "normal,lab_phys,lab_chem,lab_sci,it,gym,tech"},
         width={"name": 30}),

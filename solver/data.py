@@ -151,6 +151,9 @@ def load_school(xlsx=None, cfg=None):
             short=r.get("short") or r["id"],
             difficulty=(r.get("difficulty") or "medium").strip(),
             room_type=(r.get("room_type") or "normal").strip(),
+            # H15: last period this subject may occupy. Blank = no limit.
+            # Older workbooks have no such column, hence the tolerant get().
+            latest_period=_int(r.get("latest_period"), 0),
         )
     for r in _rows(wb["Curriculum"]):
         s.curriculum.append(dict(
@@ -244,6 +247,25 @@ def check(s):
         if cl[cid] > week:
             errs.append("Class " + cid + " needs " + str(cl[cid]) +
                         " hours but the week only has " + str(week) + " open periods.")
+
+    # H15: a daylight limit that no timetable could satisfy
+    for sid, sub in s.subjects.items():
+        lp = sub.get("latest_period") or 0
+        if not lp:
+            continue
+        if lp > s.cfg.periods_per_day:
+            errs.append("Subject " + sid + " has latest_period " + str(lp) +
+                        " but the day only has " + str(s.cfg.periods_per_day) +
+                        " periods.")
+            continue
+        allowed = sum(1 for (d, p) in s.cfg.slots if p <= lp)
+        need = sum(c["hours"] for c in s.curriculum if c["subject_id"] == sid)
+        n_rooms = len(s.rooms_of_type(sub.get("room_type") or "normal"))
+        cap = allowed * max(1, n_rooms)
+        if need > cap:
+            errs.append("Subject " + sid + " needs " + str(need) +
+                        " hours but may only use periods 1-" + str(lp) +
+                        ", giving " + str(cap) + " slots.")
 
     # THE bottleneck: rooms
     total = sum(c["hours"] for c in s.curriculum)
