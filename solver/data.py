@@ -231,6 +231,10 @@ def load_school(xlsx=None, cfg=None):
             # social). Two DIFFERENT subjects of the same nature back to
             # back are penalised; a double of one subject is fine.
             nature=(r.get("nature") or "").strip().lower(),
+            # T37: subjects that must not share a DAY with this one (soft) -
+            # the ministry's History/Geography rule. One side is enough.
+            not_same_day=[v for v in (r.get("not_same_day") or "")
+                          .replace(",", ";").split(";") if v.strip()],
         )
     for r in _rows(wb["Curriculum"]):
         s.curriculum.append(dict(
@@ -253,6 +257,19 @@ def load_school(xlsx=None, cfg=None):
             # the hours IN that week. Older workbooks have no such column.
             week=(r.get("week") or "").strip().upper(),
         ))
+    # The Weights sheet is Majd's editable copy of the rule weights: any row
+    # there OVERRIDES config.json. His workbook is the database - he asked
+    # to see and change the weights without touching JSON (2026-08-25).
+    if "Weights" in wb.sheetnames:
+        n_over = 0
+        for r in _rows(wb["Weights"]):
+            key = (r.get("key") or "").strip()
+            if key and str(r.get("value", "")).strip() != "":
+                cfg.weights[key] = _int(r.get("value"), cfg.weights.get(key, 0))
+                n_over += 1
+        if n_over:
+            print("NOTE : %d rule weights read from the Weights sheet "
+                  "(they override config.json)." % n_over)
     if "Unavailable" in wb.sheetnames:
         for r in _rows(wb["Unavailable"]):
             s.unavailable.append(dict(

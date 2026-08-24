@@ -895,6 +895,53 @@ def build(s, sessions, rescue=False):
                     m.Add(both >= sum(va) + sum(vb) - 1)
                     penalties.append((W.get("not_after", 60), both))
 
+    # ---- T37: subject pairs that must not share a day (soft) --------------
+    # Ministry: History and Geography never on the same day. Generic: any
+    # subject may carry not_same_day=<ids> in the Subjects sheet; one side
+    # of the pair is enough. Judged per week view.
+    for cid, ss in by_class.items():
+        subj_here = {se.subject_id for se in ss}
+        pairs = set()
+        for sid_b in subj_here:
+            for sid_a in s.subjects.get(sid_b, {}).get("not_same_day", []):
+                if sid_a in subj_here and sid_a != sid_b:
+                    pairs.add(tuple(sorted((sid_a, sid_b))))
+        for sid_a, sid_b in sorted(pairs):
+                ses_a = [se for se in ss if se.subject_id == sid_a]
+                ses_b = [se for se in ss if se.subject_id == sid_b]
+                for w in weeks_of(ses_a + ses_b):
+                    for d in days:
+                        ta = [x[se.sid, j] for se in ses_a if in_week(se, w)
+                              for j, (dd, _p, _x) in enumerate(starts_of(se))
+                              if dd == d]
+                        tb = [x[se.sid, j] for se in ses_b if in_week(se, w)
+                              for j, (dd, _p, _x) in enumerate(starts_of(se))
+                              if dd == d]
+                        if not ta or not tb:
+                            continue
+                        ba = m.NewBoolVar("nsdA_%s_%s_%s_%s_%s" % (cid, sid_a, sid_b, d, w))
+                        m.Add(sum(ta) >= 1).OnlyEnforceIf(ba)
+                        m.Add(sum(ta) == 0).OnlyEnforceIf(ba.Not())
+                        bb = m.NewBoolVar("nsdB_%s_%s_%s_%s_%s" % (cid, sid_a, sid_b, d, w))
+                        m.Add(sum(tb) >= 1).OnlyEnforceIf(bb)
+                        m.Add(sum(tb) == 0).OnlyEnforceIf(bb.Not())
+                        both = m.NewIntVar(0, 1, "nsd_%s_%s_%s_%s_%s" % (cid, sid_a, sid_b, d, w))
+                        m.Add(both >= ba + bb - 1)
+                        penalties.append((W.get("not_same_day", 60), both))
+
+    # ---- T41: a double belongs at the TOP of its half-day -----------------
+    # A 2h+ block that starts mid-run leaves a stub before it; the ministry
+    # habit is doubles first thing in the morning or first thing in the
+    # evening. Soft, small weight - capacity beats aesthetics.
+    run_starts = {d: {ps[0]} | {p for prev, p in zip(ps, ps[1:]) if p != prev + 1}
+                  for d, ps in open_by_day.items() if ps}
+    for se in sessions:
+        if se.length < 2:
+            continue
+        for j, (d, p0, ixs) in enumerate(starts_of(se)):
+            if p0 not in run_starts.get(d, ()):
+                penalties.append((W.get("double_not_at_start", 25), x[se.sid, j]))
+
     # ---- S4 / M-P6: no two same-nature subjects back to back --------------
     # Inspectorate pupil-rule 8: avoid consecutive subjects of the same
     # nature (literary / scientific / social). A DOUBLE of one subject is a
