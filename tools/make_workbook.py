@@ -22,11 +22,16 @@ NOTE_FONT = Font(color="808080", italic=True, size=10)
 # sheet -> (columns, human hints, dropdowns {col: choices}, width overrides)
 SHEETS = {
     "Teachers": dict(
-        cols=["id", "name", "short", "subjects", "hours", "day_off", "notes"],
+        cols=["id", "name", "short", "subjects", "hours", "day_off",
+              "training_day", "compact", "notes"],
         hint=["T01, T02...", "full name as printed", "2-4 letters for the grid",
               "codes separated by ;", "contracted hours/week",
-              "pick from list", "free text - solver ignores"],
-        dv={"day_off": "Mon,Tue,Wed,Thu,Fri,Sat,(none)"},
+              "pick from list", "pedagogical training day - must stay empty",
+              "yes = pack into fewer days (long journey). blank = ministry default",
+              "free text - solver ignores"],
+        dv={"day_off": "Mon,Tue,Wed,Thu,Fri,Sat,(none)",
+            "training_day": "Mon,Tue,Wed,Thu,Fri,Sat,(none)",
+            "compact": "yes,no"},
         width={"name": 28, "subjects": 24, "notes": 34}),
     "Classes": dict(
         cols=["id", "name", "grade", "cohort", "home_room", "size"],
