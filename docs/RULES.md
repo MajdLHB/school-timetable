@@ -122,6 +122,24 @@ Tell me yes or no on each - each one is cheap to add now and expensive later.
 
 ---
 
+## Ministry recommendations
+
+The Tunisian General Inspectorate publishes binding pedagogical
+recommendations for building teacher timetables, per subject. Majd supplied
+them 2026-08-24. They are catalogued and rated in **`docs/MINISTRY_RULES.md`**
+- about 90 items - and none are coded yet.
+
+Two findings from that catalogue that affect the rules below:
+
+1. **S8 conflicts with the ministry.** Our S8 rewards packing a teacher's hours
+   into fewer days. The ministry says the opposite: *"توزيع الحصص على أغلب
+   أيّام الأسبوع"* - spread over most days of the week. **Unresolved: whose
+   rule wins?** Until Majd decides, S8 stays as written and the conflict stays
+   recorded here.
+2. Several ministry items are about **who teaches which classes**, not about
+   when lessons happen. Our solver does not decide that - it reads `teacher_id`
+   as input. Those are tagged [A] in the catalogue.
+
 ## Change log
 
 Every change to a rule gets a line here, so no rule is ever silently lost.
@@ -129,4 +147,6 @@ Every change to a rule gets a line here, so no rule is ever silently lost.
 | Date | Change |
 |------|--------|
 | 2026-08-24 | File created from the first conversation. All rules `SPEC`, nothing coded. |
+| 2026-08-24 | Ministry recommendations catalogued and rated in `docs/MINISTRY_RULES.md`. Nothing coded from them yet. Recorded a direct conflict between our S8 and ministry rule M-T5. |
+| 2026-08-24 | H15 (daylight cutoff for Sport) and S12 (prefer morning) stated by Majd, coded, verified, and covered by a BREAK/RELAX test. |
 | 2026-08-24 | **Retracted H11, H12, H13, S11.** They were written up as numbered rules from remarks made in passing. Nothing had been decided. Moved to `docs/NOTES.md` as open questions. Nothing gets a rule number until it is stated deliberately and confirmed. |
