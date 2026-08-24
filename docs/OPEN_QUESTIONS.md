@@ -33,13 +33,16 @@ change which ministry rules apply at all.
 - [x] **93 teachers imported** from the ministry list. National identity
       numbers deliberately NOT copied.
 - [x] **H15 daylight cutoff** for Sport: stated, coded, verified, tested.
-- [x] **Circular 51/2018 read** (pages 1-7 of 13) and its symbol notation
-      decoded - see `docs/CIRCULAR_51_2018.md`.
+- [x] **Circular 51/2018 fully read** (all 13 pages), symbol notation decoded,
+      curriculum transcribed to `rules/curriculum.json` and validated against
+      last year's real timetable - see `docs/CIRCULAR_51_2018.md`.
+- [x] **`rules/rules.pdf` fully read** (all 21 pages, 2026-08-24). It is the
+      scanned original of the inspectorate recommendations already catalogued
+      in `docs/MINISTRY_RULES.md`. Verified page by page; two transcription
+      errors corrected (M-PH5 time window, M-PHI3/M-PHI8 swapped levels).
+      Provenance: edunet.tn, captured 2003 - so circular 51/2018 wins conflicts.
 
 ## Not done
-
-- [ ] Circular pages **8-13** - the 3rd and 4th year stream tables
-- [ ] `rules/rules.pdf` - **20 of 21 pages unread**
 - [ ] **H9 block patterns** (`2+1+1`) - the biggest gap in the solver
 - [ ] **Week A / Week B** fortnightly sessions
 - [ ] **Group splitting**, and with it the pupil-hours vs teacher-hours problem

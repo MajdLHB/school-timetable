@@ -3,6 +3,18 @@
 Source: *التفقدية العامة للتربية - توصيات بيداغوجية خاصة بإعداد موازنات الأساتذة*
 (General Inspectorate of Education, Tunisia), supplied by Majd 2026-08-24.
 
+**Provenance, established 2026-08-24:** the scanned `rules/rules.pdf` (21 pages)
+is this same document. Its last page carries the capture footer: taken from
+`www.edunet.tn/ressources/inspection/taousiat_pedag.htm` on **11-08-2003**. So
+this text is from **around 2003** - fifteen years older than circular 51/2018.
+**Where the two disagree, the 2018 circular wins.**
+
+**Verified 2026-08-24:** every page of the scan was read image-by-image and
+checked against this catalogue. The catalogue was found complete - all 13
+subject sections and the three general sections match the scan. Two
+transcription errors were found and corrected (marked ⚠ CORRECTED below):
+M-PH5 (a misread time reference) and the M-PHI3/M-PHI8 level labels (swapped).
+
 **Nothing here is coded yet.** This is a catalogue so we can choose an order of
 work together. Each item gets two independent ratings.
 
@@ -133,7 +145,7 @@ I am not assuming either way.
 | M-PH2 | Prefer common-core + second-stage mix (1+3, 1+4, 2+3, 2+4) | A | 3 | 4 | |
 | M-PH3 | Nobody "owns" a level, including final classes | A | 3 | 4 | |
 | ⭐ M-PH4 | Spread across the week - not 2 or 3 consecutive days | B | 4 | 2 | |
-| ⭐ M-PH5 | **Avoid a session running from period 5 into period 6** (across midday) | B | 3 | 1 | very cheap - forbid that one boundary |
+| ⭐ M-PH5 | ⚠ CORRECTED: **avoid the 17:00-18:00 hour** for Physics | B | 3 | 1 | The Arabic is تجنّب برمجة حصّة من الخامسة إلى السادسة - "from five to six". First read as "period 5 into period 6", but the document uses clock times everywhere else (قبل الساعة الرابعة, من الساعة 14 إلى الساعة 16), and a 5th-to-6th-period session cannot exist here anyway (that is the lunch break). Reading it as **17:00-18:00** matches our S14 last-resort slot exactly. |
 | M-PH6 | **TP may be in late hours** - morning or evening | B | 2 | 1 | a *relaxation*: TP is exempt from the morning preference |
 | M-PH7 | TP rooms **reserved for TP only**, to protect equipment | B | 4 | 2 | our room types handle this once labs are declared |
 | M-PH8 | Involve lab staff in room scheduling | - | 1 | - | organisational, not a solver rule |
@@ -175,14 +187,14 @@ I am not assuming either way.
 
 | id | rule | tag | POWER | DIFF | notes |
 |---|---|---|---|---|---|
-| M-PHI1 | Schedule the philosophy hour **mid-week** | B | 3 | 2 | |
-| M-PHI2 | Avoid evening sessions where possible | B | 3 | 1 | |
-| M-PHI3 | 3rd literary: hours as **2/2**, never single hours | B | 4 | 3 | needs H9 |
-| M-PHI4 | The two sessions not on consecutive days | B | 3 | 2 | |
-| M-PHI5 | Alternate morning / evening | B | 3 | 2 | |
-| ⭐ M-PHI6 | **Never Philosophy straight after PE** | B | 4 | 2 | cheap, specific, and obviously right |
-| M-PHI7 | Reserve an afternoon for regular tests | B | 3 | 3 | |
-| M-PHI8 | 4th scientific: pupils 2/2/2 (1-1), teacher 2/2/2/2 | B | 4 | 4 | |
+| M-PHI1 | **3rd Letters:** the philosophy hour **mid-week** | B | 3 | 2 | the scan ties this rule to 3rd Letters specifically |
+| M-PHI2 | Avoid evening sessions where possible | B | 3 | 1 | stated for 3rd Letters and 4th Letters; 4th scientific gets "alternate" instead |
+| M-PHI3 | ⚠ CORRECTED: **4th scientific** (not 3rd literary): hours as **2/2**, never single hours | B | 4 | 3 | needs H9. The scan puts 2/2 under السنوات الرابعة الشعبة العلمية |
+| M-PHI4 | The two sessions not on consecutive days | B | 3 | 2 | stated for 4th scientific |
+| M-PHI5 | Alternate morning / evening | B | 3 | 2 | stated for 4th scientific |
+| ⭐ M-PHI6 | **Never Philosophy straight after PE** | B | 4 | 2 | cheap, specific, and obviously right; stated for both 4th-year streams |
+| M-PHI7 | Reserve an afternoon for regular tests | B | 3 | 3 | both 4th-year streams |
+| M-PHI8 | ⚠ CORRECTED: **4th Letters** (not 4th scientific): pupils 2/2/2 (1-1), teacher 2/2/2/2 | B | 4 | 4 | the scan puts this under السنوات الرابعة شعبة الآداب |
 
 ## التربية التشكيلية - Plastic Arts
 

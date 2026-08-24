@@ -22,9 +22,15 @@ Where I am not certain of a reading, it says so - I do not guess.
 | 5 | guide 10/2 - 1st year secondary, common core | read |
 | 6 | guide 10/3 - **Sport stream**, hours + coefficients, years 1-4 | read |
 | 7 | guide 10/4 - **2nd year**: Letters, Sciences, Computer Tech, Economics | read |
-| 8-13 | guide 10/5 - 10/10 - 3rd and 4th year streams | **NOT YET READ** |
+| 8-13 | guide 10/5 - 10/10 - 3rd and 4th year streams | read, transcribed into `rules/curriculum.json` (page 10/5 top rows cut off - Letters Arabic/French/English recovered from last year's timetable instead) |
 
-`rules/rules.pdf` (21 pages) - **NOT YET READ**.
+`rules/rules.pdf` (21 pages) - **fully read 2026-08-24.** It turned out to be
+the scanned original of the General Inspectorate recommendations Majd had
+already supplied as text - the same document `docs/MINISTRY_RULES.md`
+catalogues. The scan (edunet.tn, captured 2003) was verified page by page
+against that catalogue; two transcription errors were found and corrected
+there (M-PH5, M-PHI3/M-PHI8). Being a 2003 text, it is older than this 2018
+circular - **51/2018 wins any conflict.**
 
 ---
 
