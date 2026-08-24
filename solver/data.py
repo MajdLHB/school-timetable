@@ -284,9 +284,13 @@ def check(s):
     max_run = longest_open_run(s.cfg)
     for c in s.curriculum:
         where = "Curriculum row " + c["class_id"] + " / " + c["subject_id"]
-        if c.get("week", "") not in ("", "A", "B"):
+        if c.get("week", "") not in ("", "A", "B", "ALT"):
             errs.append(where + " - week '" + c["week"] + "' must be blank "
-                        "(every week), A or B.")
+                        "(every week), A, B, or ALT (groups take turns).")
+        if c.get("week", "") == "ALT" and max(1, c.get("groups", 1)) < 2:
+            errs.append(where + " - week ALT means THE GROUPS take turns "
+                        "(odd groups week A, even week B), so it needs "
+                        "groups of 2 or more.")
         if c["class_id"] not in s.classes:
             errs.append(where + " - class '" + c["class_id"] + "' is not in the Classes sheet.")
         if c["subject_id"] not in s.subjects:
@@ -359,22 +363,35 @@ def check(s):
     def taught_hours(c):
         return c["hours"] * max(1, c.get("groups", 1))
 
+    def week_hours(c):
+        """(week A card-hours, week B card-hours) of one curriculum row."""
+        g = max(1, c.get("groups", 1))
+        h = c["hours"]
+        wk = c.get("week", "")
+        if wk == "ALT":         # odd groups week A, even groups week B
+            return (h * ((g + 1) // 2), h * (g // 2))
+        return (h * g if wk in ("", "A") else 0,
+                h * g if wk in ("", "B") else 0)
+
     loadw = {}      # tid -> [week A hours, week B hours]
     for c in s.curriculum:
         if c["teacher_id"]:
             e = loadw.setdefault(c["teacher_id"], [0, 0])
-            wk = c.get("week", "")
-            if wk in ("", "A"):
-                e[0] += taught_hours(c)
-            if wk in ("", "B"):
-                e[1] += taught_hours(c)
+            a, b = week_hours(c)
+            e[0] += a
+            e[1] += b
+    # H10 compares the AVERAGE of the two weeks - that is how the school's
+    # own sheets count (a fortnightly hour appears there as 0.5, e.g. the
+    # official 18.5). The BUSIER week still drives the physical fit checks.
     load = {tid: max(e) for tid, e in loadw.items()}
-    for tid in sorted(load):
+    for tid in sorted(loadw):
         t = s.teachers.get(tid)
-        if t and t["hours"] and load[tid] > t["hours"]:
+        e = loadw[tid]
+        if t and t["hours"] and e[0] + e[1] > 2 * t["hours"]:
             errs.append("Teacher " + tid + " (" + t["name"] + ") is given " +
-                        str(load[tid]) + " hours in their busier week but the "
-                        "contract says " + str(t["hours"]) + ".")
+                        str((e[0] + e[1]) / 2.0) + " hours a week on average "
+                        "(fortnightly hours count half, as on the official "
+                        "sheets) but the contract says " + str(t["hours"]) + ".")
     for tid, t in s.teachers.items():
         if tid not in load:
             notes.append("Teacher " + tid + " (" + t["name"] + ") teaches nothing yet.")
@@ -410,10 +427,15 @@ def check(s):
     for c in s.curriculum:
         e = clw.setdefault(c["class_id"], [0, 0])
         wk = c.get("week", "")
-        if wk in ("", "A"):
+        if wk == "ALT":
+            # some group is busy those hours in BOTH weeks (each its own)
             e[0] += c["hours"]
-        if wk in ("", "B"):
             e[1] += c["hours"]
+        else:
+            if wk in ("", "A"):
+                e[0] += c["hours"]
+            if wk in ("", "B"):
+                e[1] += c["hours"]
     for cid in sorted(clw):
         if max(clw[cid]) > week:
             errs.append("Class " + cid + " needs " + str(max(clw[cid])) +
@@ -442,9 +464,9 @@ def check(s):
             continue
         allowed = sum(1 for (d, p) in s.cfg.slots if p <= lp)
         need = max(
-            sum(taught_hours(c) for c in s.curriculum
-                if c["subject_id"] == sid and c.get("week", "") in ("", w))
-            for w in ("A", "B"))
+            sum(week_hours(c)[i] for c in s.curriculum
+                if c["subject_id"] == sid)
+            for i in (0, 1))
         n_rooms = len(s.rooms_of_type(sub.get("room_type") or "normal"))
         cap = allowed * max(1, n_rooms)
         if need > cap:
@@ -455,9 +477,8 @@ def check(s):
     # THE bottleneck: rooms. Grouped rows occupy a room PER GROUP; week A/B
     # rows only occupy their week - the busier week is what must fit.
     total = max(
-        sum(taught_hours(c) for c in s.curriculum
-            if c.get("week", "") in ("", w))
-        for w in ("A", "B")) if s.curriculum else 0
+        sum(week_hours(c)[i] for c in s.curriculum)
+        for i in (0, 1)) if s.curriculum else 0
     cap = len(s.rooms) * week
     if cap:
         use = 100.0 * total / cap
@@ -476,11 +497,9 @@ def check(s):
     for c in s.curriculum:
         rt = s.room_type_for(c)
         e = by_type.setdefault(rt, [0, 0])
-        wk = c.get("week", "")
-        if wk in ("", "A"):
-            e[0] += taught_hours(c)
-        if wk in ("", "B"):
-            e[1] += taught_hours(c)
+        a, b = week_hours(c)
+        e[0] += a
+        e[1] += b
     for rt in sorted(by_type):
         n = len(s.rooms_of_type(rt))
         if n and max(by_type[rt]) > n * week:

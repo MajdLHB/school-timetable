@@ -51,7 +51,8 @@ import sys
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-XLSX = os.path.join(HERE, "data", "school.xlsx")
+# an explicit path lets a regeneration be rehearsed on a COPY first
+XLSX = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "data", "school.xlsx")
 CURJ = os.path.join(HERE, "rules", "curriculum.json")
 REPORT = os.path.join(HERE, "data", "CURRICULUM_REPORT.md")
 

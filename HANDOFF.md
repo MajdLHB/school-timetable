@@ -115,9 +115,28 @@ the real one (40 classes, 20 rooms, 37 teachers, 580 lesson-hours):
 - [ ] The `<periods>` block in the emitted XML is the one element never tested
       against real aSc. If import misbehaves, drop it (see emit_asc.py).
 
+## Status update - 2026-08-24 (late)
+
+- [x] **T43 group splitting + T42 Week A/B are BUILT** end to end (solver,
+      emitter, verifier, selftest 20/20). Both aSc probes ran in the real
+      aSc. Curriculum semantics: `groups=N` = taught once per group, hours
+      PER GROUP; `week` column A/B = fortnight rows.
+- [x] The repo is PUBLIC: https://github.com/MajdLHB/school-timetable
+      (history checked clean; data/ and out/ never left the machine).
+- [ ] The real Curriculum sheet still has the OLD (pre-groups) rows -
+      regeneration is coded but blocked: school.xlsx open in Excel.
+      Backup at data/school_backup_2026-08-24_2353.xlsx. Clear the sheet
+      + run tools/make_curriculum.py when the file is free.
+- [ ] H14 pooled option groups: the LAST hard rule not built. Blocked on
+      Majd's answers (RULES.md, H14 questions).
+
 ## Next action
 
-1. Get the structural answers, fix `config.json` to match the real school.
-2. Ingest the PDFs into `data/school.xlsx` in batches.
-3. Implement H9 (double-hour blocks) and the AM/PM cohort constraint.
+1. Regenerate the Curriculum sheet (groups + weeks) once Excel releases
+   data/school.xlsx; run the bat; compare exception counts.
+2. Majd: import test/testC3_weeks_lesson_mask.xml into a 2-week aSc
+   project - if the bottom strip is empty, add lesson week masks to the
+   emitter too (one-line change in emit_asc).
+3. Data still owed: class sizes + home rooms, rooms list, teacher days
+   off, training days, the 9 Distribution flags, compact list.
 4. Tune weights with the user against real output.

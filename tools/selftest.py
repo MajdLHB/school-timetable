@@ -414,6 +414,22 @@ def case_T42_weeks_share_slot():
     return base("A"), base("B")
 
 
+def case_ALT_groups_take_turns():
+    """week=ALT: the halves of a split row take turns - group 1 week A,
+    group 2 week B (the school's fortnight TP practice) - so ONE weekly slot
+    serves both halves. BREAK: the same row weekly (both groups every week)
+    needs two slots but the school has one. RELAX: ALT."""
+    def base(wk):
+        s = tiny(days=("Mon",), periods=1)
+        s.cfg.morning = [1]
+        s.cfg.evening = []
+        teacher(s, "T1")
+        klass(s, "C1")
+        teach(s, "C1", "MA", 1, "T1", groups=2, week=wk)
+        return s
+    return base(""), base("ALT")
+
+
 def case_LOCK_conflict():
     """Two different subjects of one class pinned to the same slot.
     RELAX: pin them to different slots."""
@@ -495,6 +511,7 @@ CASES = [
     ("T43 groups unlock parallel", case_T43_groups_unlock_parallel, "solver"),
     ("T43 half class overbooked", case_T43_half_class_overbooked, "solver"),
     ("T42 week A/B share a slot", case_T42_weeks_share_slot, "solver"),
+    ("ALT groups take turns", case_ALT_groups_take_turns, "solver"),
     ("LOCK conflicting pins", case_LOCK_conflict, "solver"),
 ]
 

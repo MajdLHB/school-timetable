@@ -49,6 +49,17 @@ def _weeks_of_mask(mask):
     return ("A", "B")
 
 
+def _row_group_weeks(row, g):
+    """Which weeks group g of this curriculum row is taught in.
+    week ALT = the groups take turns: odd groups week A, even week B."""
+    rweek = row.get("week", "")
+    if rweek == "ALT":
+        return ("A",) if g % 2 == 1 else ("B",)
+    if rweek in ("A", "B"):
+        return (rweek,)
+    return ("A", "B")
+
+
 def read_xml(path):
     """Return (lessons, cards) exactly as aSc would see them."""
     root = ET.parse(path).getroot()
@@ -132,11 +143,9 @@ def main():
     want = collections.Counter()
     for row in s.curriculum:
         n_groups = max(1, row.get("groups", 1))
-        rweek = row.get("week", "")
         for g in (range(1, n_groups + 1) if n_groups > 1 else [0]):
-            for w in ("A", "B"):
-                if rweek in ("", w):
-                    want[row["class_id"], row["subject_id"], g, w] += row["hours"]
+            for w in _row_group_weeks(row, g):
+                want[row["class_id"], row["subject_id"], g, w] += row["hours"]
     got = collections.Counter()
     for d, p, r, lid, wks in placed:
         L = lessons.get(lid)
@@ -249,14 +258,11 @@ def main():
     unverifiable = set()                    # a blank-pattern row is in the mix
     for row in s.curriculum:
         n_groups = max(1, row.get("groups", 1))
-        rweek = row.get("week", "")
         blank = not str(row.get("blocks", "")).strip()
         want_bl, berr = D.parse_blocks(row.get("blocks", ""), row["hours"])
         bad = berr or not want_bl or sum(want_bl) != row["hours"]
         for g in (range(1, n_groups + 1) if n_groups > 1 else [0]):
-            for w in ("A", "B"):
-                if rweek not in ("", w):
-                    continue
+            for w in _row_group_weeks(row, g):
                 key = (row["class_id"], row["subject_id"], g, w)
                 if blank or bad:
                     unverifiable.add(key)
@@ -288,9 +294,9 @@ def main():
             continue
         n_groups = max(1, row.get("groups", 1))
         for g in (range(1, n_groups + 1) if n_groups > 1 else [0]):
-            for w in ("A", "B"):
+            for w in _row_group_weeks(row, g):
                 key = (row["class_id"], row["subject_id"], g, w)
-                if key in seen_h19 or row.get("week", "") not in ("", w):
+                if key in seen_h19:
                     continue
                 seen_h19.add(key)
                 starts = {}
@@ -396,16 +402,18 @@ def main():
                 fail("H18", "teacher %s has day_off %s adjacent to training_day "
                             "%s - consecutive free days (Sunday counts)." % (t["id"], off, tr))
 
-    # --- H10: contracted hours (the busier week is what counts) ------------
+    # --- H10: contracted hours - the AVERAGE of the two weeks, which is ----
+    # how the official sheets count (a fortnightly hour appears as 0.5)
     load = collections.Counter()
     for (t, d, p, w), v in t_at.items():
         load[t, w] += len(v)
     for t in sorted({t for (t, w) in load}):
-        n = max(load.get((t, "A"), 0), load.get((t, "B"), 0))
+        a, b = load.get((t, "A"), 0), load.get((t, "B"), 0)
         cap = s.teachers.get(t, {}).get("hours", 0)
-        if cap and n > cap:
-            fail("H10", "teacher %s teaches %d hours in their busier week, "
-                        "contract is %d." % (t, n, cap))
+        if cap and a + b > 2 * cap:
+            fail("H10", "teacher %s teaches %.1f hours a week on average "
+                        "(fortnightly hours count half), contract is %d."
+                 % (t, (a + b) / 2.0, cap))
 
     # --- Locked: the user's pins were honoured -----------------------------
     for lk in s.locked:

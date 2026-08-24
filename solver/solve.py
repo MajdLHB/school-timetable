@@ -120,15 +120,24 @@ def expand(s):
             bl, explicit = [1] * row["hours"], False
         week = (row.get("week") or "").strip().upper()
         n_groups = max(1, int(row.get("groups", 1) or 1))
-        okey = (row["class_id"], row["subject_id"], week)
         for g in (range(1, n_groups + 1) if n_groups > 1 else [0]):
+            # week=ALT: the groups TAKE TURNS - odd groups week A, even
+            # groups week B. The teacher teaches the row's hours EVERY week
+            # (to a different half), each pupil gets them every second week.
+            # This is the school's real fortnight practice (their official
+            # hour counts only add up this way). PROVISIONAL - Majd confirms.
+            if week == "ALT":
+                gw = "A" if g % 2 == 1 else "B"
+            else:
+                gw = week
+            okey = (row["class_id"], row["subject_id"], gw)
             for k, L in enumerate(bl):
                 sid = "%s|%s|%s|g%d|s%d.%d" % (
-                    row["class_id"], row["subject_id"], week, g, k,
+                    row["class_id"], row["subject_id"], gw, g, k,
                     next_off[okey])
                 sessions.append(Sess(sid, row["class_id"], row["subject_id"],
                                      row["teacher_id"], rt, L, next_off[okey],
-                                     explicit, g, week))
+                                     explicit, g, gw))
                 next_off[okey] += L
     return sessions
 
