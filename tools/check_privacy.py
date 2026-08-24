@@ -34,16 +34,24 @@ def git(*args):
 
 
 def real_names():
-    """Every human-identifying string in the live data file."""
+    """Every human-identifying string in the live data file.
+
+    Returns (names, is_demo). A workbook made by tools/make_demo.py carries a
+    hidden _DEMO sheet; there is no real person in it, so the name scan is
+    skipped. Anything without that sheet is treated as real data.
+    """
     path = os.path.join(HERE, "data", "school.xlsx")
     if not os.path.exists(path):
-        return []
+        return [], False
     try:
         from openpyxl import load_workbook
     except ImportError:
-        return []
+        return [], False
     names = set()
     wb = load_workbook(path, read_only=True, data_only=True)
+    if "_DEMO" in wb.sheetnames:
+        wb.close()
+        return [], True
     for sheet, cols in (("Teachers", ("name", "notes")),
                         ("Unavailable", ("reason",))):
         if sheet not in wb.sheetnames:
@@ -58,7 +66,7 @@ def real_names():
                 if h in cols and v and len(str(v).strip()) >= MIN_NAME_LEN:
                     names.add(str(v).strip())
     wb.close()
-    return sorted(names)
+    return sorted(names), False
 
 
 def main():
@@ -74,7 +82,7 @@ def main():
         elif low.endswith(BLOCKED_EXT):
             problems.append("TRACKED DATA FILE TYPE: " + f)
 
-    names = real_names()
+    names, is_demo = real_names()
     if names:
         for f in tracked:
             p = os.path.join(HERE, f)
@@ -106,6 +114,9 @@ def main():
             % (len(hist), sorted(hist)[0]))
 
     print("")
+    if is_demo:
+        print("data/school.xlsx is DEMO data (hidden _DEMO sheet) - no real")
+        print("names to scan for. File-level rules still enforced below.")
     print("Checked %d tracked files against %d real names." % (len(tracked), len(names)))
     print("")
     if problems:

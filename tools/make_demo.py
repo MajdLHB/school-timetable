@@ -124,6 +124,12 @@ def build(n_classes=40):
     for t in teachers[:5]:
         ws.append([t[0], "Mon", 1, "yes", "demo - arrives late"])
 
+    # Stamp the workbook as fake, so check_privacy.py knows there is nothing
+    # personal in it. Real workbooks never have this sheet.
+    mark = wb.create_sheet("_DEMO")
+    mark["A1"] = "This workbook contains generated fake data. No real person appears in it."
+    mark.sheet_state = "hidden"
+
     wb.save(OUT)
     total = sum(c[2] for c in curriculum)
     print("Demo school written to %s" % OUT)
