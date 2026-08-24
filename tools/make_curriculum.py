@@ -21,8 +21,9 @@ data/CURRICULUM_REPORT.md so nothing is silent):
       Classes are paired to teachers deterministically: classes in id order,
       Distribution rows in sheet order. This pairing is a FREE CHOICE -
       swap classes between two teachers of the same subject+stream freely.
-  P4  SPORT and TASH rows use the exact class lists in the Distribution
-      notes column (official for TASH; synthetic test data for SPORT).
+  P4  SPORT rows use the exact class lists in the Distribution notes
+      column (synthetic test data, FLAG-8). TASH uses the normal count
+      columns from the official art sheet; only opted pupils attend.
   P5  Options (ESP/ALL/ITA, MUS) are POOLED cross-class groups (H14, not
       built) - skipped entirely, listed in the report.
   P6  CS-stream IT splits by the component column: خ = ALGO, تك = ICT plus
@@ -33,6 +34,11 @@ data/CURRICULUM_REPORT.md so nothing is silent):
       later by Majd.
   P8  core=yes on the circular's stream-defining subjects (1st year:
       Arabic/French/Maths). Adjustable.
+  P9  (Majd, 2026-08-24) lab subjects are SPLIT: the whole-class sessions
+      become a theory row in an ORDINARY classroom, the group sessions
+      become a <SID>_TP row in the lab, at per-group length (the two
+      groups run back to back - ministry M-SN4). IT and TECH keep their
+      dedicated rooms for everything ("except IT always in a lab").
 
 Refuses to run if the Curriculum sheet already has data.
 
@@ -88,32 +94,48 @@ def node_for(streams, grade, stream):
     return streams[STREAM_KEY[stream]]["Y%d" % grade]
 
 
-def hours_and_blocks(node):
-    """P1 + P2. Returns (hours, blocks_string, flags)."""
+def split_theory_tp(node):
+    """P9 (Majd, 2026-08-24): 'there is physics lesson session in normal
+    classroom and there is the tp session - groups one - in lab'.
+
+    Returns (theory_hours, theory_blocks, tp_hours, flags).
+    theory = the whole-class sessions -> ordinary classroom.
+    tp     = the group sessions, at their per-group length (a 4h group
+             session is 2h per group; the two groups run back to back in
+             the lab, which is exactly ministry rule M-SN4) -> lab.
+    Fortnightly parts are dropped until Week A/B exists.
+    """
     flags = []
-    ph = node.get("pupil_hours")
-    if ph is None:
-        return 0, "", ["no pupil_hours in curriculum.json"]
-    hours = int(math.floor(ph))
-    if hours != ph:
-        flags.append("pupil_hours %.2f floored to %d (fortnightly part "
-                     "dropped until Week A/B exists)" % (ph, hours))
-    sessions = node.get("sessions", [])
-    wholes, clean = [], True
-    for se in sessions:
-        if list(se.keys()) == ["whole"]:
-            wholes.append(int(se["whole"]))
-        elif list(se.keys()) == ["fortnight_whole"]:
-            continue                       # dropped by P1
+    theory, tp_list = [], []
+    for se in node.get("sessions", []):
+        keys = list(se.keys())
+        if keys == ["whole"]:
+            theory.append(int(se["whole"]))
+        elif keys == ["fortnight_whole"]:
+            flags.append("fortnightly hour dropped until Week A/B exists")
+        elif keys == ["group"]:
+            tp_list.append(se["group"])    # per-group length applied below
+        elif keys == ["alt_whole1_group4"]:
+            # alternates: week A 1h whole class, week B 4h in groups.
+            # Single-week model: 1h theory + 1h lab, flagged.
+            theory.append(1)
+            tp_list.append(2)              # 2h group session -> 1h per group
+            flags.append("alternating 1h-whole / 4h-groups approximated as "
+                         "1h theory + 1h lab weekly until Week A/B exists")
         else:
-            clean = False
-    blocks = ""
-    if clean and node.get("_no_groups") and wholes and sum(wholes) == hours:
-        blocks = "+".join(str(w) for w in sorted(wholes, reverse=True))
-    elif not node.get("_no_groups"):
-        flags.append("has group/alternating sessions - placed whole-class, "
-                     "no block pattern, until the group machinery exists")
-    return hours, blocks, flags
+            flags.append("session %r not understood - skipped" % (se,))
+    tp_sessions = []
+    for g in tp_list:
+        per_group = g / 2.0
+        rounded = int(math.ceil(per_group))
+        if rounded != per_group:
+            flags.append("TP group session of %sh -> %.1fh per group, rounded "
+                         "up to %dh (aSc cannot show half hours - same "
+                         "convention the school already used)" % (g, per_group, rounded))
+        tp_sessions.append(rounded)
+    th = sum(theory)
+    blocks = "+".join(str(w) for w in sorted(theory, reverse=True)) if theory else ""
+    return th, blocks, tp_sessions, flags
 
 
 def class_names_in(text, name_to_id):
@@ -163,10 +185,18 @@ def main():
         if rec.get("subject"):
             dist.append(rec)
 
-    # ---- existing subject ids; add the CS components if missing (P6) ------
+    # ---- existing subjects + their room types -----------------------------
     subj_ws = wb["Subjects"]
-    subj_ids = {str(r[0]).strip() for r in
-                list(subj_ws.iter_rows(values_only=True))[2:] if r and r[0]}
+    srows = list(subj_ws.iter_rows(values_only=True))
+    sh = [str(h or "").strip() for h in srows[0]]
+    subj_room = {}
+    subj_name = {}
+    for r in srows[2:]:
+        rec = dict(zip(sh, r))
+        if rec.get("id"):
+            subj_room[str(rec["id"]).strip()] = str(rec.get("room_type") or "").strip()
+            subj_name[str(rec["id"]).strip()] = str(rec.get("name") or "").strip()
+    subj_ids = set(subj_room)
     CS_SUBJ = {"ALGO": "خوارزميات وبرمجة", "ICT": "تكنولوجيات المعلومات",
                "NET": "الشبكات والأنظمة", "DB": "قواعد البيانات"}
     added_subjects = []
@@ -174,7 +204,23 @@ def main():
         if sid not in subj_ids:
             subj_ws.append([sid, name_ar, sid, "", "it"])
             subj_ids.add(sid)
+            subj_room[sid] = "it"
             added_subjects.append(sid)
+
+    # P9: subjects whose sheet room type is a LAB get split into theory
+    # (normal classroom) + a separate <SID>_TP subject in the lab. IT and
+    # TECH families keep their dedicated rooms for everything, as Majd said
+    # ("except IT always in a lab") and as the ministry says for technology.
+    LAB_TYPES = {"lab_phys", "lab_sci", "lab_chem"}
+    lab_split = {sid: rt for sid, rt in subj_room.items() if rt in LAB_TYPES}
+    for sid, rt in sorted(lab_split.items()):
+        tp_id = sid + "_TP"
+        if tp_id not in subj_ids:
+            subj_ws.append([tp_id, "أشغال تطبيقية - " + (subj_name.get(sid) or sid),
+                            "ت.ط", "", rt])
+            subj_ids.add(tp_id)
+            subj_room[tp_id] = rt
+            added_subjects.append(tp_id)
 
     report = ["# Curriculum generation report",
               "",
@@ -204,12 +250,13 @@ def main():
         if subj in OPTION_SUBJECTS:
             skipped.append((subj, tid, rec.get("hours_assigned")))
             continue
-        if subj in ("SPORT", "TASH"):
-            # P4: exact class lists live in the notes column
+        if subj == "SPORT":
+            # P4: the exact class lists live in the notes column (FLAG-8)
             for cid in class_names_in(notes, name_to_id):
-                key = "TASH" if subj == "TASH" else "SPORT"
-                assign[cid, key] = tid
+                assign[cid, "SPORT"] = tid
             continue
+        # TASH flows through the normal count columns like everything else
+        # (the official art sheet fills them; the notes are just a summary)
         if subj in ("MECH", "ELEC"):
             continue       # P7 - reported below via TECH rows
         for col, (grade, stream) in COLMAP.items():
@@ -256,27 +303,45 @@ def main():
                 continue
             if sid in OPTION_SUBJECTS:
                 continue
-            hours, blocks, hf = hours_and_blocks(node)
-            if hours <= 0:
-                continue
+            theory_h, theory_blocks, tp_sessions, hf = split_theory_tp(node)
             for f in hf:
                 flags_hours.add("%s: %s" % (sid, f))
             tid = assign.get((cid, sid), "")
             if not tid and sid == "TECH" and stream == "TECHSCI":
                 pass       # P7, reported once below
-            elif not tid and sid not in ("SPORT", "TASH"):
+            elif not tid and sid != "SPORT":
                 unassigned.append((cid, sid))
             core = "yes" if sid in CORE.get((grade, stream), set()) else ""
-            out_rows.append((cid, sid, hours, tid, blocks, core))
-        # TASH: only for classes named on the official art sheet
+            if sid in lab_split:
+                # P9: theory in an ordinary classroom, TP in the lab
+                if theory_h > 0:
+                    out_rows.append((cid, sid, theory_h, tid, theory_blocks,
+                                     core, "normal"))
+                if tp_sessions:
+                    out_rows.append((cid, sid + "_TP", sum(tp_sessions), tid,
+                                     "+".join(str(t) for t in
+                                              sorted(tp_sessions, reverse=True)),
+                                     "", ""))
+            else:
+                hours = theory_h + sum(tp_sessions)
+                if hours <= 0:
+                    continue
+                if tp_sessions and theory_h == 0:
+                    blocks = "+".join(str(t) for t in sorted(tp_sessions, reverse=True))
+                elif tp_sessions:
+                    blocks = ""     # mixed, no clean pattern
+                else:
+                    blocks = theory_blocks
+                out_rows.append((cid, sid, hours, tid, blocks, core, ""))
+        # TASH: only for the classes on the official art sheet (opted pupils)
         if (cid, "TASH") in assign:
-            out_rows.append((cid, "TASH", 2, assign[cid, "TASH"], "2", ""))
+            out_rows.append((cid, "TASH", 2, assign[cid, "TASH"], "2", "", ""))
 
     # ---- write ------------------------------------------------------------
-    for cid, sid, hours, tid, blocks, core in out_rows:
+    for cid, sid, hours, tid, blocks, core, room in out_rows:
         # Columns: class_id, subject_id, hours, teacher_id, blocks, groups,
         # room_type, core
-        cur_ws.append([cid, sid, hours, tid, blocks, 1, "", core])
+        cur_ws.append([cid, sid, hours, tid, blocks, 1, room, core])
     wb.save(XLSX)
 
     # ---- report -----------------------------------------------------------
@@ -330,7 +395,7 @@ def main():
     R("")
     R("## Known carried-over guesses")
     R("")
-    R("- ENGL أسماء بن طاهر: one 3ع-إعلا section moved to 3ع-تج in the "
+    R("- ENGL T025: one 3ع-إعلا section moved to 3ع-تج in the "
       "Distribution (documented guess) - the pairing here inherits it.")
     R("- SPORT class lists are synthetic test data (FLAG-8).")
 
