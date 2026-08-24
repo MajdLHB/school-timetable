@@ -207,6 +207,27 @@ def main():
                     "+".join(map(str, want_bl)),
                     "+".join(map(str, sorted(got_bl, reverse=True))) or "none"))
 
+    # --- H19: 24 hours between sessions of a gap24 subject -----------------
+    # On consecutive days, the later session must not start earlier in the
+    # day than the first one did (circular III.2, the PE 24-hour note).
+    day_order = {d: k for k, d in enumerate(cfg.days)}
+    for row in s.curriculum:
+        if not str(row.get("blocks", "")).strip():
+            continue
+        if s.subjects.get(row["subject_id"], {}).get("gap24") != "yes":
+            continue
+        starts = {}
+        for (cid, subj, d), ps in cs_day.items():
+            if cid == row["class_id"] and subj == row["subject_id"]:
+                starts[day_order[d]] = min(ps)
+        for k in sorted(starts):
+            if k + 1 in starts and starts[k + 1] < starts[k]:
+                fail("H19", "class %s subject %s: sessions on consecutive days "
+                            "start at period %d then %d - less than 24 hours "
+                            "apart (circular III.2)."
+                     % (row["class_id"], row["subject_id"],
+                        starts[k], starts[k + 1]))
+
     # --- H15: daylight-only subjects ---------------------------------------
     for d, p, r, lid in placed:
         L = lessons.get(lid)
@@ -307,7 +328,8 @@ def main():
     print("H1 no teacher clash | H2 no class clash | H3 no room clash")
     print("H4 room count | H5 hours exact | H6 room type | H7 day off+training")
     print("H8 unavailable | H9 block patterns | H10 contract hours")
-    print("H15 daylight | H17 max 6h/day | H18 free-day adjacency | LOCK pins")
+    print("H15 daylight | H17 max 6h/day | H18 free-day adjacency")
+    print("H19 24h between gap24 sessions | LOCK pins")
     return 0
 
 

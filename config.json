@@ -64,6 +64,7 @@
     "same_subject_adjacent_days": 50,
     "late_subject": 50,
     "last_period": 55,
+    "not_after": 60,
     "overloaded_day": 40,
     "extra_day_present": 40,
     "daylight_not_morning": 45,

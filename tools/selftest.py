@@ -236,6 +236,26 @@ def case_H9_blocks_on_distinct_days():
     return base(("Mon",)), base(("Mon", "Tue"))
 
 
+def case_H19_pe_24h_gap():
+    """PE '1+1' with gap24: one session locked to Mon period 2; Tue period 2
+    is blocked, so the other session could only sit Tue period 1 - which is
+    LESS than 24 hours after Mon period 2. RELAX: drop the gap24 flag."""
+    def base(flag):
+        s = tiny()
+        s.subjects["EP"] = dict(id="EP", name="Sport", short="EP",
+                                difficulty="easy", room_type="normal",
+                                latest_period=0, gap24=flag)
+        teacher(s, "T1")
+        klass(s, "C1")
+        teach(s, "C1", "EP", 2, "T1", blocks="1+1")
+        s.locked.append(dict(class_id="C1", subject_id="EP", day="Mon",
+                             period=2, room_id="", why="selftest"))
+        s.unavailable.append(dict(teacher_id="T1", day="Tue", period=2,
+                                  hard="yes", reason="selftest"))
+        return s
+    return base("yes"), base("")
+
+
 def case_H18_adjacent_free_days():
     """The inspector's rule: the day off must not sit next to the training
     day. A data property - no placement can change which days these are, so
@@ -373,6 +393,7 @@ CASES = [
     # Like H10, H18 is a property of the DATA (which days are free), so the
     # validator must catch it; a solver constraint would be a no-op.
     ("H18 adjacent free days", case_H18_adjacent_free_days, "validator"),
+    ("H19 24h between PE sessions", case_H19_pe_24h_gap, "solver"),
     ("LOCK conflicting pins", case_LOCK_conflict, "solver"),
 ]
 

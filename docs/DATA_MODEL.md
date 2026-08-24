@@ -60,6 +60,8 @@ Regenerate a blank workbook: `python tools/make_workbook.py`
 | `latest_period` | HARD daylight cutoff (H15) - last period allowed. Sport = 8 (ends 16:00). Blank = any |
 | `avoid_after` | SOFT late-hour avoidance (S16) - prefer not after this period. Maths = 8 (M-MA3), Physics = 9 (M-PH5). Blank = none |
 | `minmax_exempt` | `yes` = exempt from the minimum-2-hours rules (S15) - PE and optional subjects, as circular I.2 says |
+| `gap24` | `yes` = 24 hours between this subject's sessions (H19) - Sport, circular III.2 |
+| `not_after` | subject ids this one must not directly follow (S18) - Philosophy carries `SPORT` |
 
 ### `data/curriculum.csv` - the big one
 One row per **class + subject**. This is what must be taught.

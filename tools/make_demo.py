@@ -80,7 +80,8 @@ def build(n_classes=40):
         # avoids 17:00-18:00 (M-PH5).
         avoid = {"MATH": 8, "PHYS": 9}.get(sid, "")
         exempt = "yes" if sid == "SPORT" else ""
-        ws.append([sid, name, short, diff, rt, latest, avoid, exempt])
+        gap24 = "yes" if sid == "SPORT" else ""
+        ws.append([sid, name, short, diff, rt, latest, avoid, exempt, gap24, ""])
 
     # ---------------- classes ----------------
     # Columns: id, name, grade, stream, size, is_bac, home_room, cohort -

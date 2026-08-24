@@ -215,6 +215,15 @@ def load_school(xlsx=None, cfg=None):
             # Circular I.2 note: the min-2h/session rules do not apply to PE
             # and optional subjects. yes = exempt from S15.
             minmax_exempt=(r.get("minmax_exempt") or "").strip().lower(),
+            # H19, circular III.2 note on PE: always 24 hours between the two
+            # sessions. yes = on consecutive days the later session must not
+            # start earlier than the first one did.
+            gap24=(r.get("gap24") or "").strip().lower(),
+            # S18: subjects this one must not FOLLOW immediately (same class,
+            # adjacent periods). The inspectorate: never Philosophy straight
+            # after PE - so PHIL carries not_after=SPORT. ; separated ids.
+            not_after=[v for v in (r.get("not_after") or "").replace(",", ";").split(";")
+                       if v.strip()],
         )
     for r in _rows(wb["Curriculum"]):
         s.curriculum.append(dict(

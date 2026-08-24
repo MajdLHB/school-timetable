@@ -414,6 +414,31 @@ def build(s, sessions, rescue=False):
             if p > lp:
                 forbid_slot(se, i)
 
+    # ---- H19: 24 hours between sessions of a gap24 subject ----------------
+    # Circular III.2 on PE: "always respect the 24-hour separation between
+    # the two PE sessions". On consecutive days that means the later session
+    # must not start EARLIER in the day than the first one did. Non-adjacent
+    # days are always fine; H9 already keeps them off the same day.
+    for key, ss in by_row.items():
+        if len(ss) < 2:
+            continue
+        if s.subjects.get(key[1], {}).get("gap24") != "yes":
+            continue
+        if not ss[0].explicit:
+            continue   # a written pattern is required to reason about sessions
+        for a in ss:
+            for b in ss:
+                if a.sid >= b.sid:
+                    continue
+                for ja, (da_, pa, _xa) in enumerate(starts_of(a)):
+                    for jb, (db_, pb, _xb) in enumerate(starts_of(b)):
+                        ka, kb = day_ix[da_], day_ix[db_]
+                        if abs(ka - kb) != 1:
+                            continue
+                        early, late = (pa, pb) if ka < kb else (pb, pa)
+                        if late < early:
+                            m.AddBoolOr([x[a.sid, ja].Not(), x[b.sid, jb].Not()])
+
     # ---- Locked sheet: the user's pinned placements are immovable --------
     for lk in s.locked:
         i = slot_ix.get((lk["day"], lk["period"]))
@@ -570,6 +595,30 @@ def build(s, sessions, rescue=False):
                 both = m.NewIntVar(0, 1, "adj_%s_%s_%s" % (key[0], key[1], da))
                 m.Add(both >= dps[da] + dps[db] - 1)
                 penalties.append((W.get("same_subject_adjacent_days", 50), both))
+
+    # ---- S18: never subject B straight after subject A --------------------
+    # The inspectorate, for both 4th-year streams: never Philosophy in the
+    # period right after PE. Generic: any subject may carry not_after=<ids>.
+    for cid, ss in by_class.items():
+        by_subj = collections.defaultdict(list)
+        for se in ss:
+            by_subj[se.subject_id].append(se)
+        for sid_b, ses_b in by_subj.items():
+            for sid_a in s.subjects.get(sid_b, {}).get("not_after", []):
+                ses_a = by_subj.get(sid_a)
+                if not ses_a:
+                    continue
+                for i, (d, p) in enumerate(slots):
+                    i2 = slot_ix.get((d, p + 1))
+                    if i2 is None:
+                        continue
+                    va = occs(ses_a, i)
+                    vb = occs(ses_b, i2)
+                    if not va or not vb:
+                        continue
+                    both = m.NewIntVar(0, 1, "na_%s_%s_%s_%s_%d" % (cid, sid_a, sid_b, d, p))
+                    m.Add(both >= sum(va) + sum(vb) - 1)
+                    penalties.append((W.get("not_after", 60), both))
 
     # ---- S16: subject-specific late-hour avoidance ------------------------
     # Soft cousin of H15. Ministry: Maths avoids the evening and never after
