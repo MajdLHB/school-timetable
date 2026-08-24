@@ -1,4 +1,4 @@
-"""Build the timetable with OR-Tools CP-SAT, then write the aSc XML and report.
+﻿"""Build the timetable with OR-Tools CP-SAT, then write the aSc XML and report.
 
 HARD rules are constraints - the solver physically cannot return a timetable
 that breaks one. SOFT rules are penalties - it minimises them and reports what
@@ -29,6 +29,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ortools.sat.python import cp_model  # noqa: E402
 import data as D  # noqa: E402
 import emit_asc  # noqa: E402
+import emit_html  # noqa: E402
 
 HERE = D.HERE
 OUT = os.path.join(HERE, "out")
@@ -131,7 +132,7 @@ class Progress(cp_model.CpSolverSolutionCallback):
     """
 
     def __init__(self, t0, sessions=None, x=None, starts_of=None, slots=None,
-                 every=15.0):
+                 every=15.0, viols=None):
         super().__init__()
         self.t0 = t0
         self.n = 0
@@ -142,6 +143,10 @@ class Progress(cp_model.CpSolverSolutionCallback):
         self.every = every
         self.last_save = 0.0
         self.best = None
+        # rescue mode only: the exception variables, so every printed version
+        # says how many rule exceptions it still carries (Majd asked to watch
+        # this number fall live until he stops the run or it turns OPTIMAL)
+        self.viols = viols or []
 
     def save(self, force=False):
         if self.sessions is None:
@@ -169,8 +174,17 @@ class Progress(cp_model.CpSolverSolutionCallback):
     def on_solution_callback(self):
         self.n += 1
         el = time.time() - self.t0
-        print("   %6.1fs  solution %-3d penalty %s"
-              % (el, self.n, int(self.ObjectiveValue())), flush=True)
+        # split the penalty into what Majd actually cares about: hours that
+        # break a real rule (H7/H17 exceptions, RESCUE_WEIGHT each) vs soft
+        # comfort points (holes, late hours, imbalance...)
+        exc_hours = sum(int(self.Value(v)) for _, _, _, v, _ in self.viols)
+        exc_cases = sum(1 for _, _, _, v, _ in self.viols if self.Value(v))
+        soft = int(self.ObjectiveValue()) - RESCUE_WEIGHT * exc_hours
+        if self.n == 1:
+            print("   FIRST COMPLETE TIMETABLE:", flush=True)
+        print("   %6.1fs  version %-4d exceptions %3d hours (%d teacher-days)"
+              " | soft points %s"
+              % (el, self.n, exc_hours, exc_cases, soft), flush=True)
         self.save()
         if STOP:
             self.save(force=True)
@@ -975,9 +989,12 @@ def n_workers():
     fewer workers search a little slower but never crash. Override with
     --workers=N when the machine is free.
     """
+    chosen = None
     for a in sys.argv[1:]:
         if a.startswith("--workers="):
-            return max(1, int(a.split("=", 1)[1]))
+            chosen = max(1, int(a.split("=", 1)[1]))   # last one wins,
+    if chosen is not None:                             # so run.bat's default
+        return chosen                                  # can be overridden
     return max(1, min(4, (os.cpu_count() or 4) // 2))
 
 
@@ -1008,7 +1025,16 @@ def main():
           "%d open periods across %d rooms."
           % (n_hours, len(sessions), n_blocks, len(s.cfg.slots), len(s.rooms)))
     print("Building the model...", flush=True)
-    m, x, starts_of, viols = build(s, sessions)
+    # --rescue: skip the strict attempt and allow the livable exceptions from
+    # the start. Honest shortcut for the real school, where the strict model
+    # is INFEASIBLE but too big to prove so within the limit: exceptions still
+    # cost 10,000 per hour, so a zero-exception timetable always wins when one
+    # exists - forcing rescue can never invent exceptions.
+    rescue_now = "--rescue" in sys.argv
+    if rescue_now:
+        print("--rescue: strict attempt skipped, livable exceptions allowed "
+              "(each costs 10,000 - the solver still prefers none).")
+    m, x, starts_of, viols = build(s, sessions, rescue=rescue_now)
 
     def on_sigint(signum, frame):
         global STOP
@@ -1049,13 +1075,19 @@ def main():
         else:
             print("--continue given but no out/solution.json yet; starting fresh.")
 
-    cb = Progress(t0, sessions=sessions, x=x, starts_of=starts_of, slots=s.cfg.slots)
+    cb = Progress(t0, sessions=sessions, x=x, starts_of=starts_of, slots=s.cfg.slots, viols=viols)
     status = solver.Solve(m, cb)
     cb.save(force=True)
 
     name = solver.StatusName(status)
     exceptions = []
     exc_path = os.path.join(OUT, "exceptions.json")
+
+    if name in ("INFEASIBLE", "MODEL_INVALID") and rescue_now:
+        print("\nNO TIMETABLE EXISTS even with the livable exceptions.")
+        print("Something structural is impossible (a clash, room shortage,")
+        print("or contradictory data). Check the data, then re-run.")
+        return 2
 
     if name in ("INFEASIBLE", "MODEL_INVALID"):
         # ---- RESCUE MODE ------------------------------------------------
@@ -1064,6 +1096,7 @@ def main():
         # 6h/day cap) allowed to break at enormous cost. Clashes, the lunch
         # break, H8 declarations, daylight limits, H9 blocks and locks stay
         # absolute. Every exception taken is listed in the report.
+        rescue_now = True
         print("\nNo timetable exists under the strict rules.")
         print("RESCUE MODE: retrying with livable exceptions allowed")
         print("(day off / training day / 6h-day cap only - never clashes,")
@@ -1072,7 +1105,7 @@ def main():
         solver = cp_model.CpSolver()
         solver.parameters.max_time_in_seconds = float(cfg.time_limit)
         solver.parameters.num_search_workers = n_workers()
-        cb = Progress(t0, sessions=sessions, x=x, starts_of=starts_of, slots=s.cfg.slots)
+        cb = Progress(t0, sessions=sessions, x=x, starts_of=starts_of, slots=s.cfg.slots, viols=viols)
         status = solver.Solve(m, cb)
         cb.save(force=True)
         name = solver.StatusName(status)
@@ -1098,6 +1131,21 @@ def main():
         print("\nNo solution found inside the time limit.")
         print("Raise time_limit_seconds in config.json and re-run.")
         return 3
+    elif rescue_now:
+        # Forced --rescue solve succeeded: read the exception vars directly.
+        for rule, tid, day, var, desc in viols:
+            v = solver.Value(var)
+            if v:
+                exceptions.append(dict(rule=rule, teacher_id=tid, day=day,
+                                       amount=int(v), what=desc))
+        os.makedirs(OUT, exist_ok=True)
+        if exceptions:
+            with open(exc_path, "w", encoding="utf-8") as f:
+                json.dump(dict(mode="rescue", exceptions=exceptions), f,
+                          ensure_ascii=False, indent=1)
+        elif os.path.exists(exc_path):
+            # rescue was allowed but not needed - the timetable is fully legal
+            os.remove(exc_path)
     else:
         # A strict solve succeeded: any exceptions file from an earlier
         # rescue run is stale and must not excuse anything.
@@ -1114,6 +1162,7 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     xml_path = os.path.join(OUT, "timetable.xml")
     emit_asc.write(s, units, placement, rooms, xml_path)
+    emit_html.write(s, units, placement, rooms, os.path.join(OUT, "view.html"))
     rep = report(s, units, placement, rooms, solver, status, elapsed,
                  exceptions=exceptions)
     with open(os.path.join(OUT, "report.md"), "w", encoding="utf-8") as f:
@@ -1141,6 +1190,7 @@ def main():
         print("  Full list in out/report.md. Fix the cause and re-run for a")
         print("  fully legal timetable.")
     print("  out/timetable.xml  -> import into aSc TimeTables")
+    print("  out/view.html      -> open in a browser: view, print, save as PDF")
     print("  out/report.md      -> what it could and could not satisfy")
     print("\nNow run:  python solver/verify.py")
     return 0

@@ -20,8 +20,14 @@ if errorlevel 1 (
 echo.
 echo  ---------------------------------------------
 echo   STEP 2 of 3 - building the timetable
+echo   (about 10 minutes - Ctrl+C keeps the best so far)
 echo  ---------------------------------------------
-python solver\solve.py %*
+REM --rescue: on the real school the strict phase cannot finish in any
+REM   reasonable time, so we go straight to the mode that always finds a
+REM   timetable and DECLARES every rule exception in the report.
+REM --workers=2: this machine has 8 GB RAM; more workers can crash.
+REM   A later --time=N on the command line still overrides the default.
+python solver\solve.py --rescue --workers=2 --time=600 %*
 if errorlevel 1 (
   echo.
   echo  No timetable was produced. Read the message above.
