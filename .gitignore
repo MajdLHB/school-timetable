@@ -1,0 +1,31 @@
+# ============================================================
+#  PRIVACY FIREWALL - REAL PEOPLE'S DATA NEVER LEAVES THIS PC
+#  Do not weaken these rules. See docs/PRIVACY.md.
+# ============================================================
+
+# All real school data
+data/
+out/
+
+# Source documents from the school
+*.pdf
+*.roz
+*.xlsx
+*.xls
+*.csv
+*.docx
+*.jpg
+*.jpeg
+*.png
+
+# Anything explicitly marked private
+*private*
+*confidential*
+*real*
+
+# ---- allowed back in: templates and demo data only ----
+!demo/
+!demo/**
+!tools/
+!test/*.xml
+!docs/**

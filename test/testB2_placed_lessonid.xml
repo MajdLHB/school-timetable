@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<timetable importtype="database" options="idprefix:SOLVER">
+   <teachers options="" columns="id,name,short">
+      <teacher id="T01" name="Prof Alpha" short="ALP"/>
+      <teacher id="T02" name="Prof Beta" short="BET"/>
+      <teacher id="T03" name="Prof Gamma" short="GAM"/>
+      <teacher id="T04" name="Prof Delta" short="DEL"/>
+   </teachers>
+   <classes options="" columns="id,name,short">
+      <class id="C01" name="Test 1A" short="1A"/>
+      <class id="C02" name="Test 1B" short="1B"/>
+   </classes>
+   <subjects options="" columns="id,name,short">
+      <subject id="MATH" name="Mathematiques" short="Ma"/>
+      <subject id="PHYS" name="Physique" short="Ph"/>
+      <subject id="ARAB" name="Arabe" short="Ar"/>
+   </subjects>
+   <classrooms options="" columns="id,name,short">
+      <classroom id="R01" name="Salle 1" short="S1"/>
+      <classroom id="R02" name="Salle 2" short="S2"/>
+   </classrooms>
+   <lessons options="" columns="id,subjectid,classids,teacherids,classroomids,periodspercard,periodsperweek">
+      <lesson id="L1" subjectid="MATH" classids="C01" teacherids="T01" classroomids="R01" periodspercard="1" periodsperweek="2"/>
+      <lesson id="L2" subjectid="ARAB" classids="C01" teacherids="T03" classroomids="R01" periodspercard="1" periodsperweek="1"/>
+      <lesson id="L3" subjectid="MATH" classids="C02" teacherids="T01" classroomids="R02" periodspercard="1" periodsperweek="1"/>
+      <lesson id="L4" subjectid="PHYS" classids="C02" teacherids="T02" classroomids="R02" periodspercard="1" periodsperweek="2"/>
+   </lessons>
+   <cards options="" columns="lessonid,period,days,classroomids">
+      <card lessonid="L1" period="1" days="10000" classroomids="R01"/>
+      <card lessonid="L1" period="1" days="01000" classroomids="R01"/>
+      <card lessonid="L2" period="2" days="10000" classroomids="R01"/>
+      <card lessonid="L3" period="3" days="10000" classroomids="R02"/>
+      <card lessonid="L4" period="2" days="01000" classroomids="R02"/>
+      <card lessonid="L4" period="2" days="00100" classroomids="R02"/>
+   </cards>
+</timetable>

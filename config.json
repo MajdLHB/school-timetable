@@ -1,0 +1,21 @@
+{
+  "_comment": "Edit these to match the school. Everything else is data.",
+  "days": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+  "periods_per_day": 8,
+  "morning_periods": [1, 2, 3, 4],
+  "evening_periods": [5, 6, 7, 8],
+  "closed": {
+    "_comment": "day -> periods when the whole school is shut (half days)",
+    "Wed": [5, 6, 7, 8],
+    "Sat": [5, 6, 7, 8]
+  },
+  "time_limit_seconds": 120,
+  "weights": {
+    "teacher_gap": 100,
+    "one_hour_day": 90,
+    "class_gap": 85,
+    "hard_subject_evening": 70,
+    "same_subject_twice_a_day": 50,
+    "extra_day_present": 40
+  }
+}

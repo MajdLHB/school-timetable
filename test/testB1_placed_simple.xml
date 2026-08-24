@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<timetable importtype="database" options="idprefix:SOLVER">
+   <teachers options="" columns="id,name,short">
+      <teacher id="T01" name="Prof Alpha" short="ALP"/>
+      <teacher id="T02" name="Prof Beta" short="BET"/>
+      <teacher id="T03" name="Prof Gamma" short="GAM"/>
+      <teacher id="T04" name="Prof Delta" short="DEL"/>
+   </teachers>
+   <classes options="" columns="id,name,short">
+      <class id="C01" name="Test 1A" short="1A"/>
+      <class id="C02" name="Test 1B" short="1B"/>
+   </classes>
+   <subjects options="" columns="id,name,short">
+      <subject id="MATH" name="Mathematiques" short="Ma"/>
+      <subject id="PHYS" name="Physique" short="Ph"/>
+      <subject id="ARAB" name="Arabe" short="Ar"/>
+   </subjects>
+   <classrooms options="" columns="id,name,short">
+      <classroom id="R01" name="Salle 1" short="S1"/>
+      <classroom id="R02" name="Salle 2" short="S2"/>
+   </classrooms>
+   <classsubjects options="" columns="classid,subjectid,periodsperweek,teacherid">
+      <classsubject classid="C01" subjectid="MATH" periodsperweek="2" teacherid="T01"/>
+      <classsubject classid="C01" subjectid="ARAB" periodsperweek="1" teacherid="T03"/>
+      <classsubject classid="C02" subjectid="MATH" periodsperweek="1" teacherid="T01"/>
+      <classsubject classid="C02" subjectid="PHYS" periodsperweek="2" teacherid="T02"/>
+   </classsubjects>
+   <cards options="" columns="day,period,classids,subjectid,teacherids,classroomids">
+      <card day="1" period="1" classids="C01" subjectid="MATH" teacherids="T01" classroomids="R01"/>
+      <card day="2" period="1" classids="C01" subjectid="MATH" teacherids="T01" classroomids="R01"/>
+      <card day="1" period="2" classids="C01" subjectid="ARAB" teacherids="T03" classroomids="R01"/>
+      <card day="1" period="3" classids="C02" subjectid="MATH" teacherids="T01" classroomids="R02"/>
+      <card day="2" period="2" classids="C02" subjectid="PHYS" teacherids="T02" classroomids="R02"/>
+      <card day="3" period="2" classids="C02" subjectid="PHYS" teacherids="T02" classroomids="R02"/>
+   </cards>
+</timetable>

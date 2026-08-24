@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<timetable importtype="database" options="idprefix:SOLVER">
+   <teachers options="" columns="id,name,short">
+      <teacher id="T01" name="Prof Alpha" short="ALP"/>
+      <teacher id="T02" name="Prof Beta" short="BET"/>
+      <teacher id="T03" name="Prof Gamma" short="GAM"/>
+      <teacher id="T04" name="Prof Delta" short="DEL"/>
+   </teachers>
+   <classes options="" columns="id,name,short">
+      <class id="C01" name="Test 1A" short="1A"/>
+      <class id="C02" name="Test 1B" short="1B"/>
+   </classes>
+   <subjects options="" columns="id,name,short">
+      <subject id="MATH" name="Mathematiques" short="Ma"/>
+      <subject id="PHYS" name="Physique" short="Ph"/>
+      <subject id="ARAB" name="Arabe" short="Ar"/>
+   </subjects>
+   <classrooms options="" columns="id,name,short">
+      <classroom id="R01" name="Salle 1" short="S1"/>
+      <classroom id="R02" name="Salle 2" short="S2"/>
+   </classrooms>
+</timetable>

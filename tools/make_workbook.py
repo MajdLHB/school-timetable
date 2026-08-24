@@ -1,0 +1,144 @@
+"""Generate data/school.xlsx - the friendly input file the user actually edits.
+
+CSV stays the storage format under the hood, but nobody has to look at it.
+This workbook has one sheet per table, coloured headers, frozen panes,
+dropdown menus on every field with fixed choices, and a HOW TO sheet.
+Re-run this ONLY to create a blank workbook. It will refuse to overwrite
+a workbook that already has data in it.
+"""
+import os, sys
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.worksheet.datavalidation import DataValidation
+from openpyxl.utils import get_column_letter
+
+HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUT = os.path.join(HERE, "data", "school.xlsx")
+
+HEAD_FILL = PatternFill("solid", fgColor="1F4E78")
+HEAD_FONT = Font(color="FFFFFF", bold=True, size=11)
+NOTE_FONT = Font(color="808080", italic=True, size=10)
+
+# sheet -> (columns, human hints, dropdowns {col: choices}, width overrides)
+SHEETS = {
+    "Teachers": dict(
+        cols=["id", "name", "short", "subjects", "hours", "day_off", "notes"],
+        hint=["T01, T02...", "full name as printed", "2-4 letters for the grid",
+              "codes separated by ;", "contracted hours/week",
+              "pick from list", "free text - solver ignores"],
+        dv={"day_off": "Mon,Tue,Wed,Thu,Fri,Sat,(none)"},
+        width={"name": 28, "subjects": 24, "notes": 34}),
+    "Classes": dict(
+        cols=["id", "name", "grade", "cohort", "home_room", "size"],
+        hint=["C01, C02...", "as printed", "level 1-4", "which session",
+              "room id or blank", "number of pupils"],
+        dv={"cohort": "AM,PM,ALL", "grade": "1,2,3,4"},
+        width={"name": 26}),
+    "Rooms": dict(
+        cols=["id", "name", "type", "capacity"],
+        hint=["R01, R02...", "as printed", "pick from list", "max pupils"],
+        dv={"type": "normal,lab_phys,lab_chem,lab_sci,it,gym,tech"},
+        width={"name": 26}),
+    "Subjects": dict(
+        cols=["id", "name", "short", "difficulty", "room_type"],
+        hint=["MATH, PHYS...", "Arabic or French", "grid abbreviation",
+              "drives morning rule", "room needed"],
+        dv={"difficulty": "hard,medium,easy",
+            "room_type": "normal,lab_phys,lab_chem,lab_sci,it,gym,tech"},
+        width={"name": 30}),
+    "Curriculum": dict(
+        cols=["class_id", "subject_id", "hours", "teacher_id", "blocks", "room_type"],
+        hint=["from Classes", "from Subjects", "periods per week",
+              "from Teachers (blank = solver picks)",
+              "e.g. 2+2+1 or 1+1+1", "blank = subject default"],
+        dv={"room_type": "normal,lab_phys,lab_chem,lab_sci,it,gym,tech"},
+        width={"blocks": 16}),
+    "Unavailable": dict(
+        cols=["teacher_id", "day", "period", "hard", "reason"],
+        hint=["from Teachers", "or * for every day", "or * for whole day",
+              "yes = never. no = prefer not",
+              "printed in the report so you can defend it"],
+        dv={"day": "Mon,Tue,Wed,Thu,Fri,Sat,*", "hard": "yes,no"},
+        width={"reason": 40}),
+    "Locked": dict(
+        cols=["class_id", "subject_id", "day", "period", "room_id", "why"],
+        hint=["from Classes", "from Subjects", "pick from list", "period number",
+              "room id or blank", "free text - why you pinned it"],
+        dv={"day": "Mon,Tue,Wed,Thu,Fri,Sat"},
+        width={"why": 40}),
+}
+
+HOWTO = [
+    ("HOW TO FILL THIS FILE", True),
+    ("", False),
+    ("One sheet per kind of thing. Fill them in this order:", False),
+    ("   1. Teachers   2. Classes   3. Rooms   4. Subjects", False),
+    ("   5. Curriculum (the big one)   6. Unavailable (only if needed)", False),
+    ("", False),
+    ("Row 2 of every sheet is a grey HINT row explaining each column.", False),
+    ("Leave it there. The program skips it. Start typing on row 3.", False),
+    ("", False),
+    ("Blue columns have a dropdown - click the cell and pick. Do not type", False),
+    ("your own value there or the checker will complain.", False),
+    ("", False),
+    ("IDs must be short and never change. If a teacher leaves, delete the", False),
+    ("row - do not renumber anything. That is what makes re-running safe.", False),
+    ("", False),
+    ("Arabic and French names are both fine anywhere in the name columns.", False),
+    ("", False),
+    ("The LOCKED sheet is how you steer the solver. Leave it empty at first.", False),
+    ("After a run, pin anything you like there and re-run - the solver keeps", False),
+    ("your pinned lessons exactly and rebuilds everything else around them.", False),
+    ("", False),
+    ("WHEN YOU ARE DONE: save, then double-click  check_data.bat", False),
+    ("It tells you in plain language what is missing or wrong. It never", False),
+    ("changes your file.", False),
+]
+
+
+def build():
+    if os.path.exists(OUT):
+        from openpyxl import load_workbook
+        wb_old = load_workbook(OUT)
+        for name in SHEETS:
+            if name in wb_old.sheetnames and wb_old[name].max_row > 2:
+                sys.exit(f"REFUSING: {OUT}\n  sheet '{name}' already has data. "
+                         f"Delete or rename the file first if you really want a blank one.")
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "HOW TO"
+    ws.column_dimensions["A"].width = 78
+    for i, (text, big) in enumerate(HOWTO, start=1):
+        c = ws.cell(row=i, column=1, value=text)
+        c.font = Font(bold=True, size=14, color="1F4E78") if big else Font(size=11)
+
+    for name, spec in SHEETS.items():
+        ws = wb.create_sheet(name)
+        cols, hints = spec["cols"], spec["hint"]
+        for j, (col, hint) in enumerate(zip(cols, hints), start=1):
+            h = ws.cell(row=1, column=j, value=col)
+            h.fill, h.font = HEAD_FILL, HEAD_FONT
+            h.alignment = Alignment(horizontal="center")
+            n = ws.cell(row=2, column=j, value=hint)
+            n.font = NOTE_FONT
+            letter = get_column_letter(j)
+            ws.column_dimensions[letter].width = spec["width"].get(col, max(12, len(col) + 4))
+        for col, choices in spec["dv"].items():
+            j = cols.index(col) + 1
+            letter = get_column_letter(j)
+            dv = DataValidation(type="list", formula1=f'"{choices}"', allow_blank=True)
+            dv.error = f"Pick one of: {choices}"
+            dv.errorTitle = "Not a valid value"
+            ws.add_data_validation(dv)
+            dv.add(f"{letter}3:{letter}600")
+            ws.cell(row=1, column=j).fill = PatternFill("solid", fgColor="2E75B6")
+        ws.freeze_panes = "A3"
+
+    wb.save(OUT)
+    print(f"created {OUT}")
+    print(f"sheets: {', '.join(['HOW TO'] + list(SHEETS))}")
+
+
+if __name__ == "__main__":
+    build()
