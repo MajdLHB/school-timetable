@@ -45,6 +45,26 @@ data/*.csv            <- you fill these in (the only manual work)
 - Running it afterwards: **zero AI tokens**. It runs on this PC in ~30-120s.
   Re-run it any time: a teacher quits in November, edit one CSV line, re-run.
 
+## Where everything is
+
+| I want to... | file |
+|---|---|
+| know what to do next | **`TASKS.md`** |
+| know what data to send | **`docs/WHAT_I_NEED_FROM_YOU.md`** |
+| see the rules that are decided | `docs/RULES.md` |
+| see what is still undecided | `docs/OPEN_QUESTIONS.md` |
+| understand how the machine works | `docs/HOW_IT_WORKS.md` |
+| know how to use it day to day | `docs/WORKFLOW.md` |
+| know it is not making mistakes | `docs/VERIFICATION.md` |
+| read the official circular | `docs/CIRCULAR_51_2018.md` |
+| see all ~90 ministry rules, rated | `docs/MINISTRY_RULES.md` |
+| find the official hours per stream | `rules/curriculum.json` |
+| check nothing personal can leak | `docs/PRIVACY.md` |
+| hand this to another AI | `HANDOFF.md` |
+| things said but not yet decided | `docs/NOTES.md` |
+
+**You edit one file: `data\school.xlsx`.** Nothing else.
+
 ## Status
 
 - [x] **aSc XML bridge PROVEN** on the real app (2026-08-24). See `docs/ASC_XML.md`.
