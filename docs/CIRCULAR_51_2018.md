@@ -72,8 +72,10 @@ them.
    *Explicitly does NOT apply to Physical Education and optional subjects.*
 3. **A 2-hour separation between the morning and evening sessions**, whatever
    school time system is used. يتمّ الفصل بين الحصص الصّباحيّة والمسائيّة بساعتين
-   → **Majd said the school has no lunch break. The circular requires a
-   two-hour gap. This needs resolving.**
+   → **CONFIRMED: the school does have this break.** Periods 5-6 (12:00-14:00)
+   in `config.json` are closed every day. That leaves 4 morning + 4 evening
+   teaching periods, which is exactly the circular's "max 4 hours for a pupil
+   in one session".
 4. **Limit room changes** for a class within one session, except subjects that
    require specialised rooms.
 5. **Five consecutive study hours are allowed only in the first four days** of
@@ -131,7 +133,7 @@ them.
 | S1/S7 no holes | I.7 - avoid hollow hours, in bold | confirmed |
 | S2 no 1-hour days | I.2 / II.2 - minimum 2 hours per half-day | confirmed, and it applies to **pupils** too |
 | H4 room capacity | III.4 - specialised rooms for TP only | stronger than ours |
-| no lunch break (Majd) | I.3 - **2-hour separation required** | **conflict, unresolved** |
+| lunch break | I.3 - **2-hour separation required** | **agreed** - periods 5-6 closed daily in config.json |
 | S5 morning/evening balance | II.4 - alternation, first four days | confirmed and made precise |
 
 ## Majd's BAC priority is NOT subjective

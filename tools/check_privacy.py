@@ -16,6 +16,14 @@ import os
 import subprocess
 import sys
 
+# Windows consoles default to cp1252, which cannot encode Arabic and raises
+# UnicodeEncodeError mid-print. Force UTF-8 so real names are printable.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, OSError):
+    pass
+
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BLOCKED_DIRS = ("data/", "out/")
 BLOCKED_EXT = (".pdf", ".xlsx", ".xls", ".csv", ".roz", ".docx",
@@ -144,6 +152,8 @@ def main():
         if not line:
             continue
         low = line.lower()
+        if low.startswith(ALLOWED_PREFIXES):
+            continue
         if low.startswith(BLOCKED_DIRS) or low.endswith(BLOCKED_EXT):
             hist.add(line)
     if hist:

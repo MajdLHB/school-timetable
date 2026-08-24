@@ -9,6 +9,14 @@ import os
 import sys
 from dataclasses import dataclass, field
 
+# Windows consoles default to cp1252, which cannot encode Arabic and raises
+# UnicodeEncodeError mid-print. Force UTF-8 so real names are printable.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, OSError):
+    pass
+
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # The workbook has a grey hint row at row 2 which must be skipped.

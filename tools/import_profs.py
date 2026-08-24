@@ -22,6 +22,14 @@ Recruitment dates, institution codes and ID numbers are all left behind.
 import os
 import sys
 
+# Windows consoles default to cp1252, which cannot encode Arabic and raises
+# UnicodeEncodeError mid-print. Force UTF-8 so real names are printable.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, OSError):
+    pass
+
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_SRC = os.path.join(HERE, "data", "profs.xlsx")
 TARGET = os.path.join(HERE, "data", "school.xlsx")

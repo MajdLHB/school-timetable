@@ -61,18 +61,19 @@ Letters and Sciences streams.
 **If the school is a pilot institute, some classes get group sessions that
 otherwise do not exist** - changing hours, teacher workload and room needs.
 
-## Q2. Is there a lunch break, or not?
+## Q2. RESOLVED - there IS a lunch break
 
-You said: *"they dont have lunch break haha"*.
+Periods **5 and 6 (12:00-14:00) are closed every day** in `config.json`,
+matching circular I.3's required two-hour separation. That leaves 4 morning +
+4 evening teaching periods - exactly the circular's "max 4 hours for a pupil in
+one session".
 
-Circular I.3 says: *يتمّ الفصل بين الحصص الصّباحيّة والمسائيّة للتعلم بساعتين*
-- a **2-hour separation** between morning and evening, whatever school time
-system is used.
+*(I had recorded the opposite. Majd was twice pointing out that MY generated
+timetable had no break, not describing the school.)*
 
-Last year's file has 10 one-hour periods, 08:00 to 18:00, with **no gap**.
-
-Which is true in practice? And if there is no gap, is that a known deviation,
-or is the rule read differently here? **This decides the shape of every day.**
+Still to confirm: **is Saturday afternoon closed too?** Last year's file shows
+Saturday at roughly half the lessons of other days, so `config.json` currently
+closes Saturday afternoon as well. Guess, not fact.
 
 ## Q3. Which streams and levels does the school actually run?
 

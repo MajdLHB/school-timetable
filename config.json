@@ -1,5 +1,5 @@
 {
-  "_comment": "Measured from last year: Mon-Sat, 10 periods 08:00-18:00, no lunch break. weeks_per_cycle MUST equal the week count in the aSc project (their real file uses 2: Week A / Week B). Keep at 1 until alternating weeks are modelled.",
+  "_comment": "Mon-Sat. 10 one-hour period slots 08:00-18:00 as in last year's aSc file. Periods 5 and 6 (12:00-14:00) are the LUNCH BREAK - circular 51/2018 I.3 requires a two-hour separation between the morning and evening sessions. That leaves 4 morning + 4 evening teaching periods, which matches the circular's 'max 4 hours for a pupil in one session'.",
   "days": [
     "Mon",
     "Tue",
@@ -13,19 +13,38 @@
     1,
     2,
     3,
-    4,
-    5
+    4
   ],
   "evening_periods": [
-    6,
     7,
     8,
     9,
     10
   ],
   "closed": {
-    "_comment": "from last year: Saturday is a half day (176 lessons vs ~300)",
+    "_comment": "5-6 = lunch break every day. Sat afternoon also closed (CONFIRM).",
+    "Mon": [
+      5,
+      6
+    ],
+    "Tue": [
+      5,
+      6
+    ],
+    "Wed": [
+      5,
+      6
+    ],
+    "Thu": [
+      5,
+      6
+    ],
+    "Fri": [
+      5,
+      6
+    ],
     "Sat": [
+      5,
       6,
       7,
       8,
