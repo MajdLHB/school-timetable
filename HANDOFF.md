@@ -96,8 +96,10 @@ the real one (40 classes, 20 rooms, 37 teachers, 580 lesson-hours):
 - [x] `run.bat`, `check_data.bat` - what the user actually double-clicks
 - [x] `tools/make_workbook.py` (blank input), `tools/make_demo.py` (fake school)
 - [x] `tools/check_privacy.py` + `.gitignore` - data/ and out/ never committed
-- [x] Demo run: 2 min -> FEASIBLE, verifier ALL GREEN, 59% of teachers with a
-      clean week. Still improving at the time limit.
+- [x] Demo runs, both verifier ALL GREEN:
+      2 min  -> penalty 21575, 59% of teachers with a clean week, 9 one-hour days
+      10 min -> penalty 11730, 95% clean weeks, 2 one-hour days, 4 pupil gaps
+      Still improving at 10 min. Time buys comfort, never correctness.
 
 ### Not done
 - [ ] **Structural questions unanswered** - `docs/OPEN_QUESTIONS.md`.

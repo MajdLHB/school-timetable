@@ -80,16 +80,26 @@ three weeks discovering the same thing.
 Run on this PC, on a fake school the size of yours
 (40 classes, 20 rooms, 37 teachers, 580 lesson-hours, 40 periods/week):
 
-| time limit | result | quality |
-|---|---|---|
-| 2 minutes | FEASIBLE, all hard rules green | 59% of teachers with a clean week, 9 one-hour days |
+| time limit | penalty | teachers with a clean week | 1-hour days | hard subjects in morning | free periods trapped in pupils' days |
+|---|---|---|---|---|---|
+| 2 minutes  | 21,575 | 22 of 37 (**59%**) | 9 | 68% | 37 |
+| 10 minutes | 11,730 | 35 of 37 (**95%**) | 2 | 78% | 4 |
 
-It was still improving when the clock stopped, so longer limits give better
-timetables. Set `time_limit_seconds` to whatever you are willing to wait -
-the run happens once, and you can leave it going over lunch.
+Both runs: status FEASIBLE, verifier **ALL GREEN**, 580 lessons placed.
 
-**The important part: 100% of hard rules held at 2 minutes.** Extra time buys
-comfort, never correctness.
+Read that table carefully, because it is the whole argument for this design:
+
+- **The hard rules were perfect in both runs.** Time never buys correctness,
+  because correctness was never in question.
+- **Time buys comfort.** Eight more minutes took teachers with a broken week
+  from 15 down to 2, and trapped pupil free-periods from 37 down to 4.
+- It was *still improving* at 10 minutes. Longer limits keep helping.
+
+Set `time_limit_seconds` to whatever you are willing to wait. The run happens
+once; you can leave it going over lunch and come back to a better timetable.
+
+For comparison: at 10 minutes the busiest period used **20 of 20 rooms** - the
+school completely full - and it still found a valid answer.
 
 ## Where the numbers came from
 
