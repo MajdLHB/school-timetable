@@ -57,9 +57,9 @@ are first guesses - **we will tune them together after seeing the first result.*
 | # | Rule | Weight | Status |
 |---|------|--------|--------|
 | S1 | **No holes.** A teacher's day is one continuous run - no free hour trapped between two taught hours. | 100 | SPEC |
-| S2 | **No 1-hour days.** Never make a teacher travel to school to teach a single hour. Minimum 2h if present at all. [CONFIRM: is 2 the right minimum?] | 90 | SPEC |
+| S2 | **No 1-hour days.** Never make a teacher travel to school to teach a single hour. Minimum 2h if present at all. *Answered by the PDFs: the minimum is 2 - circular I.2/II.2 ("minimum 2 hours in any morning or evening", for pupils AND teachers), and the inspectorate text repeats it twice. 2 is ministry policy, not a guess.* | 90 | SPEC |
 | S3 | **Hard subjects in the morning.** Maths, Physics, Chemistry etc. placed in early periods. | 70 | SPEC |
-| S4 | **No 3 hard subjects in a row** within one continuous session. [CONFIRM: is the limit 2 in a row, or 3?] | 80 | SPEC |
+| S4 | **No 3 hard subjects in a row** within one continuous session. *The ministry is stricter: inspectorate pupil-rule 8 says avoid **two or more consecutive** subjects of the same nature (literary/scientific/social) or stream-defining subjects (= M-P6). So the ministry's limit is "not even 2 of the same nature in a row" - our "hard subjects" framing is looser. Adopting M-P6 properly needs a `nature` column on Subjects.* | 80 | SPEC |
 | S5 | **Fair morning/evening balance.** No teacher gets all the evening slots while another gets all mornings. | 60 | SPEC |
 | S6 | **Spread subjects across the week.** A class's 4h of Maths sits on 4 different days, not 2 doubles. | 50 | SPEC |
 | S7 | **Compact days for classes.** Pupils get no free hour in the middle of their day either. | 85 | SPEC |
@@ -85,7 +85,7 @@ Not asked, measured. `python tools/analyze_reference.py` reproduces all of it.
 | groups | 265 (41 whole-class + **224 real subdivisions**) |
 | lessons / placed cards | 881 / **1682** |
 | week | **Mon-Sat**, day mask **6 chars** on all 1682 cards |
-| periods | **10 per day, 08:00-18:00, one hour each, NO lunch break** |
+| periods | **10 per day, 08:00-18:00, one hour each.** The grid defines no break, but usage shows one: **period 6 (13:00-14:00) has 0 cards, period 5 (12:00-13:00) only 40** vs ~220 for normal periods. The lunch break is real and visible in the data. |
 | Saturday | half day (176 lessons vs ~300 on other days) |
 | class load | min 32, median 43, max 53, **avg 42.2 h/week** |
 | teacher load | min 8, median 17, max 23, **avg 16.7 h/week** |
@@ -107,7 +107,14 @@ classes at once (Stad 1/2/3), exactly as described.
   groups added for nothing, fields never updated.
 - **Some rules were deliberately broken** because it was too hard by hand.
 - Treat it as a *reference for structure*, never as a source of truth.
-- No lunch break exists. `config.json` reflects this.
+- **The lunch break is real** (corrected 2026-08-24). Circular 51/2018 I.3
+  requires a 2-hour separation between morning and evening; `config.json`
+  closes periods 5-6 (12:00-14:00) daily. An earlier claim here that "no lunch
+  break exists" was a misreading of Majd's remarks about a *generated*
+  timetable. Note: last year 40 cards did sit in period 5 (12:00-13:00) -
+  possibly the 5-hour mornings circular I.5 allows Mon-Thu. Whether period 5
+  should stay hard-closed or be a rare 5th morning hour is an open question
+  (see `docs/OPEN_QUESTIONS.md` Q25).
 
 ## Rules I suspect exist but you have not said yet
 
@@ -153,3 +160,4 @@ Every change to a rule gets a line here, so no rule is ever silently lost.
 | 2026-08-24 | Ministry recommendations catalogued and rated in `docs/MINISTRY_RULES.md`. Nothing coded from them yet. Recorded a direct conflict between our S8 and ministry rule M-T5. |
 | 2026-08-24 | H15 (daylight cutoff for Sport) and S12 (prefer morning) stated by Majd, coded, verified, and covered by a BREAK/RELAX test. |
 | 2026-08-24 | **Retracted H11, H12, H13, S11.** They were written up as numbered rules from remarks made in passing. Nothing had been decided. Moved to `docs/NOTES.md` as open questions. Nothing gets a rule number until it is stated deliberately and confirmed. |
+| 2026-08-24 | **PDF verification pass** (Majd: "pdfs are source of truth"). All 21 pages of `rules/rules.pdf` read as images and checked against the catalogue; two errors fixed there (M-PH5 time window, M-PHI3/M-PHI8 swapped). In this file: removed the stale "no lunch break" claims (break confirmed by circular I.3, config, and last year's data - period 6 empty, period 5 nearly so); answered S2's [CONFIRM] (minimum is 2, ministry policy); annotated S4 with the ministry's stricter same-nature rule; added the ministry backing to S14. New Q25 raised on period 5. |

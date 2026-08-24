@@ -236,3 +236,9 @@ across classes.
   stream. Can you send that page again, or tell me those three?
 - **Q21.** Islamic Thought: the circular puts it in the morning, or 14:00-16:00
   if it must be in the evening. Apply that cutoff, same as Sport? One cell.
+- **Q25.** Period 5 (12:00-13:00): `config.json` hard-closes it as part of the
+  lunch break, but last year **40 cards** sat there (period 6: zero). Circular
+  I.5 explicitly allows 5 consecutive morning hours Mon-Thu. Should period 5
+  stay fully closed, or open as a rare 5th morning hour for classes with no
+  evening that day? Closed = simpler and safer; open = matches last year's
+  practice and the circular's allowance.
