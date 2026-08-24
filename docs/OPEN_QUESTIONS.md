@@ -199,8 +199,10 @@ across classes.
       way keep a compact timetable. You said you would give the names later. A
       `compact` column will exist in the Teachers sheet, empty until then.
 - [ ] More rules, as they come up.
-- [ ] Confirmation on **Friday evening for bac** - that one is your preference,
-      not in the circular. See `docs/CIRCULAR_51_2018.md`.
+- [x] **Friday evening for bac** - answered. It is a personal preference, and
+      is recorded as S13 marked exactly that way. Applying it to **all bac
+      streams** rather than bac maths alone is the defensible version; singling
+      out one stream is the kind of thing staff and pupils notice.
 
 ---
 
@@ -217,5 +219,17 @@ across classes.
 - **Q20.** Any teacher with a medical or personal constraint that should be
   hard rather than a preference? **Only the constraint is needed - never the
   reason.** See `docs/PRIVACY.md`.
+- **Q22. IMPORTANT.** You said a "3 hour" session here is really **1.5 hours
+  per group** because the lab is small. The ministry notation means the
+  opposite: `(3)` is **3 hours for EACH group**, so the teacher works 6. The
+  sport-stream table proves the ministry reading - Biology at 1h whole + 2h
+  group gives pupil 3 / teacher 5. So either this school deviates from the
+  circular, or "3 hours" in your data means something else. **Which is it?**
+  Every teacher workload number depends on the answer.
+- **Q23.** How many groups does a class split into here - always 2? All the
+  teacher-hour figures in `rules/curriculum.json` assume 2.
+- **Q24.** Page 10/5 of the guide (3rd + 4th year **Letters**) has its top rows
+  **cut off in the scan** - Arabic, French and English are missing for that
+  stream. Can you send that page again, or tell me those three?
 - **Q21.** Islamic Thought: the circular puts it in the morning, or 14:00-16:00
   if it must be in the evening. Apply that cutoff, same as Sport? One cell.

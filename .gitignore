@@ -39,6 +39,7 @@ out/
 # in the repository. Every file here must be READ before it is committed.
 !rules/
 !rules/*.pdf
+!rules/*.json
 
 # python noise
 __pycache__/

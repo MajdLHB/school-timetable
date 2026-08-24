@@ -64,6 +64,7 @@ are first guesses - **we will tune them together after seeing the first result.*
 | S7 | **Compact days for classes.** Pupils get no free hour in the middle of their day either. | 85 | SPEC |
 | S8 | **Fewest days present.** If a teacher's hours fit in 4 days, do not spread them over 6. | 40 | SPEC |
 | S9 | **Room stability.** A class stays in its home room where possible; less moving around. | 30 | SPEC |
+| S13 | **No Friday evening for bac classes.** *Majd's own words: "me and my other colleague pupils dont want it... so its personal preference as a rule".* **This is a LOCAL preference, not a ministry rule** - the circular requires a free afternoon for bac in the first four days (Mon-Thu) and says nothing about Friday. Recorded as such deliberately, so nobody later mistakes it for policy. | 30 | SPEC |
 | S12 | **Daylight subjects prefer the morning.** Majd said "morning and max 14h to 16h" - so 14:00-16:00 is the late acceptable window, not the target. Sport should land in the morning where possible and only use periods 7-8 when it must. | 45 | SPEC |
 | S10 | **Last-period fairness.** Nobody is stuck with the final period every single day. | 35 | SPEC |
 
