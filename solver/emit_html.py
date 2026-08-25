@@ -130,8 +130,7 @@ def write(s, units, placement, rooms, path, day_offs=None):
         if not off:
             off = day_offs.get(tid, "")
         if off and off != "(none)":
-            tags[off] = "يوم الراحة" + \
-                ("" if (t.get("day_off") or "").strip() else " (اختيار البرنامج)")
+            tags[off] = "يوم الراحة"
         grids.append(
             "<div class='grid tgrid' id='%s'><h2>%s — الأستاذ(ة) %s — %s"
             "<br><small>%s</small></h2>%s</div>"

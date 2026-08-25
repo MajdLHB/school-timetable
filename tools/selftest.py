@@ -35,9 +35,10 @@ WEIGHTS = {
     "morning_evening_imbalance": 60, "same_subject_adjacent_days": 50,
     "same_subject_twice_a_day": 50,
     "late_subject": 50, "overloaded_day": 40, "extra_day_present": 40,
-    # the toy schools here are 2-6 lessons wide, so a teacher legitimately
-    # has one-hour days; H21 is exercised by its own case below instead.
-    "lone_hour_day": 0,
+    # the toy schools here are 2-6 lessons wide with one-period half-days,
+    # so a teacher legitimately has one-hour days and half-days; H21 and
+    # H22 are exercised by their own dedicated cases below instead.
+    "lone_hour_day": 0, "half_day_min2": 0,
 }
 
 
@@ -556,6 +557,26 @@ def case_H21_lone_hour():
     return base(1, 3, "1+1+1"), base(2, 4, "2+2")
 
 
+def case_H22_lonely_half_day():
+    """Majd 2026-08-25, after measuring 43 a week against his humans' 0.5:
+    a teacher's HALF-day is empty or at least 2 hours - "no hour at 11 then
+    back for the afternoon". BREAK: 3 hours with only two morning periods
+    forces a single lesson into the afternoon. RELAX: 4 hours, so both
+    halves hold two."""
+    def base(hours):
+        s = tiny(days=("Mon", "Tue"), periods=4)
+        s.cfg.morning = [1, 2]
+        s.cfg.evening = [3, 4]
+        s.cfg.weights["half_day_min2"] = "HARD"
+        teacher(s, "T1")
+        klass(s, "C1")
+        # 2+1: the lone hour must sit by itself in some half-day -> banned.
+        # 2+2: each block fills a half-day exactly -> fine.
+        teach(s, "C1", "MA", hours, "T1", blocks="2+1" if hours == 3 else "2+2")
+        return s
+    return base(3), base(4)
+
+
 def case_LOCK_conflict():
     """Two different subjects of one class pinned to the same slot.
     RELAX: pin them to different slots."""
@@ -642,6 +663,7 @@ CASES = [
     ("H14 band alignment", case_H14_band_alignment, "solver"),
     ("H14 option teacher bound", case_H14_option_teacher_bound, "solver"),
     ("H21 no lone-hour days", case_H21_lone_hour, "solver"),
+    ("H22 no lonely half-days", case_H22_lonely_half_day, "solver"),
     ("LOCK conflicting pins", case_LOCK_conflict, "solver"),
 ]
 

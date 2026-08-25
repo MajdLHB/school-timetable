@@ -823,6 +823,11 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                 for tag, ps in halves_p.items():
                     ix = [i for i, (dd, p) in enumerate(slots)
                           if dd == d and p in ps]
+                    # a half-day with fewer than 2 OPEN periods can never
+                    # hold 2 hours - demanding it would forbid teaching
+                    # there at all (it broke every toy test school)
+                    if len(ix) < 2:
+                        continue
                     terms = [v for i in ix for v in occs(act, i)]
                     if len(terms) < 2:
                         continue
@@ -1644,7 +1649,70 @@ def assign_rooms(s, sessions, placement):
                         take(se, rid, slot_of(u))
                         break
                 else:
-                    out[u] = ""  # should never happen; verify.py will catch it
+                    out[u] = ""  # repaired by the matching pass below
+
+    # ---- exact repair pass: per-slot bipartite matching -------------------
+    # Majd 2026-08-25: "room assignment is a big part of how the table is
+    # designed, it forces many moves, it cant be an end move". The COUNTS
+    # are a hard constraint inside the model from the start; only the room
+    # LABEL is chosen here - and greedily choosing labels can fail even
+    # when a valid assignment exists (ordinary lessons may borrow labs, so
+    # this is a matching problem). Any lesson left without a room is now
+    # repaired by augmenting paths - the standard exact method.
+    lessons_at = collections.defaultdict(list)     # slot -> [(uid, session)]
+    for se in sessions:
+        if se.room_type == "__opt__":
+            continue
+        for u in hour_uids(se):
+            if u in placement:
+                lessons_at[tuple(placement[u])].append((u, se))
+
+    def compatible(se):
+        cands = list(rooms_by_type.get(se.room_type, []))
+        if se.room_type == "normal":
+            for t_ in ("lab_sci", "lab_phys", "tech"):
+                cands += rooms_by_type.get(t_, [])
+        return cands
+
+    repaired = 0
+    for sl, items in lessons_at.items():
+        holders = {}                       # room -> uid currently holding it
+        for u, se in items:
+            if out.get(u):
+                holders[out[u]] = u
+        for u, se in items:
+            if out.get(u):
+                continue
+            # augmenting path: find a free room, or displace a holder that
+            # can move elsewhere (recursively)
+            seen = set()
+
+            def try_assign(uid, sess, depth=0):
+                if depth > 6:
+                    return False
+                for rid in compatible(sess):
+                    if rid in seen:
+                        continue
+                    seen.add(rid)
+                    other = holders.get(rid)
+                    if other is None:
+                        out[uid] = rid
+                        holders[rid] = uid
+                        return True
+                    o_se = next(s2 for u2, s2 in items if u2 == other)
+                    if try_assign(other, o_se, depth + 1):
+                        out[uid] = rid
+                        holders[rid] = uid
+                        return True
+                return False
+
+            if try_assign(u, se):
+                repaired += 1
+            else:
+                out[u] = ""      # genuinely impossible; verify.py reports it
+    if repaired:
+        print("  room assignment: %d lesson(s) placed by exact matching "
+              "after the greedy pass" % repaired)
 
     # ---- H14: one concrete room per option GROUP at the band's slots ------
     # The model already guaranteed the counts fit; here each group gets its
