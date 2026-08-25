@@ -745,6 +745,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
             m.Add(taught_day == 0).OnlyEnforceIf(here.Not())
             days_here[d] = here
 
+            half_busy = {}
             for half, tag in ((sorted(p for p in ps_all if p not in evening), "am"),
                               (sorted(p for p in ps_all if p in evening), "pm")):
                 if len(half) < 2:
@@ -754,6 +755,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                 busy = m.NewBoolVar("hbusy_%s_%s_%s" % (key, d, tag))
                 m.Add(taught >= 1).OnlyEnforceIf(busy)
                 m.Add(taught == 0).OnlyEnforceIf(busy.Not())
+                half_busy[tag] = busy
                 first = m.NewIntVar(lo, hi, "first_%s_%s_%s" % (key, d, tag))
                 last = m.NewIntVar(lo, hi, "last_%s_%s_%s" % (key, d, tag))
                 for p in half:
@@ -763,12 +765,28 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                 m.Add(gaps == last - first + 1 - taught).OnlyEnforceIf(busy)
                 m.Add(gaps == 0).OnlyEnforceIf(busy.Not())
                 add_pen(weight_key, 100, gaps)
+                if also_one_hour:
+                    # Majd 2026-08-25: "they came 11 and sat there doing
+                    # nothing" - a teacher's half-day with exactly ONE
+                    # lesson is the real pain around the lunch break.
+                    lone = m.NewBoolVar("hlone_%s_%s_%s" % (key, d, tag))
+                    m.Add(taught == 1).OnlyEnforceIf(lone)
+                    m.Add(taught != 1).OnlyEnforceIf(lone.Not())
+                    add_pen("teacher_lone_half", 70, lone)
 
             if also_one_hour:
                 solo = m.NewBoolVar("solo_%s_%s" % (key, d))
                 m.Add(taught_day == 1).OnlyEnforceIf(solo)
                 m.Add(taught_day != 1).OnlyEnforceIf(solo.Not())
                 add_pen("one_hour_day", 50, solo)
+                if len(half_busy) == 2:
+                    # crossing the lunch at all costs a little: teachers who
+                    # cannot go home sit through it. Tunable; 0 switches it
+                    # off, HARD would demand single-half days for everyone.
+                    cross = m.NewBoolVar("cross_%s_%s" % (key, d))
+                    m.AddBoolAnd(list(half_busy.values())).OnlyEnforceIf(cross)
+                    m.AddBoolOr([b.Not() for b in half_busy.values()]).OnlyEnforceIf(cross.Not())
+                    add_pen("cross_lunch", 15, cross)
             if also_day_count:
                 add_pen("extra_day_present", 50, here)
         return days_here
