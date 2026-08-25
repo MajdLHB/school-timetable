@@ -314,6 +314,8 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
     viols = []
     penalties = []
 
+    pen_map = collections.defaultdict(list)   # key -> [(weight, var)]
+
     def add_pen(key, default, var):
         """One comfort penalty - or, when the Weights sheet says HARD for
         this key, an unbreakable constraint (var == 0). Majd's promotion
@@ -323,6 +325,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
             m.Add(var == 0)
         else:
             penalties.append((w, var))
+            pen_map[key].append((w, var))
 
     # ---- feasible starts per session length (H9 contiguity) --------------
     # A session of length L may start at period p on day d only when
@@ -1280,6 +1283,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
     # report which day each teacher was given. Kept as an attribute so the
     # (m, x, starts_of, viols) signature the selftests rely on stays stable.
     m.day_off_choice = day_off_choice
+    m.pen_map = pen_map
     return m, x, starts_of, viols
 
 
@@ -1406,7 +1410,7 @@ def assign_rooms(s, sessions, placement):
 
 
 def report(s, units, placement, rooms, solver, status, elapsed, exceptions=None,
-           day_offs=None):
+           day_offs=None, rule_costs=None):
     """Plain-language explanation of what was and was not achieved."""
     slots = s.cfg.slots
     L = []
@@ -1493,6 +1497,22 @@ def report(s, units, placement, rooms, solver, status, elapsed, exceptions=None,
                 gaps.append((tid, d, holes, ps))
             if len(ps) == 1:
                 solos.append((tid, d, ps[0]))
+
+    if rule_costs:
+        A("## Where the points went - cost per comfort rule")
+        A("")
+        A("| rule (Weights sheet key) | points | times hit |")
+        A("|---|---|---|")
+        for key, total, hits in rule_costs:
+            if total:
+                A("| %s | %d | %d |" % (key, total, hits))
+        free = [key for key, total, _h in rule_costs if total == 0
+                and key != "extra_day_present"]
+        if free:
+            A("")
+            A("**Zero-cost this run - safe to set HARD in the Weights sheet "
+              "(free speed, nothing lost):** " + ", ".join(sorted(free)))
+        A("")
 
     A("## S1 - holes in a teacher's day")
     total_t = max(1, len(t_slots))
@@ -1885,6 +1905,16 @@ def main():
     units = hour_units(sessions)
     rooms = assign_rooms(s, sessions, placement)
 
+    # where did the points go? cost per comfort rule, for the report and
+    # for Majd's hardening decisions ("apply all the rules from the start"):
+    # a rule at ZERO cost can be set HARD in the Weights sheet for free.
+    rule_costs = []
+    for key, entries in sorted(getattr(m, "pen_map", {}).items()):
+        total = sum(w * solver.Value(v) for w, v in entries)
+        hits = sum(1 for _w, v in entries if solver.Value(v))
+        rule_costs.append((key, total, hits))
+    rule_costs.sort(key=lambda kc: -kc[1])
+
     # which day off did the solver choose for each blank-day_off teacher?
     chosen_offs = {}
     for tid, offs in getattr(m, "day_off_choice", {}).items():
@@ -1906,7 +1936,8 @@ def main():
                     day_offs=chosen_offs)
     emit_html.write_teachers(s, os.path.join(OUT, "teachers.html"))
     rep = report(s, units, placement, rooms, solver, status, elapsed,
-                 exceptions=exceptions, day_offs=chosen_offs)
+                 exceptions=exceptions, day_offs=chosen_offs,
+                 rule_costs=rule_costs)
     with open(os.path.join(OUT, "report.md"), "w", encoding="utf-8") as f:
         f.write(rep)
     emit_html.write_report_html(rep, os.path.join(OUT, "report.html"))
