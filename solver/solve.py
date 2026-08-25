@@ -296,6 +296,46 @@ def in_week(se, w):
     return se.week == "" or w == "" or se.week == w
 
 
+class FirstWeek(cp_model.CpSolverSolutionCallback):
+    """Write a complete, openable week the INSTANT any phase finds one.
+
+    Majd 2026-08-25: "didn't you say you fixed it and make it produce one even
+    if it crashes or i exit". The first attempt only saved at phase
+    BOUNDARIES, so a rung that never finished - or a crash in the middle of a
+    phase - still left him with nothing but a log file after an hour. This
+    fires on the FIRST solution of EVERY solve, ladder rungs included, so from
+    the first minute of a run there is always a real timetable on disk.
+
+    It also makes Ctrl+C work everywhere: STOP is checked here, in phases that
+    previously ran with no callback at all and ignored the key entirely.
+    """
+
+    def __init__(self, s, sessions, x, starts_of, slots, tag, every=180.0):
+        super().__init__()
+        self.s = s
+        self.sessions = sessions
+        self.x = x
+        self.starts_of = starts_of
+        self.slots = slots
+        self.tag = tag
+        self.every = every
+        self.last = 0.0
+
+    def on_solution_callback(self):
+        now = time.time()
+        if now - self.last >= self.every or self.last == 0.0:
+            self.last = now
+            try:
+                place = placement_from_solver(self.Value, self.sessions,
+                                              self.x, self.starts_of,
+                                              self.slots)
+                save_snapshot(self.s, self.sessions, place, self.tag)
+            except Exception as exc:            # noqa: BLE001 - never fatal
+                print("        (snapshot failed: %s)" % exc, flush=True)
+        if STOP:
+            self.StopSearch()
+
+
 class Progress(cp_model.CpSolverSolutionCallback):
     """Print each improvement, and save it so a crash costs nothing.
 
@@ -2234,7 +2274,7 @@ def hint_placement(m, sessions, x, starts_of, place):
     return n
 
 
-def save_snapshot(s, sessions, place, tag):
+def save_snapshot(s, sessions, place, tag, partial=False):
     """Write a complete week to disk THE MOMENT one exists.
 
     Majd waited an hour on a run that had found a perfectly good timetable six
@@ -2247,8 +2287,13 @@ def save_snapshot(s, sessions, place, tag):
     try:
         placed = [se for se in sessions
                   if all(uid_of(se, k) in place for k in range(se.length))]
-        if len(placed) != len(sessions):
+        if not placed:
             return False
+        if len(placed) != len(sessions) and not partial:
+            return False
+        if len(placed) != len(sessions):
+            tag += " - INCOMPLETE, %d of %d cards" % (len(placed),
+                                                      len(sessions))
         units = hour_units(placed)
         rooms = assign_rooms(s, placed, place)
         os.makedirs(OUT, exist_ok=True)
@@ -2265,6 +2310,49 @@ def save_snapshot(s, sessions, place, tag):
     except Exception as exc:                    # noqa: BLE001 - never fatal
         print("        (could not save the week: %s)" % exc, flush=True)
         return False
+
+
+def greedy_seed(s, sessions):
+    """Put a real timetable on disk in the first few SECONDS of a run.
+
+    Majd, twice, after waiting an hour: "didn't it produce a table... even if
+    it crashes or i exit". Saving on the first CP-SAT solution was not enough -
+    the opening phase can search for six minutes before it has anything at all,
+    so he still sat in front of an empty out/ directory.
+
+    So the plain card-by-card placer (tools/quick_table.py) runs first. It is
+    worse than the solver and it says so, but it finishes in about six seconds,
+    and from that moment there is always something to open. Its week is then
+    handed to CP-SAT as the starting hint.
+    """
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(OUT), "tools"))
+        import quick_table as Q
+        best, best_rank = None, None
+        for order in Q.orders(sessions, 3):
+            b, unplaced = Q.build_once(s, sessions, order)
+            c = Q.comfort(b, s, sessions)
+            rank = (len(unplaced), c["lone_days"] * 100 + c["lone_halves"] * 60)
+            if best_rank is None or rank < best_rank:
+                best, best_rank = (b, unplaced, c), rank
+        b, unplaced, c = best
+        place = {}
+        by_sid = {se.sid: se for se in sessions}
+        for sid_, (d, p0) in b.place.items():
+            se = by_sid[sid_]
+            for k in range(se.length):
+                place[uid_of(se, k)] = [d, p0 + k]
+        save_snapshot(s, sessions, place,
+                      "quick draft - a rough but legal week, not the final one",
+                      partial=True)
+        print("  A rough week is already saved in out/view.html "
+              "(%d of %d cards, %.1f lone-hour days). The solver now tries to "
+              "beat it." % (len(sessions) - len(unplaced), len(sessions),
+                            c["lone_days"]), flush=True)
+        return place
+    except Exception as exc:                    # noqa: BLE001 - never fatal
+        print("  (could not build the quick draft: %s)" % exc, flush=True)
+        return None
 
 
 def run_ladder(s, sessions, cfg, t0, place=None):
@@ -2335,7 +2423,11 @@ def run_ladder(s, sessions, cfg, t0, place=None):
         sv = cp_model.CpSolver()
         sv.parameters.max_time_in_seconds = budget
         sv.parameters.num_search_workers = n_workers()
-        st = sv.StatusName(sv.Solve(m2))
+        watcher = FirstWeek(s, sessions, x2, so2, s.cfg.slots,
+                            "rules enforced: %s"
+                            % (", ".join(r for r in LADDER_IDS
+                                         if r not in relax) or "none"))
+        st = sv.StatusName(sv.Solve(m2, watcher))
         if st in ("OPTIMAL", "FEASIBLE"):
             return st, placement_from_solver(sv.Value, sessions, x2, so2,
                                              s.cfg.slots)
@@ -2447,6 +2539,8 @@ def main():
     print("\nPlacing %d lesson-hours (%d sessions, %d multi-hour blocks) into "
           "%d open periods across %d rooms."
           % (n_hours, len(sessions), n_blocks, len(s.cfg.slots), len(s.rooms)))
+    # a real timetable on disk within seconds, before any long phase starts
+    draft = greedy_seed(s, sessions)
     print("Building the model...", flush=True)
     # ---- how the hard rules are treated this run -------------------------
     #   (default)  THE LADDER: all rules on, give up only what is proven
@@ -2466,7 +2560,8 @@ def main():
     if use_ladder:
         kept, given_up, lad_place, why = run_ladder(
             s, sessions, cfg, t0,
-            place=saved_placement() if "--continue" in sys.argv else None)
+            place=(saved_placement() if "--continue" in sys.argv
+                   else None) or draft)
         relaxed = set(given_up)
         ladder_place = lad_place
         print("")
@@ -2643,7 +2738,9 @@ def main():
         f_solver.parameters.max_time_in_seconds = min(
             600.0, max(120.0, float(cfg.time_limit) * 0.15))
         f_solver.parameters.num_search_workers = n_workers()
-        f_name = f_solver.StatusName(f_solver.Solve(m))
+        f_name = f_solver.StatusName(f_solver.Solve(
+            m, FirstWeek(s, sessions, x, starts_of, s.cfg.slots,
+                         "first legal week")))
         if f_name in ("OPTIMAL", "FEASIBLE"):
             print("     found one in %.0fs - now improving it."
                   % f_solver.WallTime(), flush=True)
@@ -2681,7 +2778,9 @@ def main():
             st_solver = cp_model.CpSolver()
             st_solver.parameters.max_time_in_seconds = share
             st_solver.parameters.num_search_workers = n_workers()
-            st = st_solver.StatusName(st_solver.Solve(m))
+            st = st_solver.StatusName(st_solver.Solve(
+                m, FirstWeek(s, sessions, x, starts_of, s.cfg.slots,
+                             "during tier %d" % tier)))
             if st in ("OPTIMAL", "FEASIBLE"):
                 # this tier's OWN cost, not the objective value (which also
                 # carries the exception terms) - freezing the mixed total
