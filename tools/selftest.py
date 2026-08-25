@@ -35,6 +35,9 @@ WEIGHTS = {
     "morning_evening_imbalance": 60, "same_subject_adjacent_days": 50,
     "same_subject_twice_a_day": 50,
     "late_subject": 50, "overloaded_day": 40, "extra_day_present": 40,
+    # the toy schools here are 2-6 lessons wide, so a teacher legitimately
+    # has one-hour days; H21 is exercised by its own case below instead.
+    "lone_hour_day": 0,
 }
 
 
@@ -534,6 +537,25 @@ def case_TP_carousel_swap():
     return base("ALT"), base("ALT2")
 
 
+def case_H21_lone_hour():
+    """Majd 2026-08-25: "lone hours are as big and important as hard rules".
+    A teacher's day is empty or at least 2 hours. BREAK: 3 one-hour days
+    are the only way to fit 3 hours in a 3-day week of single periods.
+    RELAX: two periods a day, so the hours pair up."""
+    def base(periods, hours, blocks):
+        s = tiny(days=("Mon", "Tue", "Wed"), periods=periods)
+        s.cfg.morning = list(range(1, periods + 1))
+        s.cfg.evening = []
+        s.cfg.weights["lone_hour_day"] = "HARD"
+        teacher(s, "T1")
+        klass(s, "C1")
+        teach(s, "C1", "MA", hours, "T1", blocks=blocks)
+        return s
+    # BREAK: one period a day, so 3 hours = three lone-hour days
+    # RELAX: two periods a day, 2+2 = two full days and one free
+    return base(1, 3, "1+1+1"), base(2, 4, "2+2")
+
+
 def case_LOCK_conflict():
     """Two different subjects of one class pinned to the same slot.
     RELAX: pin them to different slots."""
@@ -619,6 +641,7 @@ CASES = [
     ("TP carousel ALT/ALT2 swap", case_TP_carousel_swap, "solver"),
     ("H14 band alignment", case_H14_band_alignment, "solver"),
     ("H14 option teacher bound", case_H14_option_teacher_bound, "solver"),
+    ("H21 no lone-hour days", case_H21_lone_hour, "solver"),
     ("LOCK conflicting pins", case_LOCK_conflict, "solver"),
 ]
 

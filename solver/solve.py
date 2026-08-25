@@ -803,15 +803,27 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
     # assigned a single lone hour in a morning or evening". So a teacher's
     # day is either EMPTY or at least 2 hours. Relaxable in rescue mode,
     # where every case is declared in the report like H7/H17.
-    for tid, ss in by_teacher.items():
+    h21_mode = W.get("lone_hour_day", "HARD")
+    for tid, ss in (by_teacher.items() if h21_mode else ()):
         for w in weeks_of(ss):
             act = [se for se in ss if in_week(se, w)]
+            # a teacher with a SINGLE hour in the whole week cannot avoid a
+            # lone day - the rule would make their school impossible, not
+            # better. Same for a lone session that fills a day by itself.
+            if sum(se.length for se in act) < 2:
+                continue
             for d in days:
                 ix = [i for i, (dd, p) in enumerate(slots) if dd == d]
                 terms = [v for i in ix for v in occs(act, i)]
                 if len(terms) < 2:
                     continue
-                if not rescue:
+                if h21_mode != "HARD":
+                    # a number in the Weights sheet = heavy preference
+                    lone = m.NewBoolVar("h21s_%s_%s_%s" % (tid, d, w))
+                    m.Add(sum(terms) == 1).OnlyEnforceIf(lone)
+                    m.Add(sum(terms) != 1).OnlyEnforceIf(lone.Not())
+                    penalties.append((h21_mode, lone))
+                elif not rescue:
                     # "0 or at least 2" as a DOMAIN, not a reified bool:
                     # CP-SAT propagates domains far more strongly, which
                     # matters on a school packed to 91% (2026-08-25).
