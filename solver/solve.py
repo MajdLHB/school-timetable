@@ -2283,10 +2283,15 @@ def run_ladder(s, sessions, cfg, t0, place=None):
     print("   rules to win back, in order of importance: %s"
           % " < ".join(order), flush=True)
 
-    # budget: the ladder may use about 40% of the run; the rest is comfort
+    # Budget: the ladder may use about 40% of the run, the rest is comfort.
+    # The slices are NOT fixed. A rule that is won back in ten seconds leaves
+    # its unused minutes to the next one, and the important rules are tried
+    # first, so the time flows to whatever is actually hard. A fixed 480s
+    # slice made the tightest rule of all (room counts) come back UNPROVEN
+    # while easy rules further down sat on time they did not need.
     ladder_budget = max(240.0, float(cfg.time_limit) * 0.40)
+    deadline = t0 + ladder_budget
     first_share = max(180.0, ladder_budget / 3.0)
-    step = max(120.0, (ladder_budget - first_share) / max(1, len(order)))
 
     def attempt(relax, budget, hint):
         """Is there a complete timetable with everything except `relax`?"""
@@ -2315,7 +2320,10 @@ def run_ladder(s, sessions, cfg, t0, place=None):
 
     # ---- climb: win rules back, most important first ---------------------
     kept, given_up, why = [], [], {}
-    for rule in reversed(order):
+    todo = list(reversed(order))
+    for n, rule in enumerate(todo):
+        left = len(todo) - n
+        step = max(120.0, (deadline - time.time()) / left)
         st, got = attempt(set(order) - set(kept) - {rule}, step, place)
         if got is not None:
             kept.append(rule)
