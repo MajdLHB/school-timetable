@@ -87,7 +87,7 @@ SHEETS = {
               "yes = core/stream subject: 3/4 of hours in the morning (III.2)",
               "blank = every week. A or B = that week of the fortnight only"],
         dv={"room_type": "normal,lab_phys,lab_chem,lab_sci,it,gym,tech",
-            "groups": "1,2,3", "core": "yes,no", "week": "A,B"},
+            "groups": "1,2,3", "core": "yes,no", "week": "A,B,ALT,ALT2"},
         width={"blocks": 16}),
     "Options": dict(
         cols=["id", "subject_id", "teacher_id", "hours", "blocks",

@@ -401,10 +401,11 @@ def check(s):
     max_run = longest_open_run(s.cfg)
     for c in s.curriculum:
         where = "Curriculum row " + c["class_id"] + " / " + c["subject_id"]
-        if c.get("week", "") not in ("", "A", "B", "ALT"):
+        if c.get("week", "") not in ("", "A", "B", "ALT", "ALT2"):
             errs.append(where + " - week '" + c["week"] + "' must be blank "
-                        "(every week), A, B, or ALT (groups take turns).")
-        if c.get("week", "") == "ALT" and max(1, c.get("groups", 1)) < 2:
+                        "(every week), A, B, ALT or ALT2 (groups take turns; "
+                        "ALT2 is the swap side of the TP carousel).")
+        if c.get("week", "") in ("ALT", "ALT2") and max(1, c.get("groups", 1)) < 2:
             errs.append(where + " - week ALT means THE GROUPS take turns "
                         "(odd groups week A, even week B), so it needs "
                         "groups of 2 or more.")
@@ -554,6 +555,8 @@ def check(s):
         wk = c.get("week", "")
         if wk == "ALT":         # odd groups week A, even groups week B
             return (h * ((g + 1) // 2), h * (g // 2))
+        if wk == "ALT2":        # the swap side: odd groups week B
+            return (h * (g // 2), h * ((g + 1) // 2))
         return (h * g if wk in ("", "A") else 0,
                 h * g if wk in ("", "B") else 0)
 
@@ -616,7 +619,7 @@ def check(s):
     for c in s.curriculum:
         e = clw.setdefault(c["class_id"], [0, 0])
         wk = c.get("week", "")
-        if wk == "ALT":
+        if wk in ("ALT", "ALT2"):
             # some group is busy those hours in BOTH weeks (each its own)
             e[0] += c["hours"]
             e[1] += c["hours"]

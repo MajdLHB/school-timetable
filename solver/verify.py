@@ -55,6 +55,8 @@ def _row_group_weeks(row, g):
     rweek = row.get("week", "")
     if rweek == "ALT":
         return ("A",) if g % 2 == 1 else ("B",)
+    if rweek == "ALT2":
+        return ("B",) if g % 2 == 1 else ("A",)
     if rweek in ("A", "B"):
         return (rweek,)
     return ("A", "B")

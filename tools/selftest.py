@@ -489,6 +489,26 @@ def case_H14_option_teacher_bound():
     return base(True), base(False)
 
 
+def case_TP_carousel_swap():
+    """Majd's TP carousel: week A group 1 in the SVT lab WHILE group 2 is in
+    the TECH lab; week B they swap. With ALT + ALT2 the whole carousel fits
+    in ONE weekly slot. BREAK: both subjects on the SAME side (both ALT) -
+    group 1 would need both labs at once, so one slot cannot hold it.
+    RELAX: the second subject on ALT2 - the swap works."""
+    def base(second):
+        s = tiny(days=("Mon",), periods=1)
+        s.cfg.morning = [1]
+        s.cfg.evening = []
+        s.rooms["R2"] = dict(id="R2", name="R2", type="normal", capacity=99)
+        teacher(s, "T1")
+        teacher(s, "T2")
+        klass(s, "C1")
+        teach(s, "C1", "MA", 1, "T1", groups=2, week="ALT")
+        teach(s, "C1", "AR", 1, "T2", groups=2, week=second)
+        return s
+    return base("ALT"), base("ALT2")
+
+
 def case_LOCK_conflict():
     """Two different subjects of one class pinned to the same slot.
     RELAX: pin them to different slots."""
@@ -571,6 +591,7 @@ CASES = [
     ("T43 half class overbooked", case_T43_half_class_overbooked, "solver"),
     ("T42 week A/B share a slot", case_T42_weeks_share_slot, "solver"),
     ("ALT groups take turns", case_ALT_groups_take_turns, "solver"),
+    ("TP carousel ALT/ALT2 swap", case_TP_carousel_swap, "solver"),
     ("H14 band alignment", case_H14_band_alignment, "solver"),
     ("H14 option teacher bound", case_H14_option_teacher_bound, "solver"),
     ("LOCK conflicting pins", case_LOCK_conflict, "solver"),

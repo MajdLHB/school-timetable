@@ -128,6 +128,13 @@ def expand(s):
             # hour counts only add up this way). PROVISIONAL - Majd confirms.
             if week == "ALT":
                 gw = "A" if g % 2 == 1 else "B"
+            elif week == "ALT2":
+                # the SWAP side of the TP carousel (Majd 2026-08-25: while
+                # group 1 is in the SVT lab, group 2 is in the TECH lab -
+                # next week they trade). ALT puts odd groups in week A;
+                # ALT2 puts them in week B, so an ALT subject and an ALT2
+                # subject interleave perfectly in the same slot.
+                gw = "B" if g % 2 == 1 else "A"
             else:
                 gw = week
             okey = (row["class_id"], row["subject_id"], gw)
