@@ -86,7 +86,10 @@
     "hard_subject_last": 1000,
     "flexible_day_off": 250,
     "groups_back_to_back": "HARD",
-    "groups_same_day": 60
+    "groups_same_day": 60,
+    "class_morning_evening": 60,
+    "prefer_morning": 120,
+    "no_doubles": 300
   },
   "_weeks_comment": "2 = the aSc project MUST be set to 2 weeks (A/B) before importing, or every card is dropped silently - the same mask-length trap as the day masks.",
   "weeks_per_cycle": 2

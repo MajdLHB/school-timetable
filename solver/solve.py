@@ -1061,6 +1061,36 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                             m.Add(o4 >= sum(pres[d, p] for p in hps) - 4)
                             add_pen("pupil_half_over4", 100, o4)
 
+    # ---- M-P7 / M-AR11 / M-HG2: each CLASS balanced morning vs evening ----
+    # (we already do this per teacher, S5; the inspectorate asks for it per
+    # class too - Majd 2026-08-25: "make sure rules in the pdfs are applied")
+    for cid, ss in by_class.items():
+        for w in weeks_of(ss):
+            act = [se for se in ss if in_week(se, w)]
+            m_ix = [i for i, (d, p) in enumerate(slots) if p not in evening]
+            e_ix = [i for i, (d, p) in enumerate(slots) if p in evening]
+            mh = [v for i in m_ix for v in occs(act, i)]
+            eh = [v for i in e_ix for v in occs(act, i)]
+            if not mh or not eh:
+                continue
+            imb = m.NewIntVar(0, S, "cimb_%s_%s" % (cid, w))
+            m.Add(imb >= sum(mh) - sum(eh) - 4)
+            m.Add(imb >= sum(eh) - sum(mh) - 4)
+            add_pen("class_morning_evening", 60, imb)
+
+    # ---- M-SN3 / M-ISL1: subjects that PREFER the morning ------------------
+    # "TP in the morning for 3rd and 4th experimental science"; the optional
+    # Islamic Thought hour in the morning. Subjects sheet: prefer_morning=yes
+    pm = [se for se in sessions
+          if s.subjects.get(se.subject_id, {}).get("prefer_morning") == "yes"]
+    if pm:
+        ev_all = [i for i, (d, p) in enumerate(slots) if p in evening]
+        terms = [v for i in ev_all for v in occs(pm, i)]
+        if terms:
+            n_pm = m.NewIntVar(0, len(terms), "prefer_morning_missed")
+            m.Add(n_pm == sum(terms))
+            add_pen("prefer_morning", 120, n_pm)
+
     # ---- S15: a class never comes in for a single lone hour ---------------
     # Circular I.2: minimum 2 hours in any morning or evening - for pupils
     # too. The circular exempts PE and optional subjects (minmax_exempt=yes
@@ -1139,6 +1169,30 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                 both = m.NewIntVar(0, 1, "adj_%s_%s_%s" % (key[0], key[1], da))
                 m.Add(both >= dps[da] + dps[db] - 1)
                 add_pen("same_subject_adjacent_days", 50, both)
+
+    # ---- rules.pdf, English: never two CONSECUTIVE hours of this subject
+    # for one class, at any level (Subjects sheet: no_doubles=yes) ---------
+    nd_subj = {sid for sid, sub in s.subjects.items()
+               if sub.get("no_doubles") == "yes"}
+    if nd_subj:
+        for cid, ss in by_class.items():
+            for sid_ in sorted(nd_subj):
+                ses = [se for se in ss if se.subject_id == sid_]
+                if not ses:
+                    continue
+                for w in weeks_of(ses):
+                    act = [se for se in ses if in_week(se, w)]
+                    for i, (d, p) in enumerate(slots):
+                        i2 = slot_ix.get((d, p + 1))
+                        if i2 is None:
+                            continue
+                        va, vb = occs(act, i), occs(act, i2)
+                        if not va or not vb:
+                            continue
+                        both = m.NewIntVar(0, 1, "nodbl_%s_%s_%s_%d"
+                                           % (cid, sid_, w, i))
+                        m.Add(both >= sum(va) + sum(vb) - 1)
+                        add_pen("no_doubles", 300, both)
 
     # ---- S18: never subject B straight after subject A --------------------
     # The inspectorate, for both 4th-year streams: never Philosophy in the
@@ -1425,6 +1479,7 @@ def assign_rooms(s, sessions, placement):
         z = zone_of.get(rid, "")
         if z:
             czone[(se.class_id,) + sl] = z
+        class_room_use[se.class_id, rid] += 1
 
     def try_room(se, rid):
         us = hour_uids(se)
@@ -1435,14 +1490,19 @@ def assign_rooms(s, sessions, placement):
             take(se, rid, slot_of(u))
         return True
 
+    class_room_use = collections.Counter()
+
     def pref_rooms(se):
         """Rooms of the right type, nearest zone first. A NORMAL lesson may
         fall back to a science lab when the ordinary rooms are full (Majd's
-        rule) - always AFTER every ordinary room has been tried."""
+        rule) - always AFTER every ordinary room has been tried. Within the
+        same zone, rooms this class already uses come first (rules.pdf: do
+        not scatter one class across many rooms)."""
         cands = list(rooms_by_type.get(se.room_type, []))
         if se.room_type == "normal":
             for t_ in ("lab_sci", "lab_phys"):
                 cands += rooms_by_type.get(t_, [])
+        cands.sort(key=lambda rid: -class_room_use[se.class_id, rid])
         near = set()
         for u in hour_uids(se):
             d, p = placement[u]

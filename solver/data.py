@@ -210,6 +210,8 @@ def load_school(xlsx=None, cfg=None):
             name=r.get("name") or r["id"],
             type=(r.get("type") or "normal").strip(),
             capacity=_int(r.get("capacity"), 999),
+            # M-IT1: an IT lab may hold at most twice its computers
+            computers=_int(r.get("computers"), 0),
             # T45 room proximity: rooms in the same zone are close. Blank =
             # one big zone = the rule costs nothing (Majd fills them later).
             zone=(r.get("zone") or "").strip(),
@@ -243,6 +245,13 @@ def load_school(xlsx=None, cfg=None):
             # social). Two DIFFERENT subjects of the same nature back to
             # back are penalised; a double of one subject is fine.
             nature=(r.get("nature") or "").strip().lower(),
+            # English section of rules.pdf: "no two consecutive hours for
+            # the same class, at all levels" - yes = never two adjacent
+            # hours of this subject in one class-day.
+            no_doubles=(r.get("no_doubles") or "").strip().lower(),
+            # M-SN3 / M-ISL1: this subject prefers the morning (TP for the
+            # experimental streams, the optional Islamic Thought hour).
+            prefer_morning=(r.get("prefer_morning") or "").strip().lower(),
             # T37: subjects that must not share a DAY with this one (soft) -
             # the ministry's History/Geography rule. One side is enough.
             not_same_day=[v for v in (r.get("not_same_day") or "")
@@ -746,6 +755,23 @@ def check(s):
             errs.append("Rooms of type '" + rt + "': need " + str(max(by_type[rt])) +
                         " hours but only " + str(n) + " room(s) x " + str(week) +
                         " periods = " + str(n * week) + " available.")
+
+    # M-IT1 (inspectorate): pupils in a computer lab at most TWICE the
+    # number of machines. Sleeps until sizes and the computers column are
+    # filled; then it warns before a solve wastes time.
+    it_rooms = [r for r in s.rooms.values() if r["type"] == "it" and r.get("computers")]
+    if it_rooms:
+        cap = max(2 * r["computers"] for r in it_rooms)
+        for c in s.curriculum:
+            if s.room_type_for(c) != "it":
+                continue
+            size = s.classes.get(c["class_id"], {}).get("size", 0)
+            per_group = size // max(1, c.get("groups", 1)) if size else 0
+            if per_group and per_group > cap:
+                notes.append("Class " + c["class_id"] + ": " + str(per_group) +
+                             " pupils in an IT lab but the biggest lab takes " +
+                             str(cap) + " (M-IT1: at most twice the computers). "
+                             "Split the row into more groups.")
 
     # a class must split into the SAME halves everywhere: rows of one class
     # that split must agree on the group count, or "group 1" would mean two
