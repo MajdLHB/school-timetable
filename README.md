@@ -1,7 +1,18 @@
 # School Timetable Solver
 
-Generates the timetable for our school automatically, then hands it to
-**aSc TimeTables 2013** (`roz.exe`) for editing and printing.
+A constraint-solver timetable generator **built primarily for Tunisian
+secondary schools**. It encodes the ministry rules (circular 51/2018 and
+the inspectorate texts) as hard mathematical constraints, optimises
+teacher and pupil comfort as editable weighted rules, and exports the
+finished timetable as XML for **aSc TimeTables 2013** (`roz.exe`) - the
+day/group/week-A-B/option formats are all proven against the real program.
+An independent checker re-verifies every rule from the emitted file.
+
+**New here? Start with [`examples/`](examples/)** - a small fictional
+school with a `READ ME` sheet explaining every feature of the data format.
+
+Fill an Excel workbook, double-click `run.bat`, import the XML. That's
+the whole workflow - no programming needed.
 
 ## The idea in one line
 

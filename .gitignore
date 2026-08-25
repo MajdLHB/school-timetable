@@ -31,6 +31,11 @@ out/
 # pre-push gate. Only the hand-written test probes are allowed through.
 !demo/
 !demo/**
+# The example workbook is FICTIONAL data written by hand for the public
+# repo - read tools/make_example.py before believing that claim.
+!examples/
+!examples/*.xlsx
+!examples/*.md
 !tools/
 !test/*.xml
 !docs/**
