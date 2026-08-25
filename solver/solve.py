@@ -2234,6 +2234,39 @@ def hint_placement(m, sessions, x, starts_of, place):
     return n
 
 
+def save_snapshot(s, sessions, place, tag):
+    """Write a complete week to disk THE MOMENT one exists.
+
+    Majd waited an hour on a run that had found a perfectly good timetable six
+    minutes in, and a better one twenty minutes later. When it stopped, it left
+    nothing but a log - because the files were only written after the FINAL
+    phase. Two complete weeks were thrown away. Never again: every time the
+    ladder completes a week, it lands in out/view.html straight away, and each
+    later, better week overwrites it.
+    """
+    try:
+        placed = [se for se in sessions
+                  if all(uid_of(se, k) in place for k in range(se.length))]
+        if len(placed) != len(sessions):
+            return False
+        units = hour_units(placed)
+        rooms = assign_rooms(s, placed, place)
+        os.makedirs(OUT, exist_ok=True)
+        emit_asc.write(s, units, place, rooms,
+                       os.path.join(OUT, "timetable.xml"))
+        emit_html.write(s, units, place, rooms, os.path.join(OUT, "view.html"))
+        with open(os.path.join(OUT, "solution.json"), "w",
+                  encoding="utf-8") as f:
+            json.dump(dict(penalty=-1, elapsed_seconds=0, solution_number=0,
+                           note=tag, placement=place), f)
+        print("        -> saved: out/view.html is a complete, legal week "
+              "right now (%s)" % tag, flush=True)
+        return True
+    except Exception as exc:                    # noqa: BLE001 - never fatal
+        print("        (could not save the week: %s)" % exc, flush=True)
+        return False
+
+
 def run_ladder(s, sessions, cfg, t0, place=None):
     """Find the most important set of rules this school can actually obey.
 
@@ -2308,39 +2341,43 @@ def run_ladder(s, sessions, cfg, t0, place=None):
                                              s.cfg.slots)
         return st, None
 
-    # ---- rung 0: a complete week with every ladder rule only priced -------
-    st, got = attempt(set(order), first_share, place)
-    print("   [%5.0fs] a working week with none of them enforced -> %s"
-          % (time.time() - t0, st), flush=True)
-    if got is None:
-        print("        Could not complete even one week in %ds. This is a "
-              "DATA problem, not a rules problem." % first_share, flush=True)
-        return [], list(order), place, {r: "unproven" for r in order}
-    place = got
-
-    # ---- climb: win rules back, most important first ---------------------
-    kept, given_up, why = [], [], {}
-    todo = list(reversed(order))
-    for n, rule in enumerate(todo):
-        left = len(todo) - n
-        step = max(120.0, (deadline - time.time()) / left)
-        st, got = attempt(set(order) - set(kept) - {rule}, step, place)
+    # ---- the ladder, top down: EVERY rule on, and only give one up when
+    # the timetable cannot be built with it ---------------------------------
+    kept, given_up, why = list(order), [], {}
+    rungs = len(order) + 1
+    for rung in range(rungs):
+        share = max(180.0, (deadline - time.time()) / max(1, rungs - rung))
+        if rung == 0:
+            share = max(share, first_share)   # the rung we most want to win
+        st, got = attempt(set(given_up), share, place)
+        label = ("EVERY rule enforced" if not given_up
+                 else "enforced: " + ", ".join(kept) if kept else "none left")
+        print("   [%5.0fs] %-46s -> %s"
+              % (time.time() - t0, label, st), flush=True)
         if got is not None:
-            kept.append(rule)
-            place = got
-            print("   [%5.0fs] KEPT     %-4s %s"
-                  % (time.time() - t0, rule, LADDER_TEXT.get(rule, rule)),
-                  flush=True)
+            if not given_up:
+                print("        BUILT RIGHT FROM THE FIRST CARD - every rule "
+                      "held, nothing had to be given up.", flush=True)
+            save_snapshot(s, sessions, got,
+                          "rules kept: %s" % (", ".join(kept) or "none"))
+            return kept, given_up, got, why
+        if not kept:
+            print("        No timetable exists even with every relaxable rule "
+                  "given up. That is a DATA problem.", flush=True)
+            return [], given_up, place, why
+        victim = kept[0]                       # least important still standing
+        why[victim] = "proven" if st == "INFEASIBLE" else "unproven"
+        kept.remove(victim)
+        given_up.append(victim)
+        if st == "INFEASIBLE":
+            print("        PROVEN: no timetable can hold all of those. Giving "
+                  "up the least important - %s: %s"
+                  % (victim, LADDER_TEXT.get(victim, victim)), flush=True)
         else:
-            given_up.append(rule)
-            why[rule] = "proven" if st == "INFEASIBLE" else "unproven"
-            print("   [%5.0fs] %-8s %-4s %s"
-                  % (time.time() - t0,
-                     "PROVEN" if st == "INFEASIBLE" else "UNPROVEN",
-                     rule, LADDER_TEXT.get(rule, rule)), flush=True)
-            if st != "INFEASIBLE":
-                print("        (ran out of time after %ds - this is NOT a "
-                      "proof that it is impossible)" % step, flush=True)
+            print("        Ran out of time after %ds (NOT a proof). Giving up "
+                  "the least important - %s: %s"
+                  % (share, victim, LADDER_TEXT.get(victim, victim)),
+                  flush=True)
     return kept, given_up, place, why
 
 
@@ -2611,6 +2648,10 @@ def main():
             print("     found one in %.0fs - now improving it."
                   % f_solver.WallTime(), flush=True)
             rehint(m, sessions, x, starts_of, f_solver.Value)
+            save_snapshot(s, sessions,
+                          placement_from_solver(f_solver.Value, sessions, x,
+                                                starts_of, s.cfg.slots),
+                          "first legal week, comfort not yet optimised")
         else:
             print("     no legal timetable found yet (%s) - continuing."
                   % f_name, flush=True)
@@ -2654,6 +2695,10 @@ def main():
                 # warm-start the next stage (clearing first: a duplicated hint
                 # variable makes CP-SAT reject the whole model)
                 rehint(m, sessions, x, starts_of, st_solver.Value)
+                save_snapshot(s, sessions,
+                              placement_from_solver(st_solver.Value, sessions,
+                                                    x, starts_of, s.cfg.slots),
+                              "after tier %d" % tier)
             else:
                 print("     tier %d: no complete timetable in its slice - "
                       "moving on without freezing." % tier, flush=True)
