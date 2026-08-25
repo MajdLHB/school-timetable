@@ -141,6 +141,11 @@ class Board:
         borrowed = sum(self.rt[x, d, p, w] for x in D.SPARE_FOR_NORMAL)
         return used + borrowed <= self.n_normal + self.n_spare
 
+    def teacher_periods(self, tid, d, w):
+        """Which periods this teacher is busy on this day, in this week."""
+        return sorted(p for p in self.open_p[d]
+                      if self.tch.get((tid, d, p, w)))
+
     # ---- putting a card down, and lifting it again ----------------------
     def put(self, se, d, p0):
         for k in range(se.length):
@@ -172,32 +177,48 @@ class Board:
         return d, p0
 
     # ---- how GOOD is a legal slot (lower is better) ---------------------
-    def score(self, se, d, p0):
-        pen = 0
-        ps = self.open_p[d]
-        last = ps[-1]
-        w0 = wks(se)[0]
+    def _debt(self, ps, evening):
+        """The ugliness of one person's day: lone hours first, then holes.
 
-        # pupils: glue the card to what the class already has that day, and
-        # never leave a one-hour island
-        cls_here = [p for p in ps
-                    if self.cls.get((se.class_id, d, p, w0))]
-        if cls_here:
-            gap = min(abs(p0 - q) for q in cls_here)
-            pen += 0 if gap <= se.length else 40 * gap      # holes hurt
-        # teachers: the same, and a lone hour is the thing Majd hates most
-        if se.teacher_id:
-            t_here = [p for p in ps
-                      if self.tch.get((se.teacher_id, d, p, w0))]
-            after = self.tday[se.teacher_id, d, w0] + se.length
-            if after == 1:
-                pen += 900                       # a whole day for one hour
-            if t_here:
-                gap = min(abs(p0 - q) for q in t_here)
-                pen += 0 if gap <= se.length else 55 * gap
-            else:
-                # a brand-new day for this teacher: mild, they add up
-                pen += 25
+        A day holding ONE hour is the worst thing (they travelled in for it).
+        A half-day holding one hour is nearly as bad (they wait through lunch
+        for it). Holes are real but smaller."""
+        if not ps:
+            return 0
+        cost = 1000 if len(ps) == 1 else 0
+        for half in (False, True):
+            hp = sorted(p for p in ps if (p in evening) == half)
+            if len(hp) == 1:
+                cost += 600
+            elif len(hp) > 1:
+                cost += 55 * ((hp[-1] - hp[0] + 1) - len(hp))   # holes
+        return cost
+
+    def score(self, se, d, p0):
+        """Majd, 2026-08-25: "when you're placing the next one you know it's
+        priority to place it next to the first hour ... so you don't
+        accumulate debt to fix later - you fix it on place."
+
+        So the score IS the debt. For every candidate slot we measure how much
+        uglier - or how much BETTER - this teacher's day and this class's day
+        become. Dropping a card next to an existing lone hour rescues it and
+        scores strongly negative; starting a fresh lonely day scores +1000.
+        The old version only punished making a lone hour and gave nothing for
+        curing one, so the placer walked past debts it could have repaid."""
+        evening = set(self.cfg.evening)
+        new = list(range(p0, p0 + se.length))
+        pen = 0
+        for w in wks(se):
+            if se.teacher_id:
+                ps = self.teacher_periods(se.teacher_id, d, w)
+                pen += self._debt(ps + new, evening) - self._debt(ps, evening)
+            cps = [p for p in self.open_p[d]
+                   if self.cls.get((se.class_id, d, p, w))]
+            # pupils: holes matter, a lone hour for a whole class matters more
+            pen += (self._debt(cps + new, evening)
+                    - self._debt(cps, evening)) // 2
+        pen //= max(1, len(wks(se)))
+
         # groups of one row belong back to back, same day
         if se.group >= 2:
             for other, (od, op) in self.place.items():
@@ -207,7 +228,7 @@ class Board:
                     elif abs(op - p0) != se.length:
                         pen += 120
                     break
-        if p0 + se.length - 1 >= last:
+        if p0 + se.length - 1 >= self.open_p[d][-1]:
             pen += 45                            # the last hour of the day
         pen += 3 * self.days.index(d)            # fill the week from Monday
         return pen
@@ -242,6 +263,9 @@ def build_once(s, sessions, order, board_cls=Board):
             continue
         b.put(se, *best)
         same_day_block[key].add(best[0])
+    # lone hours are a RULE, not a preference. A greedy placer cannot see them
+    # coming, so they are pulled out now, before the week is offered.
+    repair_lone(b, sessions, same_day_block, set(b.cfg.evening))
     return b, unplaced
 
 
@@ -277,6 +301,71 @@ def _make_room(b, se, starts, by_sid, same_day_block):
         b.put(victim, vd, _vp)               # put everything back
         same_day_block[vkey].add(vd)
     return None
+
+
+def lone_cards(b, sessions, evening):
+    """Every card that is a teacher's ONLY hour in a day or in a half-day.
+
+    Majd: "no lone hours ... a lone hour is a hard rule". A greedy placer
+    cannot see this coming - whether a card is lonely depends on cards placed
+    after it - so it is fixed here, afterwards, and if it CANNOT be fixed the
+    tool says so rather than shipping the week quietly.
+    """
+    by_sid = {se.sid: se for se in sessions}
+    out = []
+    seen = set()
+    for (tid, d, p, w), sid_ in list(b.tch.items()):
+        ps = b.teacher_periods(tid, d, w)
+        halves = [q for q in ps if (q in evening) == (p in evening)]
+        if len(ps) == 1 or len(halves) == 1:
+            se = by_sid.get(sid_)
+            if se is not None and se.sid not in seen:
+                seen.add(se.sid)
+                out.append(se)
+    return out
+
+
+def join_a_block(b, se, same_day_block, evening):
+    """Move one lonely hour so it touches a day where the teacher already
+    teaches. Only ever moves it NEXT TO an existing run in the same half-day,
+    so the move removes a lone hour and can never create another one."""
+    tid = se.teacher_id
+    if not tid or se.length != 1:
+        return False
+    key = (se.class_id, se.subject_id, se.group)
+    od, op = b.lift(se)
+    same_day_block[key].discard(od)
+    for d in b.days:
+        if d in same_day_block[key]:
+            continue
+        for w in wks(se):
+            ps = b.teacher_periods(tid, d, w)
+            if len(ps) < 2:
+                continue                    # joining a lone hour makes a pair
+            for p in (ps[0] - 1, ps[-1] + 1):
+                nb = ps[0] if p < ps[0] else ps[-1]
+                if (p in evening) != (nb in evening):
+                    continue                # would start a lonely half-day
+                if (d, p) in b.open_set and b.legal(se, d, p):
+                    b.put(se, d, p)
+                    same_day_block[key].add(d)
+                    return True
+    b.put(se, od, op)                       # nothing better; leave it be
+    same_day_block[key].add(od)
+    return False
+
+
+def repair_lone(b, sessions, same_day_block, evening, rounds=6):
+    """Keep pulling lonely hours into real blocks until none will move."""
+    fixed = 0
+    for _ in range(rounds):
+        before = fixed
+        for se in lone_cards(b, sessions, evening):
+            if join_a_block(b, se, same_day_block, evening):
+                fixed += 1
+        if fixed == before:
+            break
+    return fixed
 
 
 def orders(sessions, tries):
@@ -381,15 +470,41 @@ def main():
     emit_asc.write(s, units, placement, rooms, xml)
     emit_html.write(s, units, placement, rooms, htm)
 
+    total = sum(se.length for se in sessions)
     print("\n  %d of %d lesson-hours placed in %.1f seconds."
-          % (len(placement), sum(se.length for se in sessions),
-             time.time() - t0))
+          % (len(placement), total, time.time() - t0))
     print("  teacher lone-hour days   %.1f per week" % c["lone_days"])
     print("  teacher lonely half-days %.1f per week" % c["lone_halves"])
     print("  teacher hole-hours       %.1f per week" % c["teacher_holes"])
+
+    # Majd 2026-08-25: "if it wrote correctly it would make a good schedule or
+    # give nothing - but since it's possible to have a table that follows all
+    # the rules, it follows all the rules and makes it."
+    # So the verdict is all-or-nothing, and it is stated plainly. A table that
+    # breaks a rule is never presented as if it were finished.
+    broken = []
     if unplaced:
-        print("\n  %d card(s) had NO legal slot and were left out - the table "
-              "is incomplete:" % len(unplaced))
+        broken.append("%d card(s) had no legal slot at all" % len(unplaced))
+    if c["lone_days"]:
+        broken.append("%.1f teacher day(s) hold a single lone hour"
+                      % c["lone_days"])
+    if c["lone_halves"]:
+        broken.append("%.1f teacher half-day(s) hold a single lone hour"
+                      % c["lone_halves"])
+    print("")
+    if not broken:
+        print("  EVERY RULE HOLDS. This week is complete and legal.")
+    else:
+        print("  NOT FINISHED - this week still breaks rules you called hard:")
+        for line in broken:
+            print("     - " + line)
+        print("")
+        print("  It is saved so you can look at it, but it is NOT a timetable")
+        print("  to hand out. Placing cards one at a time cannot see a lone")
+        print("  hour coming - only a search that can undo its own earlier")
+        print("  choices can. That is what solver/solve.py is for.")
+    if unplaced:
+        print("\n  cards with no legal slot:")
         for se in unplaced[:12]:
             print("     %s / %s (%dh)"
                   % (s.classes.get(se.class_id, {}).get("name", se.class_id),
@@ -398,7 +513,7 @@ def main():
                      se.length))
     print("\n  open:  out/quick_view.html")
     print("  aSc:   out/quick_timetable.xml")
-    return 0
+    return 0 if not broken else 2
 
 
 if __name__ == "__main__":
