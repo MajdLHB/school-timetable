@@ -40,7 +40,7 @@ Related files: `docs/RULES.md` (what is decided) · `docs/OPEN_QUESTIONS.md`
 | id | task | status |
 |---|---|---|
 | T16 | Import `test/testC1_groups.xml` — split class, two groups in parallel | **PASSED 2026-08-24 (UNSURE on details)** — screenshot shows all 3 cards placed, the two groups stacked in one period. Still to confirm: no clash warning, unplaced list empty |
-| T17 | Import `test/testC2_weeks_AB.xml` — the ministry `△1/(4)` pattern | **PASSED WITH A CAVEAT 2026-08-24** — in a 2-week project the week-A cards PLACED correctly (proven); 3 phantom unplaced copies appeared (aSc 2013 seems to ignore lesson `weeksdefid`). `test/testC3_weeks_lesson_mask.xml` probes the cosmetic fix — Majd to import it |
+| T17 | Import `test/testC2_weeks_AB.xml` — the ministry `△1/(4)` pattern | **FULLY PASSED 2026-08-25 (C3 v2)** — cards placed AND the unplaced strip empty; the fix was fractional periodsperweek (0.5 = fortnightly), learned from last year's real export. All aSc formats now proven: days (T1), groups (C1), weeks (C3v2), options (C4) |
 | T18 | Teach the emitter to write groups and weeks | **DONE 2026-08-24** — `<groups>` (test C1 form) + `<weeksdefs>`/card week masks (test C2 proven part) |
 
 **Nothing gets built on these until they are proven by import.** The day-mask
