@@ -31,7 +31,7 @@ BLOCKED_EXT = (".pdf", ".xlsx", ".xls", ".csv", ".roz", ".docx",
 # Official ministry circulars are published public documents and contain no
 # personal data - they are the specification this tool implements. Everything
 # under rules/ must still be READ before it is committed.
-ALLOWED_PREFIXES = ("rules/",)
+ALLOWED_PREFIXES = ("rules/", "examples/",)
 # names short enough to cause false matches are skipped
 MIN_NAME_LEN = 4
 
@@ -136,11 +136,27 @@ def main():
             p = os.path.join(HERE, f)
             if not os.path.isfile(p):
                 continue
-            try:
-                with open(p, encoding="utf-8", errors="ignore") as fh:
-                    text = fh.read()
-            except OSError:
-                continue
+            # an xlsx is a ZIP - reading it as text sees only compressed
+            # bytes and would MISS every real name inside. Unzip and scan
+            # the XML members instead (examples/ workbooks are tracked).
+            if p.lower().endswith((".xlsx", ".xlsm", ".xltx")):
+                import zipfile
+                try:
+                    parts = []
+                    with zipfile.ZipFile(p) as z:
+                        for member in z.namelist():
+                            if member.endswith(".xml"):
+                                parts.append(z.read(member).decode("utf-8", "ignore"))
+                    text = "\n".join(parts)
+                except (OSError, zipfile.BadZipFile):
+                    problems.append("UNREADABLE tracked spreadsheet: " + f)
+                    continue
+            else:
+                try:
+                    with open(p, encoding="utf-8", errors="ignore") as fh:
+                        text = fh.read()
+                except OSError:
+                    continue
             for n in names:
                 if n in text:
                     problems.append("REAL NAME %r found inside tracked file %s" % (n, f))
