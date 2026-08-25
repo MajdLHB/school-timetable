@@ -521,7 +521,9 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
     # keeps its own bound (lab lessons always fit), and normal+labs share a
     # pooled bound. IT / tech / engineering / gym rooms serve ONLY their
     # own subjects, as he said.
-    SPARE = ("lab_phys", "lab_sci")
+    # measured from last year: فيز2 hosted French/Arabic/English,
+    # علوم1 hosted Gestion, تقنية 2 hosted French and maths.
+    SPARE = ("lab_phys", "lab_sci", "tech")
     n_spare = sum(len(s.rooms_of_type(t_)) for t_ in SPARE)
 
     for rt in sorted(set(by_type) | set(band_room_terms)):
@@ -1500,7 +1502,7 @@ def assign_rooms(s, sessions, placement):
         not scatter one class across many rooms)."""
         cands = list(rooms_by_type.get(se.room_type, []))
         if se.room_type == "normal":
-            for t_ in ("lab_sci", "lab_phys"):
+            for t_ in ("lab_sci", "lab_phys", "tech"):
                 cands += rooms_by_type.get(t_, [])
         cands.sort(key=lambda rid: -class_room_use[se.class_id, rid])
         near = set()

@@ -380,8 +380,10 @@ def main():
         def has(*kw):
             return any(k in n for k in kw)
         if has("بدنية", "رياضة") and not has("رياضيات"):
-            # H15 daylight: no stadium lighting after 16:00 = period 8
-            return ("easy", "gym", 8, "", "yes", "yes", "", "")
+            # H15 daylight (Majd 2026-08-25: "no sport four to five is
+            # fine, it cant go to six"): sport may run up to 17:00 =
+            # period 9, never the 17:00-18:00 slot.
+            return ("easy", "gym", 9, "", "yes", "yes", "", "")
         if has("فيزيائية"):
             # theory sits in an ordinary classroom; only the GROUP (TP)
             # rows get the lab - written per row below (Majd's P9 split)
