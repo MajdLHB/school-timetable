@@ -25,6 +25,24 @@ def _esc(x):
     return html.escape(str(x or ""))
 
 
+def provenance(s):
+    """Which data file this page was built from, and how big it is.
+
+    The school NAME at the top comes from config.json, so every page ever
+    generated says "معهد العالية" - including a page built from the tiny
+    example school. On 2026-08-25 a test run overwrote out/view.html with the
+    6-teacher example, and Majd spent his evening judging his timetable by a
+    toy. A page must state what it is made of.
+    """
+    import os
+    import time as _t
+    src = os.path.basename(getattr(s, "source_path", "") or "unknown")
+    return ("الملف: <b>%s</b> &nbsp;|&nbsp; %d قسم، %d أستاذ(ة)، %d قاعة "
+            "&nbsp;|&nbsp; %s"
+            % (_esc(src), len(s.classes), len(s.teachers), len(s.rooms),
+               _t.strftime("%Y-%m-%d %H:%M")))
+
+
 def _time_of(p):
     # Periods are one hour from 08:00 (period 1 = 08:00-09:00). If the bell
     # times ever change, change them here and in the aSc project together.
@@ -143,6 +161,7 @@ def write(s, units, placement, rooms, path, day_offs=None):
     page = PAGE.replace("@OPTC@", "".join(opt_c)) \
                .replace("@OPTT@", "".join(opt_t)) \
                .replace("@GRIDS@", "".join(grids)) \
+               .replace("@STAMP@", provenance(s)) \
                .replace("@SCHOOL@", SCHOOL).replace("@YEAR@", YEAR)
     with open(path, "w", encoding="utf-8") as f:
         f.write(page)
@@ -284,6 +303,7 @@ PAGE = """<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
 body{font-family:"Segoe UI",Tahoma,sans-serif;background:#f6f5f1;color:#1c1c1c;margin:14px}
 h2{font-size:1.05em;margin:6px 0 8px}
 .controls{background:#fff;border:1px solid #ddd6c8;border-radius:10px;padding:10px 14px;margin-bottom:12px}
+.stamp{font-size:.82em;color:#6b6459;margin:4px 0 8px;padding:4px 8px;background:#f6f5f1;border-radius:6px;display:inline-block}
 select,button{font-size:1em;padding:6px 12px;margin:2px 6px 2px 0;border-radius:7px;border:1px solid #b9b2a2;background:#fff;cursor:pointer}
 button{background:#3d5a80;color:#fff;border:none}
 button.alt{background:#8a7d5c}
@@ -321,6 +341,7 @@ td.l b{line-height:1.15}td.l span{line-height:1.1}
 </style></head><body>
 <div class="controls">
  <b>@SCHOOL@ — @YEAR@</b> &nbsp;
+ <div class="stamp">@STAMP@</div>
  عرض قسم: <select id="selc"><option value="">—</option>@OPTC@</select>
  أو أستاذ(ة): <select id="selt"><option value="">—</option>@OPTT@</select>
  <button onclick="window.print()">طباعة المعروض</button>

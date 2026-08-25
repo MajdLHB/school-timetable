@@ -677,6 +677,68 @@ def check_no_wrong_room_type():
         "+".join(sorted(used)) or "none")
 
 
+def check_no_room_double_booked():
+    """Two classes in one room at one moment is the worst thing this tool can
+    produce, and it cannot be seen by reading a single class's timetable.
+
+    The room-repair pass used to keep its OWN private book-keeping - one
+    holder per room, blind to weeks - so a week-A lesson and a week-B lesson
+    sharing a room were remembered as one, and a third lesson could be handed
+    a room already occupied in its own week. This builds a school with both
+    fortnightly and every-week lessons and rooms deliberately scarce, so the
+    repair pass has to run, then checks the one invariant that matters:
+    no (room, slot, week) is ever used twice.
+    """
+    s = tiny(days=("Mon", "Tue", "Wed"), periods=2)
+    s.cfg.weeks_per_cycle = 2
+    s.rooms["LAB1"] = dict(id="LAB1", name="LAB1", type="lab_sci", capacity=99)
+    s.subjects["SV"] = dict(id="SV", name="SVT", short="Sv", difficulty="medium",
+                            room_type="lab_sci", latest_period=0)
+    for n in range(2):
+        klass(s, "C%d" % n)
+        teacher(s, "T%d" % n)
+        teach(s, "C%d" % n, "MA", 2, "T%d" % n)
+    # fortnightly lab work: one class in week A, the other in week B - these
+    # two MAY legitimately share LAB1 in the same period
+    teacher(s, "TS")
+    teach(s, "C0", "SV", 1, "TS", week="A")
+    teach(s, "C1", "SV", 1, "TS", week="B")
+    sessions = S.expand(s)
+    m, x, starts_of, _v = S.build(s, sessions)
+    solver = cp_model.CpSolver()
+    solver.parameters.max_time_in_seconds = 15.0
+    st = solver.StatusName(solver.Solve(m))
+    if st not in ("OPTIMAL", "FEASIBLE"):
+        return False, "school should have been solvable, got " + st
+    placement = S.placement_from_solver(solver.Value, sessions, x, starts_of,
+                                        s.cfg.slots)
+    rooms = S.assign_rooms(s, sessions, placement)
+    sess_by_uid = {}
+    for se in sessions:
+        for t in range(se.length):
+            sess_by_uid[S.uid_of(se, t)] = se
+    held = {}
+    shared = 0
+    for uid, rid in rooms.items():
+        if not rid or uid not in placement:
+            continue
+        se = sess_by_uid.get(uid)
+        if se is None:
+            continue
+        weeks = ("A", "B") if not se.week else (se.week,)
+        d, p = placement[uid]
+        for w in weeks:
+            k = (rid, d, p, w)
+            if k in held:
+                return False, ("room %s at %s p%d (week %s) holds BOTH %s and "
+                               "%s" % (rid, d, p, w, held[k], uid))
+            held[k] = uid
+        if len(weeks) == 1:
+            shared += 1
+    return True, ("no room double-booked across %d assignments (%d "
+                  "fortnightly, which may share)" % (len(held), shared))
+
+
 CASES = [
     ("H1  teacher in two places", case_H1_teacher_two_places, "solver"),
     ("H2  class in two places", case_H2_class_two_places, "solver"),
@@ -779,6 +841,14 @@ def main():
           % ("H6  no lesson in a gym/IT", "output", "assigned rooms", "-",
              "ok" if okrt else "<-- FAILED"))
     print("      ^ " + msgrt)
+
+    okdb, msgdb = check_no_room_double_booked()
+    if not okdb:
+        bad += 1
+    print("  %-28s %-9s %-20s %-11s %s"
+          % ("H3  no room booked twice", "output", "assigned rooms", "-",
+             "ok" if okdb else "<-- FAILED"))
+    print("      ^ " + msgdb)
 
     print("")
     if bad:

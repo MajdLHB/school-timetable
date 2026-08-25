@@ -1781,36 +1781,74 @@ def assign_rooms(s, sessions, placement):
                 cands += rooms_by_type.get(t_, [])
         return cands
 
+    # This pass USED to keep its own private book-keeping: one holder per room,
+    # blind to weeks, and it never wrote back into `taken`. Two real faults
+    # came out of that (audit 2026-08-25):
+    #   * a week-A TP and a week-B TP legitimately share a room, but only one
+    #     was remembered, so a third lesson could be given a room that was
+    #     already occupied in its week - two classes, one room;
+    #   * because `taken` was never updated, the option-band loop below
+    #     believed those rooms were still empty and handed one of them out a
+    #     second time.
+    # So the repair now goes through the SAME room_free()/take() book-keeping
+    # as everything else, and displacement moves every lesson that is actually
+    # in the way, rolling back cleanly when the path fails.
     repaired = 0
     for sl, items in lessons_at.items():
-        holders = {}                       # room -> uid currently holding it
+        sess_of = dict(items)
+        occupants = collections.defaultdict(list)   # room -> [uid, ...]
         for u, se in items:
             if out.get(u):
-                holders[out[u]] = u
+                occupants[out[u]].append(u)
+
+        def give(uid, sess, rid):
+            out[uid] = rid
+            occupants[rid].append(uid)
+            take(sess, rid, sl)
+
+        def drop(uid, sess, rid):
+            out[uid] = ""
+            if uid in occupants.get(rid, []):
+                occupants[rid].remove(uid)
+            held = taken[sl].get(rid)
+            if held is not None:
+                held -= wset(sess)
+                if not held:
+                    taken[sl].pop(rid, None)
+            class_room_use[sess.class_id, rid] -= 1
+
         for u, se in items:
             if out.get(u):
                 continue
-            # augmenting path: find a free room, or displace a holder that
-            # can move elsewhere (recursively)
             seen = set()
 
             def try_assign(uid, sess, depth=0):
-                if depth > 6:
-                    return False
                 for rid in compatible(sess):
                     if rid in seen:
                         continue
                     seen.add(rid)
-                    other = holders.get(rid)
-                    if other is None:
-                        out[uid] = rid
-                        holders[rid] = uid
+                    if room_free(sess, rid, sl):
+                        give(uid, sess, rid)
                         return True
-                    o_se = next(s2 for u2, s2 in items if u2 == other)
-                    if try_assign(other, o_se, depth + 1):
-                        out[uid] = rid
-                        holders[rid] = uid
+                    if depth >= 6:
+                        continue
+                    # who is actually in the way in THIS lesson's week(s)?
+                    blockers = [(o, sess_of[o]) for o in occupants.get(rid, [])
+                                if wset(sess_of[o]) & wset(sess)]
+                    if not blockers:
+                        continue
+                    saved = [(o, o_se, rid) for o, o_se in blockers]
+                    for o, o_se, _r in saved:
+                        drop(o, o_se, rid)
+                    if (all(try_assign(o, o_se, depth + 1)
+                            for o, o_se, _r in saved)
+                            and room_free(sess, rid, sl)):
+                        give(uid, sess, rid)
                         return True
+                    for o, o_se, orig in saved:      # roll the path back
+                        if out.get(o):
+                            drop(o, o_se, out[o])
+                        give(o, o_se, orig)
                 return False
 
             if try_assign(u, se):
@@ -2333,15 +2371,30 @@ def main():
         print("\nFix the data first. Nothing was solved.")
         return 1
 
-    # an interrupted run must not leave a stale timetable behind: the next
-    # step would verify the WRONG file (Majd hit exactly this).
-    stale = os.path.join(OUT, "timetable.xml")
-    if os.path.exists(stale):
-        os.makedirs(os.path.join(OUT, "archive"), exist_ok=True)
-        try:
-            os.replace(stale, os.path.join(OUT, "archive", "previous.xml"))
-        except OSError:
-            pass
+    # An interrupted run must not leave ANY stale result behind. It used to
+    # quarantine only timetable.xml, so out/view.html - the page Majd actually
+    # opens, prints and hands to teachers - survived from the previous run.
+    # On 2026-08-25 that page was left over from a test on the 6-teacher
+    # EXAMPLE school, and he spent the evening judging his school by it.
+    # Everything a run produces goes into quarantine together.
+    prev_dir = os.path.join(OUT, "archive", "previous")
+    os.makedirs(prev_dir, exist_ok=True)
+    for stale_name in ("timetable.xml", "view.html", "teachers.html",
+                       "report.html", "report.md", "exceptions.json",
+                       "dayoffs.json", "best_so_far.html", "live_view.html"):
+        stale = os.path.join(OUT, stale_name)
+        if os.path.exists(stale):
+            try:
+                os.replace(stale, os.path.join(prev_dir, stale_name))
+            except OSError:
+                pass
+    # verify.py still looks for the previous XML at its old path
+    try:
+        if os.path.exists(os.path.join(prev_dir, "timetable.xml")):
+            shutil.copyfile(os.path.join(prev_dir, "timetable.xml"),
+                            os.path.join(OUT, "archive", "previous.xml"))
+    except OSError:
+        pass
 
     sessions = expand(s)
     n_hours = sum(se.length for se in sessions)
