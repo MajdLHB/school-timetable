@@ -632,6 +632,51 @@ def check_H5_hours_delivered():
     return True, "MA 3/3, AR 2/2 hours delivered exactly"
 
 
+def check_no_wrong_room_type():
+    """Majd, twice, by eye: "u put math in gym 1", "math in inf 1", "youve put
+    gym 6 for lessons again". A lesson in the wrong KIND of room does not make
+    the solver fail and does not slow anything down - it just quietly reaches a
+    hundred teachers. So it needs an output test, like H5.
+
+    Build a school whose ordinary rooms are DELIBERATELY too few, with an empty
+    gym and an empty IT room sitting right there as tempting alternatives. Then
+    assign rooms and demand that not one ordinary lesson ended up in either.
+    Borrowing a science lab IS allowed (Majd's rule); a gym or an IT room is
+    never allowed.
+    """
+    s = tiny(days=("Mon", "Tue"), periods=2)
+    # one ordinary room, one science lab (borrowable), plus the traps
+    s.rooms["LAB1"] = dict(id="LAB1", name="LAB1", type="lab_sci", capacity=99)
+    s.rooms["GYM1"] = dict(id="GYM1", name="GYM1", type="gym", capacity=99)
+    s.rooms["INF1"] = dict(id="INF1", name="INF1", type="it", capacity=99)
+    for n in range(3):                        # 3 classes, 1 ordinary room
+        klass(s, "C%d" % n)
+        teacher(s, "T%d" % n)
+        teach(s, "C%d" % n, "MA", 2, "T%d" % n)
+    sessions = S.expand(s)
+    m, x, starts_of, _v = S.build(s, sessions)
+    solver = cp_model.CpSolver()
+    solver.parameters.max_time_in_seconds = 10.0
+    st = solver.StatusName(solver.Solve(m))
+    if st not in ("OPTIMAL", "FEASIBLE"):
+        return False, "school should have been solvable, got " + st
+    placement = S.placement_from_solver(solver.Value, sessions, x, starts_of,
+                                        s.cfg.slots)
+    rooms = S.assign_rooms(s, sessions, placement)
+    allowed = set(D.compatible_types("normal"))
+    for uid, rid in rooms.items():
+        if not rid:
+            continue
+        got = s.rooms[rid]["type"]
+        if got not in allowed:
+            return False, ("%s was put in %s, a '%s' room - ordinary lessons "
+                           "may only use %s" % (uid, rid, got,
+                                                "/".join(sorted(allowed))))
+    used = {s.rooms[r]["type"] for r in rooms.values() if r}
+    return True, "no gym/IT misuse; borrowed types used: %s" % (
+        "+".join(sorted(used)) or "none")
+
+
 CASES = [
     ("H1  teacher in two places", case_H1_teacher_two_places, "solver"),
     ("H2  class in two places", case_H2_class_two_places, "solver"),
@@ -726,6 +771,14 @@ def main():
           % ("RESCUE declared exceptions", "output", "exception vars", "-",
              "ok" if okr else "<-- FAILED"))
     print("      ^ " + msgr)
+
+    okrt, msgrt = check_no_wrong_room_type()
+    if not okrt:
+        bad += 1
+    print("  %-28s %-9s %-20s %-11s %s"
+          % ("H6  no lesson in a gym/IT", "output", "assigned rooms", "-",
+             "ok" if okrt else "<-- FAILED"))
+    print("      ^ " + msgrt)
 
     print("")
     if bad:

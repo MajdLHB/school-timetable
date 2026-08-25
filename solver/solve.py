@@ -1841,6 +1841,50 @@ def assign_rooms(s, sessions, placement):
                         break
                 else:
                     out[key] = ""
+
+    # ---- ROOM GUARD ------------------------------------------------------
+    # Majd has caught "maths in gym 1" and "maths in inf 1" with his own eyes
+    # more than once. Every path above already picks by room type, but a
+    # silently wrong room is the worst possible failure here: it does not
+    # crash, it does not slow anything down, it just reaches a hundred
+    # teachers. So the last thing this function does is check its own work.
+    # A wrong room is emptied and shouted about, never handed out.
+    wrong = []
+    for se in sessions:
+        if se.room_type == "__opt__":
+            continue
+        ok = D.compatible_types(se.room_type)
+        for u in hour_uids(se):
+            rid = out.get(u)
+            if rid and s.rooms.get(rid, {}).get("type") not in ok:
+                wrong.append((s.subjects.get(se.subject_id, {}).get(
+                    "name", se.subject_id), s.rooms[rid]["name"],
+                    s.rooms[rid]["type"], se.room_type))
+                out[u] = ""
+    for band in getattr(s, "option_bands", []):
+        want = None
+        for g in band["groups"]:
+            want = D.option_room_type(s, g)
+            for t in range(band["hours"]):
+                key = "OPT|%s|%d" % (g["id"], t)
+                rid = out.get(key)
+                if rid and s.rooms.get(rid, {}).get("type") \
+                        not in D.compatible_types(want):
+                    wrong.append((g["subject_id"], s.rooms[rid]["name"],
+                                  s.rooms[rid]["type"], want))
+                    out[key] = ""
+    if wrong:
+        print("\n  !! ROOM GUARD: %d lesson-hour(s) were about to be put in "
+              "the wrong kind of room. They were emptied instead:" % len(wrong))
+        seen_w = set()
+        for subj, rname, got, want in wrong:
+            if (subj, rname) in seen_w:
+                continue
+            seen_w.add((subj, rname))
+            print("     %-24s -> %-10s (a '%s' room) but needs '%s'"
+                  % (subj, rname, got, want))
+        print("     This is a BUG in the tool, or a wrong 'type' in the Rooms "
+              "sheet. Check the Rooms sheet first.\n")
     return out
 
 
