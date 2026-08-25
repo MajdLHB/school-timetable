@@ -288,6 +288,13 @@ def load_school(xlsx=None, cfg=None):
                 classes=[c.strip() for c in (r.get("classes") or "")
                          .replace(",", ";").split(";") if c.strip()],
                 room_type=(r.get("room_type") or "").strip(),
+                # optional band column: rows sharing a band id run
+                # SIMULTANEOUSLY; an EMPTY cell = this row is its own band
+                # (a joint lesson - e.g. pooled sport). NO band column at
+                # all = the H14 default: choice options sharing a class are
+                # auto-linked into one simultaneous band.
+                band=((r.get("band") or "").strip()
+                      if "band" in r else None),
             ))
     compute_option_bands(s)
 
@@ -357,16 +364,28 @@ def compute_option_bands(s):
         if ra != rb:
             parent[ra] = rb
 
-    by_class = {}
-    for g in s.options:
-        parent.setdefault(g["id"], g["id"])
-        for c in g["classes"]:
-            if c in by_class:
-                union(g["id"], by_class[c])
-            by_class[c] = g["id"]
-    comps = {}
-    for g in s.options:
-        comps.setdefault(find(g["id"]), []).append(g)
+    explicit = any(g.get("band") is not None for g in s.options)
+    if explicit:
+        # explicit band column: same id = simultaneous; blank = solo band
+        comps = {}
+        solo = 0
+        for g in s.options:
+            b = g.get("band") or ""
+            if not b:
+                solo += 1
+                b = "__solo%d" % solo
+            comps.setdefault(b, []).append(g)
+    else:
+        by_class = {}
+        for g in s.options:
+            parent.setdefault(g["id"], g["id"])
+            for c in g["classes"]:
+                if c in by_class:
+                    union(g["id"], by_class[c])
+                by_class[c] = g["id"]
+        comps = {}
+        for g in s.options:
+            comps.setdefault(find(g["id"]), []).append(g)
     for n, (root, groups) in enumerate(sorted(comps.items()), start=1):
         classes = sorted({c for g in groups for c in g["classes"]})
         s.option_bands.append(dict(
@@ -495,12 +514,19 @@ def check(s):
                             " has TWO groups that must run at the same time - "
                             "impossible. Give one group another teacher.")
             seen_t.add(t)
+        explicit_bands = any(g.get("band") is not None for g in s.options)
         for c in band["classes"]:
             if c in class_band:
-                errs.append("Class " + c + " appears in two option bands (" +
-                            class_band[c] + " and " + band["id"] + ") - every "
-                            "pupil takes exactly ONE option, so one band per "
-                            "class.")
+                msg = ("Class " + c + " appears in two option bands (" +
+                       class_band[c] + " and " + band["id"] + ") - every "
+                       "pupil takes exactly ONE option, so one band per "
+                       "class.")
+                if explicit_bands:
+                    # hand-declared (or extracted-from-reality) bands may
+                    # legitimately stagger - note it, don't block
+                    notes.append(msg + " Allowed because bands are explicit.")
+                else:
+                    errs.append(msg)
             class_band[c] = band["id"]
 
     for t in s.teachers.values():

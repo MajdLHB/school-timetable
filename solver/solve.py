@@ -979,6 +979,17 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
             n_ev = m.NewIntVar(0, len(terms), "hard_in_evening")
             m.Add(n_ev == sum(terms))
             add_pen("hard_subject_evening", 50, n_ev)
+    # Majd 2026-08-25: "try not to put hard subjects and important ones the
+    # afternoon and ESPECIALLY the last session" - a hard subject in the
+    # final period costs extra, on top of the general afternoon penalties.
+    last_ix_hard = [i for i, (d, p) in enumerate(slots)
+                    if p == s.cfg.periods_per_day]
+    if hard_sess and last_ix_hard:
+        terms = [v for i in last_ix_hard for v in occs(hard_sess, i)]
+        if terms:
+            n_last = m.NewIntVar(0, len(terms), "hard_in_last")
+            m.Add(n_last == sum(terms))
+            add_pen("hard_subject_last", 120, n_last)
 
     # ---- S12: daylight subjects PREFER the morning -----------------------
     # "morning and max 14h to 16h" - the late window is a fallback, not the
