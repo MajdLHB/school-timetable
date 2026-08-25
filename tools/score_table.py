@@ -80,7 +80,7 @@ def main():
                 c_at[c, w].add((d, p))
 
     def stats(at):
-        holes = solos = 0
+        holes = solos = lone_half = 0
         for (_who, _w), sl in at.items():
             byday = collections.defaultdict(list)
             for (d, p) in sl:
@@ -89,16 +89,24 @@ def main():
                 holes += half_holes(sorted(ps))
                 if len(ps) == 1:
                     solos += 1
-        return holes / 2.0, solos / 2.0     # averaged over the two weeks
+                    continue
+                # a HALF-day holding exactly one lesson: Majd's "came at 11
+                # and sat there" case - the metric that matters most to staff
+                for half in ([x for x in ps if x not in EVENING],
+                             [x for x in ps if x in EVENING]):
+                    if len(half) == 1:
+                        lone_half += 1
+        return holes / 2.0, solos / 2.0, lone_half / 2.0
 
-    th, ts = stats(t_at)
-    ch, _cs = stats(c_at)
+    th, ts, tlh = stats(t_at)
+    ch, _cs, _clh = stats(c_at)
     n_t = len({t for (t, w) in t_at})
     n_c = len({c for (c, w) in c_at})
     print("Scored: %s" % os.path.basename(path))
     print("  %d placed cards, %d teachers, %d classes" % (n_cards, n_t, n_c))
     print("  teacher hole-hours per week ......... %.1f" % th)
     print("  teacher one-hour days per week ...... %.1f" % ts)
+    print("  teacher lonely half-days per week ... %.1f" % tlh)
     print("  pupil (class) hole-hours per week ... %.1f" % ch)
     print("  lessons in the last period .......... %d" % last_p)
     print("(lunch break never counts as a hole; weeks A/B averaged)")
