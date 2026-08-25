@@ -54,7 +54,7 @@
   },
   "time_limit_seconds": 600,
   "weights": {
-    "teacher_gap": 100,
+    "teacher_gap": 250,
     "one_hour_day": 500,
     "class_gap": 150,
     "class_one_hour_session": 85,
@@ -81,7 +81,7 @@
     "not_same_day": 60,
     "double_not_at_start": 25,
     "group_pair_swap": 35,
-    "teacher_lone_half": 70,
+    "teacher_lone_half": 200,
     "cross_lunch": 15,
     "hard_subject_last": 120,
     "flexible_day_off": 200,

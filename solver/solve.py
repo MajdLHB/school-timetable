@@ -493,17 +493,14 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
     # assign_rooms() below turns the counts into concrete room numbers, and
     # verify.py checks the concrete result independently. Counted per week
     # view: an every-week lesson occupies its room in both weeks.
-    # Majd 2026-08-25: "u can put small classes study in a lab in a normal
-    # session too when needed" - a class of <=24 pupils fits a lab, so its
-    # NORMAL lessons may borrow lab rooms when the normal rooms run out.
-    # Inert while class sizes are blank. assign_rooms prefers normal rooms.
-    lab_types = sorted(t for t in {r["type"] for r in s.rooms.values()}
-                       if t.startswith("lab"))
-    n_labs_total = sum(len(s.rooms_of_type(t)) for t in lab_types)
-
-    def small_class(se):
-        size = s.classes.get(se.class_id, {}).get("size", 0)
-        return 0 < size <= 24
+    # Majd 2026-08-25: "physics and svt labs can give normal tutoring too"
+    # and "u can put small classes study in a lab in a normal session when
+    # needed". So NORMAL lessons may borrow the science labs: each lab type
+    # keeps its own bound (lab lessons always fit), and normal+labs share a
+    # pooled bound. IT / tech / engineering / gym rooms serve ONLY their
+    # own subjects, as he said.
+    SPARE = ("lab_phys", "lab_sci")
+    n_spare = sum(len(s.rooms_of_type(t_)) for t_ in SPARE)
 
     for rt in sorted(set(by_type) | set(band_room_terms)):
         if rt == "__opt__":
@@ -511,32 +508,25 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
         ss = by_type.get(rt, [])
         n_rooms = len(s.rooms_of_type(rt))
         extra = band_room_terms.get(rt, [])
-        pool = (rt == "normal" and n_labs_total
-                and any(small_class(se) for se in ss))
         for w in weeks_of(ss + [se for se, _n in extra]):
             act = [se for se in ss if in_week(se, w)]
             for i in range(S):
                 vs = occs(act, i)
                 ex = [(occ[se.sid, i], n) for se, n in extra
                       if (se.sid, i) in occ]
-                if not pool:
-                    if len(vs) + sum(n for _v, n in ex) > n_rooms:
-                        m.Add(sum(vs) + sum(n * v for v, n in ex) <= n_rooms)
-                else:
-                    # big classes stay bounded by the normal rooms alone;
-                    # the pooled bound lets small classes spill into labs
-                    # that lab lessons are not using in that period+week
-                    big = occs([se for se in act if not small_class(se)], i)
-                    if len(big) + sum(n for _v, n in ex) > n_rooms:
-                        m.Add(sum(big) + sum(n * v for v, n in ex) <= n_rooms)
-                    lab_sessions = [v for t in lab_types
-                                    for v in occs([se for se in by_type.get(t, [])
-                                                   if in_week(se, w)], i)]
-                    if (len(vs) + len(lab_sessions)
-                            + sum(n for _v, n in ex) > n_rooms + n_labs_total):
-                        m.Add(sum(vs) + sum(lab_sessions)
-                              + sum(n * v for v, n in ex)
-                              <= n_rooms + n_labs_total)
+                if not vs and not ex:
+                    continue
+                if rt == "normal" and n_spare:
+                    # pooled: normal lessons + lab lessons <= normal + labs
+                    lab_v = [v for t_ in SPARE
+                             for v in occs([se for se in by_type.get(t_, [])
+                                            if in_week(se, w)], i)]
+                    if (len(vs) + len(lab_v) + sum(n for _v, n in ex)
+                            > n_rooms + n_spare):
+                        m.Add(sum(vs) + sum(lab_v) + sum(n * v for v, n in ex)
+                              <= n_rooms + n_spare)
+                elif len(vs) + sum(n for _v, n in ex) > n_rooms:
+                    m.Add(sum(vs) + sum(n * v for v, n in ex) <= n_rooms)
 
     # ---- H9: different blocks of one subject on different days -----------
     # (The contiguity half of H9 is built into the start positions above.)
@@ -1424,8 +1414,13 @@ def assign_rooms(s, sessions, placement):
         return True
 
     def pref_rooms(se):
-        """Rooms of the right type, nearest zone first."""
-        cands = rooms_by_type.get(se.room_type, [])
+        """Rooms of the right type, nearest zone first. A NORMAL lesson may
+        fall back to a science lab when the ordinary rooms are full (Majd's
+        rule) - always AFTER every ordinary room has been tried."""
+        cands = list(rooms_by_type.get(se.room_type, []))
+        if se.room_type == "normal":
+            for t_ in ("lab_sci", "lab_phys"):
+                cands += rooms_by_type.get(t_, [])
         near = set()
         for u in hour_uids(se):
             d, p = placement[u]

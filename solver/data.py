@@ -727,8 +727,21 @@ def check(s):
         e = by_type.setdefault(rt, [0, 0])
         e[0] += g["hours"]
         e[1] += g["hours"]
+    # normal lessons may borrow the science labs (Majd's rule), so the
+    # capacity check pools them the same way the solver does
+    spare = sum(len(s.rooms_of_type(t)) for t in ("lab_phys", "lab_sci"))
     for rt in sorted(by_type):
         n = len(s.rooms_of_type(rt))
+        if rt == "normal" and spare:
+            need = max(by_type["normal"][i]
+                       + by_type.get("lab_phys", [0, 0])[i]
+                       + by_type.get("lab_sci", [0, 0])[i] for i in (0, 1))
+            if need > (n + spare) * week:
+                errs.append("Ordinary rooms plus the science labs: need " +
+                            str(need) + " hours but only " + str(n + spare) +
+                            " room(s) x " + str(week) + " periods = " +
+                            str((n + spare) * week) + " available.")
+            continue
         if n and max(by_type[rt]) > n * week:
             errs.append("Rooms of type '" + rt + "': need " + str(max(by_type[rt])) +
                         " hours but only " + str(n) + " room(s) x " + str(week) +

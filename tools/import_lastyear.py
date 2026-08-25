@@ -329,17 +329,93 @@ def main():
             "", "yes" if c["name"].strip().startswith("4") else "",
             "ALL", "", ""]
            for cid, c in sorted(classes.items())])
+    # room TYPES and capacities from the real names (Majd 2026-08-25: the
+    # first duel put sport at 18:00 because this sheet said every room was
+    # an ordinary classroom and every subject had no limits).
+    def room_type_of(name):
+        n = name.strip()
+        for kw, ty in (("ملعب", "gym"), ("فيز", "lab_phys"), ("علوم", "lab_sci"),
+                       ("Inf", "it"), ("inf", "it"), ("م ه آلية", "eng_mech"),
+                       ("م ه كه", "eng_elec"), ("تقنية", "tech")):
+            if kw in n:
+                return ty
+        return "normal"
+
+    def room_cap(name, ty):
+        n = name.strip()
+        if ty == "gym":
+            return 99
+        if n in ("فيز2", "فيز3"):
+            return 40
+        if ty in ("lab_sci",):
+            return 30
+        if ty in ("lab_phys", "it", "tech", "eng_mech", "eng_elec"):
+            return 20
+        if n.lower() == "group":
+            return 20
+        return 40
+
     sheet("Rooms",
           ["id", "name", "type", "capacity", "zone", "notes"],
-          [[rid, r["name"], "normal", 99, "",
-            "type unknown - duel measures comfort, not room labels"]
+          [[rid, r["name"], room_type_of(r["name"]),
+            room_cap(r["name"], room_type_of(r["name"])), "",
+            "type+capacity from the room name (Majd's house rules)"]
            for rid, r in sorted(rooms.items())])
+    # subject ATTRIBUTES from the name: the ministry limits Majd's real
+    # sheet already carries (daylight for sport, labs, maths before 16h...)
+    def attrs_of(name):
+        n = name.strip()
+        def has(*kw):
+            return any(k in n for k in kw)
+        if has("بدنية", "رياضة") and not has("رياضيات"):
+            # H15 daylight: no stadium lighting after 16:00 = period 8
+            return ("easy", "gym", 8, "", "yes", "yes", "", "")
+        if has("فيزيائية"):
+            # theory sits in an ordinary classroom; only the GROUP (TP)
+            # rows get the lab - written per row below (Majd's P9 split)
+            return ("hard", "normal", "", 9, "", "", "", "scientific")
+        if has("الحياة", "حياة"):
+            return ("medium", "normal", "", "", "", "", "", "scientific")
+        if has("اعلامية", "إعلامية", "خوارزميات", "المعلومات", "قواعد", "الشبكات"):
+            return ("medium", "it", "", "", "", "", "", "scientific")
+        if has("هنسة آلية", "هندسة آلية"):
+            return ("medium", "eng_mech", "", "", "", "", "", "scientific")
+        if has("هنسة كهربائية", "هندسة كهربائية"):
+            return ("medium", "eng_elec", "", "", "", "", "", "scientific")
+        if has("تقنية", "تكنولوجية"):
+            return ("medium", "tech", "", "", "", "", "", "scientific")
+        if has("رياضيات"):
+            return ("hard", "normal", "", 8, "", "", "", "scientific")
+        if has("فلسفة"):
+            return ("hard", "normal", "", 9, "", "", "", "literary")
+        if has("عربية", "فرنسية", "نقليزية", "إسبان", "ألمان", "يطال"):
+            return ("medium", "normal", "", "", "", "", "", "literary")
+        if has("تاريخ", "جغراف", "مدنية", "تفكير", "إسلام", "اقتصاد", "تصرف"):
+            return ("medium", "normal", "", "", "", "", "", "social")
+        if has("موسيق", "تشكيل"):
+            return ("easy", "normal", "", "", "yes", "", "", "")
+        return ("medium", "normal", "", "", "", "", "", "")
+
+    subj_rows = []
+    for sid, sb in sorted(subjects.items()):
+        diff, rt, latest, avoid, exempt, g24, notaft, nature = attrs_of(sb["name"])
+        subj_rows.append([sid, sb["name"], sb["short"], diff, rt, latest,
+                          avoid, exempt, g24, notaft, nature])
     sheet("Subjects",
           ["id", "name", "short", "difficulty", "room_type", "latest_period",
            "avoid_after", "minmax_exempt", "gap24", "not_after", "nature"],
-          [[sid, s["name"], s["short"], "medium", "normal",
-            "", "", "", "", "", ""]
-           for sid, s in sorted(subjects.items())])
+          subj_rows)
+    lab_row = {}
+    for sid, sb in subjects.items():
+        n = sb["name"]
+        if "فيزيائية" in n:
+            lab_row[sid] = "lab_phys"
+        elif "الحياة" in n or "حياة" in n:
+            lab_row[sid] = "lab_sci"
+    rows = [list(r) for r in rows]
+    for r in rows:
+        if r[5] and int(r[5]) > 1 and r[1] in lab_row:
+            r[6] = lab_row[r[1]]          # TP group rows -> the lab
     sheet("Curriculum",
           ["class_id", "subject_id", "hours", "teacher_id", "blocks", "groups",
            "room_type", "core", "week"],
