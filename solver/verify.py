@@ -115,6 +115,25 @@ def main():
         print("No " + XML + " - run solver/solve.py first.")
         return 1
     lessons, cards = read_xml(XML)
+
+    # is this timetable even from THIS workbook? (fingerprint + class ids)
+    head = open(XML, encoding="utf-8", errors="ignore").read(400)
+    src = ""
+    if "source-workbook:" in head:
+        src = head.split("source-workbook:", 1)[1].split("-->", 1)[0].strip()
+    xml_classes = {c for L in lessons.values() for c in L["classes"]}
+    known = xml_classes & set(s.classes)
+    if xml_classes and len(known) < len(xml_classes) / 2:
+        print("STOP: %s was built from a DIFFERENT data file%s."
+              % (os.path.basename(XML), " (%s)" % src if src else ""))
+        print("It does not match %s, so checking it would be meaningless."
+              % os.path.basename(s.source_path or "this workbook"))
+        print("")
+        print("This happens when a solve is interrupted before it writes its")
+        print("timetable. Run the solver again and let it finish (Ctrl+C once,")
+        print("then WAIT for it to save).")
+        return 2
+
     days = cfg.days
     open_slots = set(cfg.slots)
 
@@ -165,12 +184,25 @@ def main():
         for cid in L["classes"]:
             for w in wks:
                 got[cid, L["subject"], L["group"], w] += 1
+    # Report per (class, subject, group). A WEEKLY lesson lives in both week
+    # views, so a mismatch shows up twice - say "every week" once instead of
+    # "week A" + "week B" (Majd: "why did he write week A even for math").
+    bad = collections.defaultdict(dict)
     for key in set(want) | set(got):
         if want[key] != got[key]:
-            grp = ("group %d" % key[2]) if key[2] else "whole class"
-            fail("H5", "class %s subject %s (%s, week %s): needs %d hours, "
-                       "timetable has %d."
-                 % (key[0], key[1], grp, key[3], want[key], got[key]))
+            bad[key[0], key[1], key[2]][key[3]] = (want[key], got[key])
+    for (cid, subj, g), per_week in sorted(bad.items()):
+        grp = ("group %d" % g) if 0 < g < 100 else               ("option group" if g >= 100 else "whole class")
+        if len(per_week) == 2 and per_week.get("A") == per_week.get("B"):
+            w_, g_ = per_week["A"]
+            fail("H5", "class %s subject %s (%s, every week): needs %d hours, "
+                       "timetable has %d." % (cid, subj, grp, w_, g_))
+        else:
+            for wk in sorted(per_week):
+                w_, g_ = per_week[wk]
+                fail("H5", "class %s subject %s (%s, week %s only): needs %d "
+                           "hours, timetable has %d."
+                     % (cid, subj, grp, wk, w_, g_))
 
     # --- H1 teacher clash / H2 class clash / H3 room clash ----------------
     # All three are per WEEK: a week-A card and a week-B card never meet.

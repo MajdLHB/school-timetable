@@ -31,6 +31,41 @@ try:
 except (AttributeError, ValueError):
     pass
 
+
+class _Tee:
+    """Mirror everything printed into out/last_run.log, so a run that is
+    interrupted or killed still leaves evidence of what happened."""
+
+    def __init__(self, stream, path):
+        self.stream = stream
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        self.fh = open(path, "a", encoding="utf-8", errors="replace")
+
+    def write(self, text):
+        self.stream.write(text)
+        try:
+            self.fh.write(text)
+            self.fh.flush()
+        except (OSError, ValueError):
+            pass
+        return len(text)
+
+    def flush(self):
+        self.stream.flush()
+        try:
+            self.fh.flush()
+        except (OSError, ValueError):
+            pass
+
+
+_LOG = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                    "out", "last_run.log")
+try:
+    sys.stdout = _Tee(sys.stdout, _LOG)
+    sys.stderr = _Tee(sys.stderr, _LOG)
+except OSError:
+    pass
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ortools.sat.python import cp_model  # noqa: E402
@@ -1675,6 +1710,16 @@ def main():
             print("ERROR:", e)
         print("\nFix the data first. Nothing was solved.")
         return 1
+
+    # an interrupted run must not leave a stale timetable behind: the next
+    # step would verify the WRONG file (Majd hit exactly this).
+    stale = os.path.join(OUT, "timetable.xml")
+    if os.path.exists(stale):
+        os.makedirs(os.path.join(OUT, "archive"), exist_ok=True)
+        try:
+            os.replace(stale, os.path.join(OUT, "archive", "previous.xml"))
+        except OSError:
+            pass
 
     sessions = expand(s)
     n_hours = sum(se.length for se in sessions)

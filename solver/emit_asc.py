@@ -39,6 +39,12 @@ def write(s, units, placement, rooms, path, include_periods=True):
     # setting, not this file). Do not "fix" the encoding to 1252/1256 -
     # that mimicry was tried and reverted the same evening.
     A('<?xml version="1.0" encoding="UTF-8"?>')
+    # fingerprint: which workbook produced this file. verify.py refuses to
+    # check a timetable against a DIFFERENT data file (Majd 2026-08-25: an
+    # interrupted run left a stale xml and the checker screamed 4616 fake
+    # H5 errors about two schools mixed together).
+    A('<!-- source-workbook: %s -->'
+      % os.path.basename(getattr(s, "source_path", "") or "unknown"))
     A('<timetable importtype="database" options="idprefix:%s">' % ID_PREFIX)
 
     if include_periods:

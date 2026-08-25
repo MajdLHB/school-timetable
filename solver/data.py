@@ -64,6 +64,9 @@ class School:
     # all option lessons of one pool run SIMULTANEOUSLY (a "band").
     options: list = field(default_factory=list)
     option_bands: list = field(default_factory=list)
+    # which workbook this school was loaded from (stamped into the XML so
+    # verify.py can refuse a timetable built from a different file)
+    source_path: str = ""
 
     def room_type_for(self, cur_row):
         """Which kind of room this curriculum row needs."""
@@ -166,6 +169,7 @@ def load_school(xlsx=None, cfg=None):
         )
     wb = load_workbook(xlsx, read_only=True, data_only=True)
     s = School(cfg=cfg)
+    s.source_path = xlsx        # stamped into the XML, checked by verify.py
 
     for r in _rows(wb["Teachers"]):
         s.teachers[r["id"]] = dict(
