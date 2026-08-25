@@ -2557,7 +2557,13 @@ def main():
                 best = ("best so far: %d exception-hours, soft %d"
                         % (cb_ref.last_exc, cb_ref.last_soft))
             else:
-                best = "no complete timetable yet - still building one"
+                # The callback only exists in the FINAL phase, so this line
+                # used to read "no complete timetable yet" all through PHASE 0
+                # and every tier - phases that were working perfectly well.
+                # It scared Majd, and it made me misdiagnose a healthy run.
+                # Say which phase is running instead of implying failure.
+                best = "%s (this phase reports when it finishes)" % \
+                    cb_holder.get("phase", "starting up")
             print("   TIMER %2d:%02d / %d:00 min - %s"
                   % (el // 60, el % 60, cfg.time_limit // 60, best),
                   flush=True)
@@ -2592,6 +2598,7 @@ def main():
     # made every given-up rule cost nothing after PHASE 0.
     full_obj = list(getattr(m, "penalties", []))
     if full_obj:
+        cb_holder["phase"] = "PHASE 0 - finding a first legal timetable"
         print("\n  PHASE 0 - finding a first legal timetable "
               "(comfort switched off)...", flush=True)
         m.Minimize(0)
@@ -2626,6 +2633,7 @@ def main():
             if not terms:
                 continue
             share = min(max(120.0, budget * 0.2), budget / 3.0)
+            cb_holder["phase"] = "TIER %d - %s" % (tier, TIERS[tier][0])
             print("\n  TIER %d - optimising %s (up to %d min)..."
                   % (tier, ", ".join(TIERS[tier]), share // 60), flush=True)
             m.Minimize(sum(w * v for w, v in terms + exc_terms))
