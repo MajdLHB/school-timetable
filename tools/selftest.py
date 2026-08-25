@@ -490,19 +490,28 @@ def case_H14_option_teacher_bound():
 
 
 def case_H20_groups_back_to_back():
-    """Majd (hard): two same-week groups of one TP sit ADJACENT, same day -
-    never one in the morning and one in the afternoon. BREAK: a 2-day week
-    with ONE period per day - the two group sessions can never be adjacent.
-    RELAX: one day with two periods - G1 then G2, back to back."""
-    def base(days, periods):
-        s = tiny(days=days, periods=periods)
-        s.cfg.morning = list(range(1, periods + 1))
+    """Majd (hard): two same-week groups of one TP sit ADJACENT, same day.
+    Since 2026-08-25 the rule applies wherever adjacency is PHYSICALLY
+    possible (a pair that would need more consecutive periods than a
+    half-day has - e.g. 4h+4h - falls back to a same-day preference, or it
+    would declare his real school impossible).
+
+    BREAK: two 2-period days, but the teacher is blocked in both second
+    periods - the two groups can only land on different days. RELAX: unblock,
+    and they sit back to back the same morning."""
+    def base(block):
+        s = tiny(days=("Mon", "Tue"), periods=2)
+        s.cfg.morning = [1, 2]
         s.cfg.evening = []
         teacher(s, "T1")
         klass(s, "C1")
         teach(s, "C1", "MA", 1, "T1", groups=2)
+        if block:
+            for d in ("Mon", "Tue"):
+                s.unavailable.append(dict(teacher_id="T1", day=d, period=2,
+                                          hard="yes", reason="selftest"))
         return s
-    return base(("Mon", "Tue"), 1), base(("Mon",), 2)
+    return base(True), base(False)
 
 
 def case_TP_carousel_swap():

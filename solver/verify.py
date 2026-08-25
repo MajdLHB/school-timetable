@@ -71,7 +71,7 @@ def read_xml(path):
             subject=el.get("subjectid"),
             classes=[c for c in (el.get("classids") or "").split(",") if c],
             teachers=[t for t in (el.get("teacherids") or "").split(",") if t],
-            per_week=int(el.get("periodsperweek") or 0),
+            per_week=float(el.get("periodsperweek") or 0),  # 0.5 = fortnight
             group=_group_no(el.get("groupids")),
         )
     cards = []
@@ -358,8 +358,19 @@ def main():
     for (cid, subj, g, w, d), ps in cs_day.items():
         if g >= 1 and g < 100:
             grp_days[cid, subj, w].setdefault(g, {})[d] = sorted(ps)
+    # pairs that physically cannot be adjacent (2 x block > the longest run
+    # of open periods in a half-day) are exempt - the solver only prefers
+    # the same day for them (Majd's real school has 4h group sessions).
+    max_run = D.longest_open_run(cfg)
+    h20_exempt = set()
+    for row in s.curriculum:
+        if max(1, row.get("groups", 1)) < 2:
+            continue
+        bl, _e = D.parse_blocks(row.get("blocks", ""), row["hours"])
+        if bl and 2 * max(bl) > max_run:
+            h20_exempt.add((row["class_id"], row["subject_id"]))
     for (cid, subj, w), by_g in grp_days.items():
-        if len(by_g) < 2:
+        if len(by_g) < 2 or (cid, subj) in h20_exempt:
             continue
         day_sets = {g: set(dd) for g, dd in by_g.items()}
         all_days = set().union(*day_sets.values())

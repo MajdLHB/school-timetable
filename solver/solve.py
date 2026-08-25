@@ -597,30 +597,73 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
             if a.explicit and bse.explicit:
                 m.Add(da < db)
 
-    # ---- H20 / M-SN4 (HARD - Majd 2026-08-25, in tears over a morning/
-    # afternoon split: "group sessions should be back to back next to each
-    # other... u cant put one group in morning and the other in the
-    # afternoon"): when two groups of one row share the same WEEK, their
-    # sessions sit on the same day in ADJACENT periods - one right after
-    # the other. Numeric adjacency also makes straddling the lunch break
-    # impossible. Carousel groups (ALT/ALT2) live in different weeks and
-    # are exempt - each is alone in its week.
+    # ---- H20 / M-SN4 (Majd 2026-08-25, over a morning/afternoon split:
+    # "group sessions should be back to back next to each other"): when two
+    # groups of one row share a WEEK, their sessions sit on the same day in
+    # ADJACENT periods. Default HARD; the Weights sheet key
+    # groups_back_to_back can make it a (heavy) preference instead when the
+    # school is too packed to obey it everywhere. Carousel groups (ALT/ALT2)
+    # are exempt - they live in different weeks and never meet.
+    def day_start_vars(se, tag):
+        st = starts_of(se)
+        dv = m.NewIntVar(0, len(days) - 1, "d_%s_%s" % (se.sid, tag))
+        pv = m.NewIntVar(0, s.cfg.periods_per_day, "p_%s_%s" % (se.sid, tag))
+        m.Add(dv == sum(day_ix[dd] * x[se.sid, j]
+                        for j, (dd, p0, ixs) in enumerate(st)))
+        m.Add(pv == sum(p0 * x[se.sid, j]
+                        for j, (dd, p0, ixs) in enumerate(st)))
+        return dv, pv
+
+    too_long_pairs = []
     for (cid, sid_, g), sa in sorted(by_row.items()):
         if g < 1:
             continue
         sb = by_row.get((cid, sid_, g + 1))
         if not sb:
             continue
-        for a, b in zip(sorted(sa, key=lambda se: se.hour_offset),
-                        sorted(sb, key=lambda se: se.hour_offset)):
-            if a.week != b.week:
-                continue          # different weeks - the carousel case
-            for ja, (da_, pa, _xa) in enumerate(starts_of(a)):
-                for jb, (db_, pb, _xb) in enumerate(starts_of(b)):
-                    ok = (da_ == db_ and (pb == pa + a.length
-                                          or pa == pb + b.length))
-                    if not ok:
-                        m.AddBoolOr([x[a.sid, ja].Not(), x[b.sid, jb].Not()])
+        # pair WITHIN each week: a row may have both a week-A and a week-B
+        # part, and sorting by offset alone could pair across weeks - which
+        # this rule then skipped, leaving the groups unconstrained (caught
+        # by verify.py on last year's data, 2026-08-25).
+        pairs = []
+        weeks_here = {se.week for se in sa} | {se.week for se in sb}
+        for wk in sorted(weeks_here):
+            aw = sorted((se for se in sa if se.week == wk),
+                        key=lambda se: se.hour_offset)
+            bw = sorted((se for se in sb if se.week == wk),
+                        key=lambda se: se.hour_offset)
+            pairs.extend(zip(aw, bw))
+        for k, (a, b) in enumerate(pairs):
+            # A pair can only sit back to back if BOTH fit consecutively
+            # inside one half-day. A 4h group session x2 would need 8 in a
+            # row - physically impossible (Majd 2026-08-25: my strict rule
+            # declared his REAL school infeasible; those subjects run in
+            # PARALLEL with a partner subject instead, swapping groups).
+            # When it cannot fit, prefer the same DAY and let S20 pair the
+            # groups with another subject.
+            if not any(dd == dd2 and abs(p1 - p2) == a.length
+                       for dd, p1, _i in starts_of(a)
+                       for dd2, p2, _j in starts_of(b)):
+                da, pa = day_start_vars(a, "a%d" % k)
+                db, pb = day_start_vars(b, "b%d" % k)
+                same = m.NewBoolVar("b2bSD_%s_%s_%d_%d" % (cid, sid_, g, k))
+                m.Add(da == db).OnlyEnforceIf(same)
+                m.Add(da != db).OnlyEnforceIf(same.Not())
+                add_pen("groups_same_day", 60, same.Not())
+                too_long_pairs.append((cid, sid_, a.length))
+                continue
+            da, pa = day_start_vars(a, "a%d" % k)
+            db, pb = day_start_vars(b, "b%d" % k)
+            # b right after a, or a right after b, on the same day
+            first = m.NewBoolVar("b2b1_%s_%s_%d_%d" % (cid, sid_, g, k))
+            m.Add(db == da).OnlyEnforceIf(first)
+            m.Add(pb == pa + a.length).OnlyEnforceIf(first)
+            second = m.NewBoolVar("b2b2_%s_%s_%d_%d" % (cid, sid_, g, k))
+            m.Add(db == da).OnlyEnforceIf(second)
+            m.Add(pa == pb + b.length).OnlyEnforceIf(second)
+            apart = m.NewBoolVar("b2bX_%s_%s_%d_%d" % (cid, sid_, g, k))
+            m.AddExactlyOne([first, second, apart])
+            add_pen("groups_back_to_back", "HARD", apart)
 
     # ---- S22 / M-SN4: the group copies of one row belong together --------
     # The ministry's lab rule: the two groups' sessions run back to back.
@@ -1319,6 +1362,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
     # (m, x, starts_of, viols) signature the selftests rely on stays stable.
     m.day_off_choice = day_off_choice
     m.pen_map = pen_map
+    m.too_long_pairs = too_long_pairs
     return m, x, starts_of, viols
 
 
