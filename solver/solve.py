@@ -81,6 +81,28 @@ OUT = os.path.join(HERE, "out")
 # against. The solver only pays it when the strict rules admit NO timetable.
 RESCUE_WEIGHT = 10000
 
+# Majd 2026-08-25: "make rules applied in a better way". A single weighted
+# sum lets a hundred cheap rules outvote one that matters. So the solve is
+# STAGED: tier 1 is optimised first and then FROZEN at its best value, then
+# tier 2 on top of it, and only then the rest. A rule can never be traded
+# away by rules of a lower tier.
+TIERS = {
+    # TIER 1 - DIGNITY. What makes a staff room hate a timetable, and what
+    # a human planner would never sign. Nothing below may trade these away.
+    1: ("one_hour_day",          # a teacher travelling in for ONE lesson
+        "teacher_lone_half",     # one lonely hour stuck beside the break
+        "class_one_hour_session",  # pupils coming in for one lone hour
+        "hard_subject_last"),    # maths/philosophy at 17:00-18:00
+    # TIER 2 - COMFORT. Majd: "comfort is important too, i can already make
+    # a NORMAL timetable by hand" - so this is the tier that must beat him:
+    # holes, protected bac afternoons, hard subjects out of the evening.
+    2: ("teacher_gap", "class_gap", "flexible_day_off",
+        "bac_no_free_afternoon", "hard_subject_evening", "late_subject",
+        "last_period"),
+    # TIER 3 (everything else) - polish: patterns, spreading, pairing,
+    # walking distance, morning/evening balance.
+}
+
 
 class Unit:
     """One single lesson-hour, as emitted to aSc and counted by verify."""
@@ -1901,6 +1923,47 @@ def main():
                   "sessions hinted." % (saved.get("penalty"), hinted, len(sessions)))
         else:
             print("--continue given but no out/solution.json yet; starting fresh.")
+
+    # ---- staged solve: freeze each tier's best before moving on ---------
+    pen_map = getattr(m, "pen_map", {})
+    budget = solver.parameters.max_time_in_seconds
+    staged = "--flat" not in sys.argv and pen_map
+    if staged:
+        for tier in sorted(TIERS):
+            terms = [(w, v) for key in TIERS[tier]
+                     for w, v in pen_map.get(key, [])]
+            if not terms:
+                continue
+            share = min(max(120.0, budget * 0.2), budget / 3.0)
+            print("\n  TIER %d - optimising %s (up to %d min)..."
+                  % (tier, ", ".join(TIERS[tier]), share // 60), flush=True)
+            m.Minimize(sum(w * v for w, v in terms))
+            st_solver = cp_model.CpSolver()
+            st_solver.parameters.max_time_in_seconds = share
+            st_solver.parameters.num_search_workers = n_workers()
+            st = st_solver.StatusName(st_solver.Solve(m))
+            if st in ("OPTIMAL", "FEASIBLE"):
+                best = int(st_solver.ObjectiveValue())
+                # freeze: later tiers may never make this tier worse
+                m.Add(sum(w * v for w, v in terms) <= best)
+                print("     tier %d best = %d%s - frozen."
+                      % (tier, best, " (proven optimal)" if st == "OPTIMAL" else ""),
+                      flush=True)
+                for se in sessions:      # warm-start the next stage
+                    for j in range(len(starts_of(se))):
+                        if st_solver.Value(x[se.sid, j]):
+                            m.AddHint(x[se.sid, j], 1)
+                            break
+            else:
+                print("     tier %d: no complete timetable in its slice - "
+                      "moving on without freezing." % tier, flush=True)
+        # restore the full objective for the final, longest phase
+        m.Minimize(sum(w * v for w, v in
+                       [(w, v) for entries in pen_map.values() for w, v in entries]))
+        solver.parameters.max_time_in_seconds = max(
+            120.0, float(cfg.time_limit) - (time.time() - t0))
+        print("\n  FINAL - polishing everything else with the tiers frozen...",
+              flush=True)
 
     cb = Progress(t0, sessions=sessions, x=x, starts_of=starts_of, slots=s.cfg.slots, viols=viols)
     cb_holder["cb"] = cb
