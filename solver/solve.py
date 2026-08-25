@@ -529,6 +529,31 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
             if a.explicit and bse.explicit:
                 m.Add(da < db)
 
+    # ---- H20 / M-SN4 (HARD - Majd 2026-08-25, in tears over a morning/
+    # afternoon split: "group sessions should be back to back next to each
+    # other... u cant put one group in morning and the other in the
+    # afternoon"): when two groups of one row share the same WEEK, their
+    # sessions sit on the same day in ADJACENT periods - one right after
+    # the other. Numeric adjacency also makes straddling the lunch break
+    # impossible. Carousel groups (ALT/ALT2) live in different weeks and
+    # are exempt - each is alone in its week.
+    for (cid, sid_, g), sa in sorted(by_row.items()):
+        if g < 1:
+            continue
+        sb = by_row.get((cid, sid_, g + 1))
+        if not sb:
+            continue
+        for a, b in zip(sorted(sa, key=lambda se: se.hour_offset),
+                        sorted(sb, key=lambda se: se.hour_offset)):
+            if a.week != b.week:
+                continue          # different weeks - the carousel case
+            for ja, (da_, pa, _xa) in enumerate(starts_of(a)):
+                for jb, (db_, pb, _xb) in enumerate(starts_of(b)):
+                    ok = (da_ == db_ and (pb == pa + a.length
+                                          or pa == pb + b.length))
+                    if not ok:
+                        m.AddBoolOr([x[a.sid, ja].Not(), x[b.sid, jb].Not()])
+
     # ---- S22 / M-SN4: the group copies of one row belong together --------
     # The ministry's lab rule: the two groups' sessions run back to back.
     # Soft: penalise every day where one group's subject sits and the other

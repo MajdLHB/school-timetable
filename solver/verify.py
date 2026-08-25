@@ -317,6 +317,33 @@ def main():
                     "+".join(map(str, sorted(want_bl, reverse=True))),
                     "+".join(map(str, sorted(got_bl, reverse=True))) or "none"))
 
+    # --- H20: same-week groups of one subject sit back-to-back -------------
+    # (M-SN4; Majd: never one group in the morning and the other in the
+    # afternoon.) For every (class, subject, week) where SEVERAL groups have
+    # cards: each day's cards across those groups must form ONE contiguous
+    # run, and every such group must appear on the same days.
+    grp_days = collections.defaultdict(dict)   # (cid,sid,w) -> {g: {day: ps}}
+    for (cid, subj, g, w, d), ps in cs_day.items():
+        if g >= 1 and g < 100:
+            grp_days[cid, subj, w].setdefault(g, {})[d] = sorted(ps)
+    for (cid, subj, w), by_g in grp_days.items():
+        if len(by_g) < 2:
+            continue
+        day_sets = {g: set(dd) for g, dd in by_g.items()}
+        all_days = set().union(*day_sets.values())
+        for d in sorted(all_days):
+            union_ps = sorted(p for g, dd in by_g.items() for p in dd.get(d, []))
+            missing = [g for g, ds in day_sets.items() if d not in ds]
+            if missing:
+                fail("H20", "class %s subject %s (week %s): group(s) %s have "
+                            "no session on %s while another group does - "
+                            "groups must run back to back the same day."
+                     % (cid, subj, w, ", ".join(map(str, missing)), d))
+            elif union_ps != list(range(union_ps[0], union_ps[0] + len(union_ps))):
+                fail("H20", "class %s subject %s (week %s) on %s: the groups' "
+                            "sessions sit at periods %s - not back to back."
+                     % (cid, subj, w, d, ", ".join(map(str, union_ps))))
+
     # --- H19: 24 hours between sessions of a gap24 subject -----------------
     # On consecutive days, the later session must not start earlier in the
     # day than the first one did (circular III.2, the PE 24-hour note).

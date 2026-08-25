@@ -328,6 +328,17 @@ def main():
             # keeps its own subject id and room for both kinds of session.
             tp_sid = sid + "_TP" if sid in lab_split else sid
             theory_room = "normal" if sid in lab_split else ""
+            # TP placement policy (Majd 2026-08-25, in his words: "group
+            # hours are tp hours in subjects like physics svt tech it...
+            # group sessions should be back to back next to each other"):
+            # - both groups of a TP run BACK TO BACK the same day (H20) -
+            # - EVERY SECOND WEEK (A/B by class parity): the only reading
+            #   that matches last year's real file (145 A/B cards) AND the
+            #   official half-counted hour totals (e.g. 18.5). UNSURE flag:
+            #   if a subject's TP is truly weekly, clear its week cell.
+            # - EXCEPT year 1 SVT/TECH: Majd's carousel - group 1 in the
+            #   SVT lab while group 2 is in TECH, swapping weekly.
+            y1_carousel = {"SVT": "ALT", "TECH": "ALT2"}
             rows_here = []   # (subject_id, hours, blocks, groups, room, week)
             if parts["theory"]:
                 rows_here.append((sid, sum(parts["theory"]),
@@ -336,17 +347,14 @@ def main():
                                   1, theory_room, ""))
             for n in parts["theory_alt"]:
                 rows_here.append((sid, n, str(n), 1, theory_room, prim))
-            if parts["tp"]:
-                rows_here.append((tp_sid, sum(parts["tp"]),
-                                  "+".join(str(t) for t in
-                                           sorted(parts["tp"], reverse=True)),
-                                  2, "", ""))
-            for n in parts["tp_alt"]:
-                rows_here.append((tp_sid, n, str(n), 2, "", prim))
+            tp_week = (y1_carousel.get(sid, prim) if grade == 1 else prim)
+            for n in parts["tp"] + parts["tp_alt"]:
+                rows_here.append((tp_sid, n, str(n), 2, "", tp_week))
             for wh, tpg in parts["pairs"]:
                 # 1h whole class one week, groups the other - opposite weeks
                 rows_here.append((sid, wh, str(wh), 1, theory_room, prim))
-                rows_here.append((tp_sid, tpg, str(tpg), 2, "", seco))
+                rows_here.append((tp_sid, tpg, str(tpg), 2, "",
+                                  y1_carousel.get(sid, seco) if grade == 1 else seco))
             for rsid, h, bl, g, rm, wk in rows_here:
                 if h <= 0:
                     continue

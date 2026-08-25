@@ -489,6 +489,22 @@ def case_H14_option_teacher_bound():
     return base(True), base(False)
 
 
+def case_H20_groups_back_to_back():
+    """Majd (hard): two same-week groups of one TP sit ADJACENT, same day -
+    never one in the morning and one in the afternoon. BREAK: a 2-day week
+    with ONE period per day - the two group sessions can never be adjacent.
+    RELAX: one day with two periods - G1 then G2, back to back."""
+    def base(days, periods):
+        s = tiny(days=days, periods=periods)
+        s.cfg.morning = list(range(1, periods + 1))
+        s.cfg.evening = []
+        teacher(s, "T1")
+        klass(s, "C1")
+        teach(s, "C1", "MA", 1, "T1", groups=2)
+        return s
+    return base(("Mon", "Tue"), 1), base(("Mon",), 2)
+
+
 def case_TP_carousel_swap():
     """Majd's TP carousel: week A group 1 in the SVT lab WHILE group 2 is in
     the TECH lab; week B they swap. With ALT + ALT2 the whole carousel fits
@@ -591,6 +607,7 @@ CASES = [
     ("T43 half class overbooked", case_T43_half_class_overbooked, "solver"),
     ("T42 week A/B share a slot", case_T42_weeks_share_slot, "solver"),
     ("ALT groups take turns", case_ALT_groups_take_turns, "solver"),
+    ("H20 groups back to back", case_H20_groups_back_to_back, "solver"),
     ("TP carousel ALT/ALT2 swap", case_TP_carousel_swap, "solver"),
     ("H14 band alignment", case_H14_band_alignment, "solver"),
     ("H14 option teacher bound", case_H14_option_teacher_bound, "solver"),
