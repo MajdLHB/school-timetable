@@ -85,7 +85,7 @@
     "cross_lunch": 20,
     "hard_subject_last": 1000,
     "flexible_day_off": 250,
-    "groups_back_to_back": "HARD",
+    "groups_back_to_back": 800,
     "groups_same_day": 60,
     "class_morning_evening": 60,
     "prefer_morning": 120,

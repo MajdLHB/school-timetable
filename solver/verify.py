@@ -23,7 +23,7 @@ EXC = os.path.join(D.HERE, "out", "exceptions.json")
 
 # Only these rules may ever be excused by a rescue-mode exceptions file.
 # A clash or a wrong room is never an acceptable exception.
-EXCUSABLE = {"H7", "H17"}
+EXCUSABLE = {"H7", "H17", "H4"}   # H4: a declared room shortage
 
 
 def _group_no(groupids):

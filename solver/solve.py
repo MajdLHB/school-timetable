@@ -89,7 +89,8 @@ RESCUE_WEIGHT = 10000
 TIERS = {
     # TIER 1 - DIGNITY. What makes a staff room hate a timetable, and what
     # a human planner would never sign. Nothing below may trade these away.
-    1: ("one_hour_day",          # a teacher travelling in for ONE lesson
+    1: ("groups_back_to_back",   # the two halves of a TP, glued together
+        "one_hour_day",          # a teacher travelling in for ONE lesson
         "teacher_lone_half",     # one lonely hour stuck beside the break
         "class_one_hour_session",  # pupils coming in for one lone hour
         "hard_subject_last"),    # maths/philosophy at 17:00-18:00
@@ -540,17 +541,33 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                       if (se.sid, i) in occ]
                 if not vs and not ex:
                     continue
+                # In rescue mode a room shortage is DECLARED, not refused:
+                # Majd's school runs its IT rooms at 98% and the ordinary
+                # pool at 91%, so a single tight period must not make the
+                # whole week impossible. Every overflow costs RESCUE_WEIGHT
+                # and is listed in the report ("this period needs one more
+                # IT room"), exactly like the H7/H17 exceptions.
+                def bound(terms, cap, tag):
+                    if not rescue:
+                        m.Add(sum(terms) <= cap)
+                        return
+                    over = m.NewIntVar(0, max(1, len(terms)),
+                                       "vROOM_%s_%s_%d" % (tag, w, i))
+                    m.Add(sum(terms) <= cap + over)
+                    penalties.append((RESCUE_WEIGHT, over))
+                    viols.append(("H4", "", "%s p%d" % slots[i], over,
+                                  "not enough '%s' rooms" % tag))
+
                 if rt == "normal" and n_spare:
                     # pooled: normal lessons + lab lessons <= normal + labs
                     lab_v = [v for t_ in SPARE
                              for v in occs([se for se in by_type.get(t_, [])
                                             if in_week(se, w)], i)]
-                    if (len(vs) + len(lab_v) + sum(n for _v, n in ex)
-                            > n_rooms + n_spare):
-                        m.Add(sum(vs) + sum(lab_v) + sum(n * v for v, n in ex)
-                              <= n_rooms + n_spare)
+                    terms = vs + lab_v + [n * v for v, n in ex]
+                    if len(vs) + len(lab_v) + sum(n for _v, n in ex) > n_rooms + n_spare:
+                        bound(terms, n_rooms + n_spare, "normal+labs")
                 elif len(vs) + sum(n for _v, n in ex) > n_rooms:
-                    m.Add(sum(vs) + sum(n * v for v, n in ex) <= n_rooms)
+                    bound(vs + [n * v for v, n in ex], n_rooms, rt)
 
     # ---- H9: different blocks of one subject on different days -----------
     # (The contiguity half of H9 is built into the start positions above.)
@@ -1986,8 +2003,38 @@ def main():
         else:
             print("--continue given but no out/solution.json yet; starting fresh.")
 
-    # ---- staged solve: freeze each tier's best before moving on ---------
+    # ---- PHASE 0: find ANY legal timetable first -------------------------
+    # Majd's school runs at 91-98% room occupancy. Optimising comfort while
+    # still hunting for the FIRST legal table left it unsolvable for hours;
+    # with the objective switched off it lands in under a minute. So: find
+    # a table, then spend every remaining second improving it.
     pen_map = getattr(m, "pen_map", {})
+    full_obj = [(w, v) for entries in pen_map.values() for w, v in entries]
+    if full_obj:
+        print("\n  PHASE 0 - finding a first legal timetable "
+              "(comfort switched off)...", flush=True)
+        m.Minimize(0)
+        f_solver = cp_model.CpSolver()
+        f_solver.parameters.max_time_in_seconds = min(
+            600.0, max(120.0, float(cfg.time_limit) * 0.15))
+        f_solver.parameters.num_search_workers = n_workers()
+        f_name = f_solver.StatusName(f_solver.Solve(m))
+        if f_name in ("OPTIMAL", "FEASIBLE"):
+            print("     found one in %.0fs - now improving it."
+                  % f_solver.WallTime(), flush=True)
+            for se in sessions:
+                for j in range(len(starts_of(se))):
+                    if f_solver.Value(x[se.sid, j]):
+                        m.AddHint(x[se.sid, j], 1)
+                        break
+        else:
+            print("     no legal timetable found yet (%s) - continuing."
+                  % f_name, flush=True)
+        m.Minimize(sum(w * v for w, v in full_obj))
+        solver.parameters.max_time_in_seconds = max(
+            120.0, float(cfg.time_limit) - (time.time() - t0))
+
+    # ---- staged solve: freeze each tier's best before moving on ---------
     budget = solver.parameters.max_time_in_seconds
     staged = "--flat" not in sys.argv and pen_map
     if staged:
