@@ -74,6 +74,7 @@
     "bac_friday_evening": 30,
     "travel_pair": 70,
     "bac_no_free_afternoon": 200,
+    "bac_busy_afternoon": 60,
     "tp_groups_same_day": 45,
     "pupil_day_over6": 120,
     "pupil_half_over4": 100,

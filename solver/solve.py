@@ -1143,22 +1143,26 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
         for i in fri_ev:
             for v in occs(ss, i):
                 add_pen("bac_friday_evening", 30, v)
-        # S17: at least one of the first four days' evenings entirely free
-        free_days = []
+        # S17 two layers (Majd 2026-08-25: "free as much afternoons for bac
+        # as possible"): every BUSY bac afternoon Mon-Thu costs a little, so
+        # the solver frees as many as capacity allows; a bac class left with
+        # NO free afternoon at all costs a lot (the ministry's minimum, I.6).
+        busy_days = []
         for d in first_four:
             ix = [i for i, (dd, p) in enumerate(slots) if dd == d and p in evening]
             if not ix:
                 continue
             terms = [v for i in ix for v in occs(ss, i)]
-            b = m.NewBoolVar("bacfree_%s_%s" % (cid, d))
-            m.Add(sum(terms) == 0).OnlyEnforceIf(b)
-            m.Add(sum(terms) >= 1).OnlyEnforceIf(b.Not())
-            free_days.append(b)
-        if free_days:
+            busy = m.NewBoolVar("bacbusy_%s_%s" % (cid, d))
+            m.Add(sum(terms) >= 1).OnlyEnforceIf(busy)
+            m.Add(sum(terms) == 0).OnlyEnforceIf(busy.Not())
+            busy_days.append(busy)
+            add_pen("bac_busy_afternoon", 60, busy)
+        if busy_days:
             none_free = m.NewBoolVar("bacnofree_%s" % cid)
-            m.AddBoolAnd([b.Not() for b in free_days]).OnlyEnforceIf(none_free)
-            m.AddBoolOr(free_days).OnlyEnforceIf(none_free.Not())
-            add_pen("bac_no_free_afternoon", 70, none_free)
+            m.AddBoolAnd(busy_days).OnlyEnforceIf(none_free)
+            m.AddBoolOr([b.Not() for b in busy_days]).OnlyEnforceIf(none_free.Not())
+            add_pen("bac_no_free_afternoon", 200, none_free)
 
     # objective="exceptions" (rescue phase 1): count ONLY the exception
     # hours, so the solver can PROVE the minimum - Majd's "so I know it's
