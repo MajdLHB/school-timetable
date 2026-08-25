@@ -210,33 +210,45 @@ def main():
         return tuple(sorted((d, p, w) for d, p, wks in opt_cards[lid]
                             for w in wks))
 
-    by_class_sig = {}
-    for lid in opt_cards:
+    # Majd's H14 rule wins over last year's literal slots: choice options
+    # that share a class belong to ONE simultaneous band. Two limits are
+    # physical, not stylistic: groups in a band need the SAME hours (they
+    # run together), and no teacher may appear twice in a band (they would
+    # have to be in two rooms at once). Greedy: join the first band that
+    # accepts, else start a new one.
+    hours_of = {lid: len({(d, p) for d, p, _w in cards})
+                for lid, cards in opt_cards.items()}
+    bands = []          # each: dict(classes=set, teachers=set, hours=int, ids=[])
+    for lid in sorted(opt_cards, key=lambda i: -hours_of[i]):
         if not is_choice(lessons[lid]["subject"]):
             continue
-        parent.setdefault(lid, lid)
-        for c in lessons[lid]["classes"]:
-            key = (c, sig(lid))
-            if key in by_class_sig:
-                ra, rb = find(lid), find(by_class_sig[key])
-                if ra != rb:
-                    parent[ra] = rb
-            by_class_sig[key] = lid
+        tid = (lessons[lid]["teachers"] or [""])[0]
+        cs = set(lessons[lid]["classes"])
+        h = hours_of[lid]
+        for b in bands:
+            if b["hours"] != h or (tid and tid in b["teachers"]):
+                continue
+            if not (b["classes"] & cs):
+                continue
+            b["classes"] |= cs
+            b["teachers"].add(tid)
+            b["ids"].append(lid)
+            break
+        else:
+            bands.append(dict(classes=set(cs), teachers={tid}, hours=h,
+                              ids=[lid]))
+
     band_of = {}
-    n_bands = 0
-    for lid in sorted(opt_cards):
-        if is_choice(lessons[lid]["subject"]):
-            root_ = find(lid)
-            if root_ not in band_of:
-                n_bands += 1
-                band_of[root_] = "OPTB%d" % n_bands
-            band_of[lid] = band_of[root_]
+    for n, b in enumerate(bands, start=1):
+        for lid in b["ids"]:
+            band_of[lid] = "OPTB%d" % n
 
     opts = []
     for lid, cards in sorted(opt_cards.items()):
         L = lessons[lid]
         tid = L["teachers"][0] if L["teachers"] else ""
-        opts.append(("LY_%s" % lid, L["subject"], tid, len(cards), "",
+        opts.append(("LY_%s" % lid, L["subject"], tid, len(cards),
+                     blocks_of([(d, p) for d, p, _w in cards]),
                      ";".join(L["classes"]), "", band_of.get(lid, "")))
 
     # ---- option hours = the busier week's card count ----------------------
