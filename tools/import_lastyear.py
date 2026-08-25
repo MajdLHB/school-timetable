@@ -144,24 +144,45 @@ def main():
             runs.append(run)
         return "+".join(str(r) for r in sorted(runs, reverse=True))
 
-    for (cid, subj, tid, wk), by_g in sorted(by_rowkey.items()):
-        gs = sorted(by_g)
-        if gs == [0]:
-            slots = by_g[0]
-            rows.append((cid, subj, len(slots), tid, blocks_of(slots), 1, "", "", wk))
-        else:
-            whole = by_g.pop(0, None)
-            if whole:
-                rows.append((cid, subj, len(whole), tid, blocks_of(whole),
+    # regroup per (class, subject, teacher) so the CAROUSEL can be seen:
+    # group 1 in week A + group 2 in week B (last year's real SVT/TECH
+    # linkage, visible in the exported grid) becomes ONE row week=ALT.
+    per_cst = collections.defaultdict(dict)
+    for (cid, subj, tid, wk), by_g in by_rowkey.items():
+        per_cst[cid, subj, tid][wk] = by_g
+    for (cid, subj, tid), by_wk in sorted(per_cst.items()):
+        # whole-class parts, per week, as they were
+        for wk, by_g in sorted(by_wk.items()):
+            if 0 in by_g:
+                slots = by_g[0]
+                rows.append((cid, subj, len(slots), tid, blocks_of(slots),
                              1, "", "", wk))
+        gpart = {wk: {g: sl for g, sl in by_g.items() if g}
+                 for wk, by_g in by_wk.items()}
+        gpart = {wk: d for wk, d in gpart.items() if d}
+        a, b = gpart.get("A", {}), gpart.get("B", {})
+        if set(a) == {1} and set(b) == {2} and len(a[1]) == len(b[2]):
+            rows.append((cid, subj, len(a[1]), tid, blocks_of(a[1]),
+                         2, "", "", "ALT"))
+            gpart.pop("A"), gpart.pop("B")
+        elif set(a) == {2} and set(b) == {1} and len(a[2]) == len(b[1]):
+            rows.append((cid, subj, len(b[1]), tid, blocks_of(b[1]),
+                         2, "", "", "ALT2"))
+            gpart.pop("A"), gpart.pop("B")
+        for wk, by_g in sorted(gpart.items()):
             counts = {g: len(sl) for g, sl in by_g.items()}
             h = max(counts.values())
             if len(set(counts.values())) > 1:
                 flags.append("%s/%s: groups with unequal hours %r - took max"
                              % (cid, subj, counts))
-            n = max(2, len(by_g))
-            rows.append((cid, subj, h, tid, blocks_of(by_g[max(by_g)]),
-                         n, "", "", wk))
+            if len(by_g) == 1:
+                flags.append("%s/%s wk%s: only group %s has this - modelled "
+                             "whole-class" % (cid, subj, wk or "-", list(by_g)))
+                rows.append((cid, subj, h, tid, blocks_of(list(by_g.values())[0]),
+                             1, "", "", wk))
+            else:
+                rows.append((cid, subj, h, tid,
+                             blocks_of(by_g[max(by_g)]), len(by_g), "", "", wk))
 
     # ---- options (multi-class lessons) ------------------------------------
     # CHOICE options (Spanish/German/Italian/Music/Art) sharing classes are
