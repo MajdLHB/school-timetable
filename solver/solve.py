@@ -727,36 +727,47 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
     def add_gap_penalty(pres, key, weight_key, also_one_hour=False, also_day_count=False):
         """S1/S7 no holes, S2 no 1-hour days, S8-compact fewest days.
 
+        Holes are counted WITHIN each half-day (Majd 2026-08-25: the score
+        looked huge - the old span crossed the lunch break, charging every
+        morning+evening day two phantom holes. Lunch is not a hole).
+
         Returns {day: here-bool} so S21 (shared transport) can compare two
         teachers' presence day by day without rebuilding it."""
         days_here = {}
         for d in s.cfg.days:
-            ps = [p for (dd, p) in slots if dd == d]
-            if len(ps) < 2:
+            ps_all = [p for (dd, p) in slots if dd == d]
+            if len(ps_all) < 2:
                 continue
-            lo, hi = min(ps), max(ps)
-            taught = sum(pres[d, p] for p in ps)
+            taught_day = sum(pres[d, p] for p in ps_all)
 
             here = m.NewBoolVar("here_%s_%s" % (key, d))
-            m.Add(taught >= 1).OnlyEnforceIf(here)
-            m.Add(taught == 0).OnlyEnforceIf(here.Not())
+            m.Add(taught_day >= 1).OnlyEnforceIf(here)
+            m.Add(taught_day == 0).OnlyEnforceIf(here.Not())
             days_here[d] = here
 
-            first = m.NewIntVar(lo, hi, "first_%s_%s" % (key, d))
-            last = m.NewIntVar(lo, hi, "last_%s_%s" % (key, d))
-            for p in ps:
-                m.Add(first <= p).OnlyEnforceIf(pres[d, p])
-                m.Add(last >= p).OnlyEnforceIf(pres[d, p])
-
-            gaps = m.NewIntVar(0, len(ps), "gaps_%s_%s" % (key, d))
-            m.Add(gaps == last - first + 1 - taught).OnlyEnforceIf(here)
-            m.Add(gaps == 0).OnlyEnforceIf(here.Not())
-            add_pen(weight_key, 100, gaps)
+            for half, tag in ((sorted(p for p in ps_all if p not in evening), "am"),
+                              (sorted(p for p in ps_all if p in evening), "pm")):
+                if len(half) < 2:
+                    continue
+                lo, hi = half[0], half[-1]
+                taught = sum(pres[d, p] for p in half)
+                busy = m.NewBoolVar("hbusy_%s_%s_%s" % (key, d, tag))
+                m.Add(taught >= 1).OnlyEnforceIf(busy)
+                m.Add(taught == 0).OnlyEnforceIf(busy.Not())
+                first = m.NewIntVar(lo, hi, "first_%s_%s_%s" % (key, d, tag))
+                last = m.NewIntVar(lo, hi, "last_%s_%s_%s" % (key, d, tag))
+                for p in half:
+                    m.Add(first <= p).OnlyEnforceIf(pres[d, p])
+                    m.Add(last >= p).OnlyEnforceIf(pres[d, p])
+                gaps = m.NewIntVar(0, len(half), "gaps_%s_%s_%s" % (key, d, tag))
+                m.Add(gaps == last - first + 1 - taught).OnlyEnforceIf(busy)
+                m.Add(gaps == 0).OnlyEnforceIf(busy.Not())
+                add_pen(weight_key, 100, gaps)
 
             if also_one_hour:
                 solo = m.NewBoolVar("solo_%s_%s" % (key, d))
-                m.Add(taught == 1).OnlyEnforceIf(solo)
-                m.Add(taught != 1).OnlyEnforceIf(solo.Not())
+                m.Add(taught_day == 1).OnlyEnforceIf(solo)
+                m.Add(taught_day != 1).OnlyEnforceIf(solo.Not())
                 add_pen("one_hour_day", 50, solo)
             if also_day_count:
                 add_pen("extra_day_present", 50, here)
@@ -1367,6 +1378,17 @@ def report(s, units, placement, rooms, solver, status, elapsed, exceptions=None,
         if u.teacher_id:
             t_slots[u.teacher_id].add(tuple(placement[u.uid]))
 
+    ev_set = set(s.cfg.evening)
+
+    def half_holes(ps):
+        """Holes inside each half-day; the lunch break is never a hole."""
+        n = 0
+        for half in ([p for p in ps if p not in ev_set],
+                     [p for p in ps if p in ev_set]):
+            if len(half) > 1:
+                n += (max(half) - min(half) + 1) - len(half)
+        return n
+
     gaps, solos, days_used = [], [], {}
     for tid, sl in t_slots.items():
         byday = collections.defaultdict(list)
@@ -1375,7 +1397,7 @@ def report(s, units, placement, rooms, solver, status, elapsed, exceptions=None,
         days_used[tid] = len(byday)
         for d, ps in byday.items():
             ps.sort()
-            holes = (ps[-1] - ps[0] + 1) - len(ps)
+            holes = half_holes(ps)
             if holes:
                 gaps.append((tid, d, holes, ps))
             if len(ps) == 1:
@@ -1450,7 +1472,7 @@ def report(s, units, placement, rooms, solver, status, elapsed, exceptions=None,
         for (d, p) in sl:
             byday[d].append(p)
         for d, ps in byday.items():
-            cgap += (max(ps) - min(ps) + 1) - len(ps)
+            cgap += half_holes(sorted(ps))
     A("")
     A("%d free periods trapped inside pupils' days, across all %d classes."
       % (cgap, len(c_slots)))
