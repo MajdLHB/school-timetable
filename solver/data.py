@@ -22,6 +22,26 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # The workbook has a grey hint row at row 2 which must be skipped.
 FIRST_DATA_ROW = 2
 
+# ---- which rooms an ordinary lesson may borrow -------------------------
+# Majd 2026-08-25: "physics and svt labs can give normal tutoring too".
+# Measured in last year's real file: فيز2 hosted French/Arabic/English,
+# علوم1 hosted Gestion, تقنية 2 hosted French and maths. With 25 ordinary
+# rooms for 41 classes and 957 ordinary lesson-hours, borrowing is not a
+# nicety - the timetable is impossible without it.
+#
+# THIS IS THE ONLY DEFINITION. The model, the room assignment and the
+# checker must all read it from here: when the checker had its own stricter
+# copy it condemned 109 perfectly legal borrowed-lab cards and printed
+# "DO NOT USE THIS TIMETABLE" over a correct week (audit 2026-08-25).
+SPARE_FOR_NORMAL = ("lab_sci", "lab_phys", "tech")
+
+
+def compatible_types(want):
+    """Room types that satisfy a lesson needing a `want` room."""
+    if want == "normal":
+        return (want,) + SPARE_FOR_NORMAL
+    return (want,)
+
 
 @dataclass
 class Config:
@@ -67,6 +87,11 @@ class School:
     # which workbook this school was loaded from (stamped into the XML so
     # verify.py can refuse a timetable built from a different file)
     source_path: str = ""
+
+    def rooms_of_compatible_type(self, want):
+        """Every room an ordinary lesson of this type may legally sit in."""
+        ok = compatible_types(want)
+        return [r for r in self.rooms.values() if r["type"] in ok]
 
     def room_type_for(self, cur_row):
         """Which kind of room this curriculum row needs."""

@@ -21,9 +21,19 @@ import data as D  # noqa: E402
 XML = os.path.join(D.HERE, "out", "timetable.xml")
 EXC = os.path.join(D.HERE, "out", "exceptions.json")
 
-# Only these rules may ever be excused by a rescue-mode exceptions file.
-# A clash or a wrong room is never an acceptable exception.
-EXCUSABLE = {"H7", "H17", "H4", "H21", "H22"}  # rooms, lone hours/halves
+# Only these rules may ever be excused by a declared-exceptions file, and the
+# list is exactly the solver's rule LADDER - the rules it is allowed to give
+# up after proving it must. Deriving it (rather than keeping a second list by
+# hand) is deliberate: the two copies had already drifted apart, so H20 could
+# be given up by the solver and then condemned by the checker, and every run
+# that gave up H20 ended in "DO NOT USE THIS TIMETABLE" (audit 2026-08-25).
+# A clash (H1-H3), a wrong ROOM TYPE (H6) or a missing hour (H5) is never
+# excusable and is not on the ladder.
+try:
+    import solve as _S                      # noqa: E402
+    EXCUSABLE = set(_S.LADDER_IDS)
+except Exception:                           # noqa: BLE001 - checker must run
+    EXCUSABLE = {"H4", "H7", "H17", "H20", "H21", "H22"}
 
 
 def _group_no(groupids):
@@ -260,7 +270,12 @@ def main():
     for (d, p, w), n in per_slot.items():
         if n > len(s.rooms):
             fail("H4", "%d lessons at %s period %d%s but only %d rooms exist."
-                 % (n, d, p, wtag(w), len(s.rooms)))
+                 % (n, d, p, wtag(w), len(s.rooms)),
+                 key=("", "%s p%d" % (d, p)))
+    # NOTE: this whole-school count can never fire here (45 rooms, 41 classes).
+    # The shortage that actually happens is PER TYPE - the ordinary pool runs
+    # at 91%, the IT rooms at 98% - and it shows up further down as a lesson
+    # with no room at all, which is now reported as H4 with a matching key.
 
     # --- H6: right kind of room -------------------------------------------
     need_type = {}
@@ -276,11 +291,17 @@ def main():
         for cid in L["classes"]:
             want_t = need_type.get((cid, L["subject"]))
             if not r:
-                fail("H6", "lesson %s/%s at %s period %d has no room."
-                     % (cid, L["subject"], d, p))
+                # No room means the school ran out of rooms of that kind at
+                # that moment - that is H4 (a room SHORTAGE, declarable), not
+                # H6 (a lesson in the WRONG kind of room, never acceptable).
+                # Filing it as H6 made every declared shortage unexcusable and
+                # stamped correct runs DO NOT USE (audit 2026-08-25).
+                fail("H4", "lesson %s/%s at %s period %d has no room."
+                     % (cid, L["subject"], d, p),
+                     key=("", "%s p%d" % (d, p)))
             elif r not in s.rooms:
                 fail("H6", "lesson %s/%s uses unknown room %s." % (cid, L["subject"], r))
-            elif want_t and s.rooms[r]["type"] != want_t:
+            elif want_t and s.rooms[r]["type"] not in D.compatible_types(want_t):
                 fail("H6", "%s/%s needs a '%s' room but sits in %s which is '%s'."
                      % (cid, L["subject"], want_t, r, s.rooms[r]["type"]))
 
@@ -381,11 +402,13 @@ def main():
                 fail("H20", "class %s subject %s (week %s): group(s) %s have "
                             "no session on %s while another group does - "
                             "groups must run back to back the same day."
-                     % (cid, subj, w, ", ".join(map(str, missing)), d))
+                     % (cid, subj, w, ", ".join(map(str, missing)), d),
+                     key=("", "groups_back_to_back"))
             elif union_ps != list(range(union_ps[0], union_ps[0] + len(union_ps))):
                 fail("H20", "class %s subject %s (week %s) on %s: the groups' "
                             "sessions sit at periods %s - not back to back."
-                     % (cid, subj, w, d, ", ".join(map(str, union_ps))))
+                     % (cid, subj, w, d, ", ".join(map(str, union_ps))),
+                     key=("", "groups_back_to_back"))
 
     # --- H19: 24 hours between sessions of a gap24 subject -----------------
     # On consecutive days, the later session must not start earlier in the

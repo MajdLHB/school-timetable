@@ -81,6 +81,40 @@ OUT = os.path.join(HERE, "out")
 # against. The solver only pays it when the strict rules admit NO timetable.
 RESCUE_WEIGHT = 10000
 
+# ---- THE RULE LADDER --------------------------------------------------
+# Majd, 2026-08-25, describing exactly the algorithm below:
+#   "can we put all the rules into building right - if it could place, nice;
+#    if it couldn't, then we start ignoring rules from less important until
+#    the session is placed, so it's built RIGHT, and then we fix a bit,
+#    because fixing is harder than building it right."
+#
+# So: switch EVERY hard rule on at once and ask for a timetable. If none
+# exists, CP-SAT does not guess - it PROVES which rules are fighting each
+# other (the unsatisfiable core) and we give up the LEAST important rule
+# *inside that conflict*. An important rule is never sacrificed to save a
+# trivial one, and a rule is never given up unless the mathematics showed it
+# had to be. Everything still standing is then a REAL constraint for the rest
+# of the run: those violations cannot be created in the first place.
+#
+# A rule that is given up does not disappear - it drops to a 10,000-point
+# penalty, so the solver still avoids it everywhere it possibly can ("and
+# then we fix a bit"), and every surviving case is named in the report.
+#
+# Order below: GIVEN UP FIRST ............... GIVEN UP LAST.
+LADDER = (
+    ("H17", "a teacher may pass 6 hours in one day"),
+    ("H7",  "a teacher may be called in on their day off / training day"),
+    ("H22", "a teacher may have a half-day holding a single lesson"),
+    ("H21", "a teacher may come in for one lone hour in a day"),
+    ("H20", "a class's two groups may be split apart, not back to back"),
+    ("H4",  "a period may need more rooms of a type than the school owns"),
+)
+LADDER_IDS = tuple(r for r, _ in LADDER)
+LADDER_TEXT = dict(LADDER)
+# add_pen keys that ARE one of the ladder rules (so a HARD weight in the
+# Weights sheet joins the ladder instead of being all-or-nothing)
+PEN_RULE = {"groups_back_to_back": "H20"}
+
 # Majd 2026-08-25: "make rules applied in a better way". A single weighted
 # sum lets a hundred cheap rules outvote one that matters. So the solve is
 # STAGED: tier 1 is optimised first and then FROZEN at its best value, then
@@ -349,20 +383,45 @@ class Progress(cp_model.CpSolverSolutionCallback):
             self.StopSearch()
 
 
-def build(s, sessions, rescue=False, objective="full", exc_cap=None):
+def build(s, sessions, rescue=False, objective="full", exc_cap=None,
+          gates=False, relaxed=None):
     """Build the CP-SAT model over sessions.
 
-    rescue=False - every hard rule is a real constraint (the normal mode).
-    rescue=True  - the RELAXABLE hard rules (H7 day off / training day, H17
-                   daily cap) become violations costing RESCUE_WEIGHT per hour,
-                   so a livable timetable can exist even when the strict rules
-                   are impossible. H1-H6, H8, H9, H15, closed periods and locks
-                   are NEVER relaxed. Every violation is reported, never hidden.
+    Three ways to treat the RELAXABLE hard rules (the LADDER: H4 rooms, H7 day
+    off / training day, H17 daily cap, H20 groups back-to-back, H21 lone-hour
+    day, H22 lonely half-day). H1-H6, H8, H9, H15, closed periods and locks are
+    NEVER relaxable and are not on the ladder.
+
+    default      - every ladder rule is a REAL constraint: the solver cannot
+                   produce a timetable that breaks it. This is "built right".
+    relaxed={..} - those rule ids become violations costing RESCUE_WEIGHT each,
+                   still minimised and always reported, never hidden. This is
+                   what the ladder switches off after PROVING it had to.
+    gates=True   - each ladder rule is enforced only when its own gate literal
+                   is true, so run_ladder() can switch rules on and off without
+                   rebuilding, and ask CP-SAT which ones actually conflict.
+                   The gates land in m.gate_of.
+
+    rescue=True is the old all-or-nothing shortcut: relax the whole ladder.
 
     Returns (model, x, starts_of, viols); viols is a list of
     (rule, teacher_id, day, int_var, description) used to report exceptions.
     """
     m = cp_model.CpModel()
+    relaxed = set(relaxed or ())
+    if rescue:
+        relaxed |= set(LADDER_IDS)
+    gate_of = {}
+
+    def gate(rule):
+        """The on/off literal for one ladder rule (created on first use)."""
+        if rule not in gate_of:
+            gate_of[rule] = m.NewBoolVar("GATE_%s" % rule)
+        return gate_of[rule]
+
+    def hard_unless(rule):
+        """True when this rule must be built in as an unbreakable constraint."""
+        return not gates and rule not in relaxed
     slots = s.cfg.slots                      # [(day, period), ...] open only
     slot_ix = {sl: i for i, sl in enumerate(slots)}
     W = s.cfg.weights
@@ -377,13 +436,24 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
     def add_pen(key, default, var):
         """One comfort penalty - or, when the Weights sheet says HARD for
         this key, an unbreakable constraint (var == 0). Majd's promotion
-        mechanism: build right first, instead of repairing later."""
+        mechanism: build right first, instead of repairing later.
+
+        A HARD key joins the LADDER, so it can be proven impossible and given
+        up deliberately rather than making the whole school unsolvable."""
         w = W.get(key, default)
-        if w == "HARD":
-            m.Add(var == 0)
-        else:
+        if w != "HARD":
             penalties.append((w, var))
             pen_map[key].append((w, var))
+            return
+        rule = PEN_RULE.get(key, key)
+        if gates:
+            m.Add(var == 0).OnlyEnforceIf(gate(rule))
+        elif rule in relaxed:
+            penalties.append((RESCUE_WEIGHT, var))
+            viols.append((rule, "", key, var,
+                          LADDER_TEXT.get(rule, key.replace("_", " "))))
+        else:
+            m.Add(var == 0)
 
     # ---- feasible starts per session length (H9 contiguity) --------------
     # A session of length L may start at period p on day d only when
@@ -524,7 +594,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
     # own subjects, as he said.
     # measured from last year: فيز2 hosted French/Arabic/English,
     # علوم1 hosted Gestion, تقنية 2 hosted French and maths.
-    SPARE = ("lab_phys", "lab_sci", "tech")
+    SPARE = D.SPARE_FOR_NORMAL           # one definition, shared with verify.py
     n_spare = sum(len(s.rooms_of_type(t_)) for t_ in SPARE)
 
     for rt in sorted(set(by_type) | set(band_room_terms)):
@@ -533,7 +603,17 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
         ss = by_type.get(rt, [])
         n_rooms = len(s.rooms_of_type(rt))
         extra = band_room_terms.get(rt, [])
-        for w in weeks_of(ss + [se for se, _n in extra]):
+        # The week view must cover EVERY session this bound counts. When the
+        # pooled normal bound took its weeks from normal sessions alone - and
+        # none of them carries a week letter - weeks_of() returned [''], so a
+        # week-A lab TP and a week-B lab TP in the same period were charged as
+        # TWO rooms out of 32 instead of one room in each week. That invented
+        # room demand in the tightest constraint in the model, and pushed the
+        # week towards INFEASIBLE (audit 2026-08-25).
+        counted = list(ss) + [se for se, _n in extra]
+        if rt == "normal" and n_spare:
+            counted += [se for t_ in SPARE for se in by_type.get(t_, [])]
+        for w in weeks_of(counted):
             act = [se for se in ss if in_week(se, w)]
             for i in range(S):
                 vs = occs(act, i)
@@ -548,12 +628,15 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                 # and is listed in the report ("this period needs one more
                 # IT room"), exactly like the H7/H17 exceptions.
                 def bound(terms, cap, tag):
-                    if not rescue:
+                    if hard_unless("H4"):
                         m.Add(sum(terms) <= cap)
                         return
                     over = m.NewIntVar(0, max(1, len(terms)),
                                        "vROOM_%s_%s_%d" % (tag, w, i))
                     m.Add(sum(terms) <= cap + over)
+                    if gates:
+                        m.Add(over == 0).OnlyEnforceIf(gate("H4"))
+                        return
                     penalties.append((RESCUE_WEIGHT, over))
                     viols.append(("H4", "", "%s p%d" % slots[i], over,
                                   "not enough '%s' rooms" % tag))
@@ -741,7 +824,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
             ix = [i for i, (d, p) in enumerate(slots) if d == off]
             if not ix:
                 continue
-            if not rescue:
+            if hard_unless("H7"):
                 for se in ss:
                     for i in ix:
                         forbid_slot(se, i)
@@ -749,9 +832,13 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                 terms = [v for i in ix for v in occs(ss, i)]
                 v = m.NewIntVar(0, max(1, len(terms)), "vH7_%s_%s" % (tid, kind))
                 m.Add(v == sum(terms))
-                penalties.append((RESCUE_WEIGHT, v))
-                viols.append(("H7", tid, off, v,
-                              "teaches on their %s" % kind.replace("_", " ")))
+                if gates:
+                    m.Add(v == 0).OnlyEnforceIf(gate("H7"))
+                else:
+                    penalties.append((RESCUE_WEIGHT, v))
+                    viols.append(("H7", tid, off, v,
+                                  "teaches on their %s"
+                                  % kind.replace("_", " ")))
 
     # ---- H7-flex: a BLANK day_off means the solver CHOOSES the day off ----
     # Majd 2026-08-24: "day off isnt just random, u prechoose it flexible, u
@@ -836,7 +923,9 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                         m.Add(sum(terms) == 1).OnlyEnforceIf(lone)
                         m.Add(sum(terms) != 1).OnlyEnforceIf(lone.Not())
                         penalties.append((h22_mode, lone))
-                    elif not rescue:
+                    elif gates:
+                        m.Add(sum(terms) != 1).OnlyEnforceIf(gate("H22"))
+                    elif hard_unless("H22"):
                         dom = cp_model.Domain.FromIntervals(
                             [[0, 0], [2, len(terms)]])
                         tot = m.NewIntVarFromDomain(
@@ -847,8 +936,13 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                         m.Add(sum(terms) == 1).OnlyEnforceIf(lone)
                         m.Add(sum(terms) != 1).OnlyEnforceIf(lone.Not())
                         penalties.append((RESCUE_WEIGHT, lone))
-                        viols.append(("H22", tid, "%s %s" % (d, tag), lone,
-                                      "a half-day with a single lesson"))
+                        # the DAY alone, like H21 and H17 - verify.py looks
+                        # exceptions up by (rule, teacher, day), so "Mon am"
+                        # here matched nothing and every declared lonely
+                        # half-day was reported as an undeclared violation
+                        viols.append(("H22", tid, d, lone,
+                                      "a half-day (%s) with a single lesson"
+                                      % tag))
 
     h21_mode = W.get("lone_hour_day", "HARD")
     for tid, ss in (by_teacher.items() if h21_mode else ()):
@@ -870,7 +964,9 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                     m.Add(sum(terms) == 1).OnlyEnforceIf(lone)
                     m.Add(sum(terms) != 1).OnlyEnforceIf(lone.Not())
                     penalties.append((h21_mode, lone))
-                elif not rescue:
+                elif gates:
+                    m.Add(sum(terms) != 1).OnlyEnforceIf(gate("H21"))
+                elif hard_unless("H21"):
                     # "0 or at least 2" as a DOMAIN, not a reified bool:
                     # CP-SAT propagates domains far more strongly, which
                     # matters on a school packed to 91% (2026-08-25).
@@ -900,16 +996,19 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                 terms = [v for i in ix for v in occs(act, i)]
                 if len(terms) <= 6:
                     continue
-                if not rescue:
+                if hard_unless("H17"):
                     m.Add(sum(terms) <= 6)
                 else:
                     over = m.NewIntVar(0, len(ix) - 6,
                                        "vH17_%s_%s_%s" % (tid, d, w))
                     m.Add(sum(terms) <= 6 + over)
-                    penalties.append((RESCUE_WEIGHT, over))
-                    viols.append(("H17", tid, d, over,
-                                  "hours beyond 6 in one day"
-                                  + (" (week %s)" % w if w else "")))
+                    if gates:
+                        m.Add(over == 0).OnlyEnforceIf(gate("H17"))
+                    else:
+                        penalties.append((RESCUE_WEIGHT, over))
+                        viols.append(("H17", tid, d, over,
+                                      "hours beyond 6 in one day"
+                                      + (" (week %s)" % w if w else "")))
 
     # ---- H8: declared unavailable slots ----------------------------------
     for un in s.unavailable:
@@ -1537,6 +1636,14 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
     # (m, x, starts_of, viols) signature the selftests rely on stays stable.
     m.day_off_choice = day_off_choice
     m.pen_map = pen_map
+    m.gate_of = gate_of          # ladder rule id -> on/off literal (gates=True)
+    # THE authoritative objective terms. pen_map holds only the COMFORT
+    # penalties - it never contained the 10,000-point exception terms (H4, H7,
+    # H17, H20, H21, H22). Rebuilding the objective from pen_map therefore
+    # made every exception FREE from PHASE 0 onward, which is how a table with
+    # 43 lonely half-days could look "optimal" (audit 2026-08-25). Anything
+    # that re-states the objective must use m.penalties, never pen_map.
+    m.penalties = penalties
     m.too_long_pairs = too_long_pairs
     return m, x, starts_of, viols
 
@@ -1670,7 +1777,7 @@ def assign_rooms(s, sessions, placement):
     def compatible(se):
         cands = list(rooms_by_type.get(se.room_type, []))
         if se.room_type == "normal":
-            for t_ in ("lab_sci", "lab_phys", "tech"):
+            for t_ in D.SPARE_FOR_NORMAL:
                 cands += rooms_by_type.get(t_, [])
         return cands
 
@@ -1984,7 +2091,185 @@ def n_workers():
     return max(1, min(4, (os.cpu_count() or 4) // 2))
 
 
+def saved_placement():
+    """The placement from out/solution.json, or None. Used by --continue."""
+    prev = os.path.join(OUT, "solution.json")
+    if not os.path.exists(prev):
+        return None
+    try:
+        with open(prev, encoding="utf-8") as f:
+            return json.load(f).get("placement") or None
+    except (OSError, ValueError):
+        return None
+
+
+def clear_hints(m):
+    """Throw away the model's current solution hint.
+
+    CP-SAT REJECTS a hint that names the same variable twice - the whole model
+    comes back MODEL_INVALID. Every phase in this file hints again on the SAME
+    model, so each one MUST clear first. Audit 2026-08-25 reproduced the
+    consequence end to end: every solve after PHASE 0 returned MODEL_INVALID,
+    and main() reported that to Majd as "NO TIMETABLE EXISTS ... check the
+    data". A bug in this program wearing a data problem's clothes.
+    """
+    try:
+        m.ClearHints()
+    except AttributeError:                 # older ortools
+        del m.Proto().solution_hint.vars[:]
+        del m.Proto().solution_hint.values[:]
+
+
+def rehint(m, sessions, x, starts_of, value_of):
+    """Replace the hint with the solution `value_of` describes."""
+    clear_hints(m)
+    n = 0
+    for se in sessions:
+        for j in range(len(starts_of(se))):
+            if value_of(x[se.sid, j]):
+                m.AddHint(x[se.sid, j], 1)
+                n += 1
+                break
+    return n
+
+
+def hint_placement(m, sessions, x, starts_of, place):
+    """Suggest a known-good week to the solver. A hint is a suggestion, not a
+    constraint: a stale hint slows the search. (It cannot make the answer
+    wrong - but a DUPLICATED one makes the model invalid, hence clear_hints.)
+    """
+    clear_hints(m)
+    n = 0
+    for se in sessions:
+        got = place.get(uid_of(se, 0))
+        if not got:
+            continue
+        for j, (d, p0, _ixs) in enumerate(starts_of(se)):
+            if d == got[0] and p0 == got[1]:
+                m.AddHint(x[se.sid, j], 1)
+                n += 1
+                break
+    return n
+
+
+def run_ladder(s, sessions, cfg, t0, place=None):
+    """Find the most important set of rules this school can actually obey.
+
+    Majd's design (2026-08-25): "put all the rules into building right; if it
+    couldn't, start ignoring rules from less important until the session is
+    placed, so it's built right, and then we fix a bit."
+
+    HOW, and why this way round. The first attempt asked for every rule at
+    once and let CP-SAT drop rungs. On this school it never finished a single
+    rung - 600 seconds, UNKNOWN, no proof - so it "gave up" rules on a
+    stopwatch and then called that a proof. Useless and dishonest.
+
+    So the ladder is climbed from the bottom instead. Start from a complete
+    working week with every ladder rule merely PRICED (the only shape that has
+    ever produced a table on this data), then add the rules back one at a
+    time, MOST IMPORTANT FIRST, each attempt warm-started from the week that
+    already works. Adding one rule to a working week is a repair problem;
+    finding a week that obeys six rules at once is not. Same destination,
+    reachable in practice.
+
+    What comes out is honest in both directions:
+      KEPT   - a complete timetable with this rule was actually FOUND. It
+               becomes a real constraint for the whole rest of the run, so the
+               solver cannot even explore a week that breaks it. Built right.
+      PROVEN - CP-SAT proved no timetable can hold this rule together with the
+               ones already kept. Nothing can be done except change the data.
+      UNPROVEN - the attempt ran out of time. NOT a proof, and never printed
+               as one. More time, or fewer rules, may still get it.
+
+    Returns (kept, given_up, place, why) - place is a placement dict to warm
+    start the real solve, why maps a given-up rule to 'proven' or 'unproven'.
+    """
+    print("\nRULE LADDER - starting from a week that works, then adding the "
+          "rules back, most important first.", flush=True)
+
+    # which ladder rules does this school actually have? (a school with no
+    # days off declared has no H7 to argue about)
+    probe = build(s, sessions, relaxed=set(LADDER_IDS))
+    present = {v[0] for v in probe[3]}
+    order = [r for r in LADDER_IDS if r in present]
+    extra = sorted(present - set(LADDER_IDS))
+    order = extra + order              # unknown promoted rules matter least
+    if not order:
+        print("   this school has no relaxable rules - solving strictly.",
+              flush=True)
+        return [], [], place, {}
+    print("   rules to win back, in order of importance: %s"
+          % " < ".join(order), flush=True)
+
+    # budget: the ladder may use about 40% of the run; the rest is comfort
+    ladder_budget = max(240.0, float(cfg.time_limit) * 0.40)
+    first_share = max(180.0, ladder_budget / 3.0)
+    step = max(120.0, (ladder_budget - first_share) / max(1, len(order)))
+
+    def attempt(relax, budget, hint):
+        """Is there a complete timetable with everything except `relax`?"""
+        m2, x2, so2, _v2 = build(s, sessions, relaxed=relax)
+        if hint:
+            hint_placement(m2, sessions, x2, so2, hint)
+        m2.Minimize(0)                    # feasibility only - fastest answer
+        sv = cp_model.CpSolver()
+        sv.parameters.max_time_in_seconds = budget
+        sv.parameters.num_search_workers = n_workers()
+        st = sv.StatusName(sv.Solve(m2))
+        if st in ("OPTIMAL", "FEASIBLE"):
+            return st, placement_from_solver(sv.Value, sessions, x2, so2,
+                                             s.cfg.slots)
+        return st, None
+
+    # ---- rung 0: a complete week with every ladder rule only priced -------
+    st, got = attempt(set(order), first_share, place)
+    print("   [%5.0fs] a working week with none of them enforced -> %s"
+          % (time.time() - t0, st), flush=True)
+    if got is None:
+        print("        Could not complete even one week in %ds. This is a "
+              "DATA problem, not a rules problem." % first_share, flush=True)
+        return [], list(order), place, {r: "unproven" for r in order}
+    place = got
+
+    # ---- climb: win rules back, most important first ---------------------
+    kept, given_up, why = [], [], {}
+    for rule in reversed(order):
+        st, got = attempt(set(order) - set(kept) - {rule}, step, place)
+        if got is not None:
+            kept.append(rule)
+            place = got
+            print("   [%5.0fs] KEPT     %-4s %s"
+                  % (time.time() - t0, rule, LADDER_TEXT.get(rule, rule)),
+                  flush=True)
+        else:
+            given_up.append(rule)
+            why[rule] = "proven" if st == "INFEASIBLE" else "unproven"
+            print("   [%5.0fs] %-8s %-4s %s"
+                  % (time.time() - t0,
+                     "PROVEN" if st == "INFEASIBLE" else "UNPROVEN",
+                     rule, LADDER_TEXT.get(rule, rule)), flush=True)
+            if st != "INFEASIBLE":
+                print("        (ran out of time after %ds - this is NOT a "
+                      "proof that it is impossible)" % step, flush=True)
+    return kept, given_up, place, why
+
+
+def on_sigint(signum, frame):
+    """Ctrl+C: ask the search to stop after the next solution.
+
+    Installed as the FIRST thing main() does. It used to be installed only
+    after the ladder and phase 1, so a Ctrl+C during the long opening phases -
+    exactly when Majd reaches for it - raised a bare KeyboardInterrupt and
+    threw away the whole run, while every .bat promised "Ctrl+C at any moment
+    keeps the best result found so far".
+    """
+    global STOP
+    STOP = True
+    print("   Stopping after the next solution...", flush=True)
+
+
 def main():
+    signal.signal(signal.SIGINT, on_sigint)
     t0 = time.time()
     cfg = D.load_config()
     # --time=600 overrides config.json for one run, without editing the file.
@@ -2021,14 +2306,54 @@ def main():
           "%d open periods across %d rooms."
           % (n_hours, len(sessions), n_blocks, len(s.cfg.slots), len(s.rooms)))
     print("Building the model...", flush=True)
-    # --rescue: skip the strict attempt and allow the livable exceptions from
-    # the start. Honest shortcut for the real school, where the strict model
-    # is INFEASIBLE but too big to prove so within the limit: exceptions still
-    # cost 10,000 per hour, so a zero-exception timetable always wins when one
-    # exists - forcing rescue can never invent exceptions.
+    # ---- how the hard rules are treated this run -------------------------
+    #   (default)  THE LADDER: all rules on, give up only what is proven
+    #              impossible, least important first. Majd's design.
+    #   --strict   every rule on, no giving up. Returns nothing if the data
+    #              cannot satisfy them all - use it to test a rule set.
+    #   --rescue   the old blunt shortcut: relax the whole ladder at once and
+    #              minimise the total number of exceptions.
     rescue_now = "--rescue" in sys.argv
+    strict_now = "--strict" in sys.argv
+    use_ladder = not rescue_now and not strict_now
     exc_cap = None
     hint_from = None
+    relaxed = set()
+    ladder_place = None
+
+    if use_ladder:
+        kept, given_up, lad_place, why = run_ladder(
+            s, sessions, cfg, t0,
+            place=saved_placement() if "--continue" in sys.argv else None)
+        relaxed = set(given_up)
+        ladder_place = lad_place
+        print("")
+        if kept:
+            print("  BUILT RIGHT - a complete week was FOUND with each of "
+                  "these, so they are now real constraints and the timetable")
+            print("  below cannot break them:")
+            for r in kept:
+                print("     KEPT     %-4s %s" % (r, LADDER_TEXT.get(r, r)))
+        proven = [r for r in given_up if why.get(r) == "proven"]
+        unproven = [r for r in given_up if why.get(r) != "proven"]
+        if proven:
+            print("  PROVEN IMPOSSIBLE with the rules above - no timetable "
+                  "can hold these, whatever the machine does.")
+            print("  They now cost 10,000 each, so the solver still avoids "
+                  "them everywhere it can:")
+            for r in proven:
+                print("     PROVEN   %-4s %s" % (r, LADDER_TEXT.get(r, r)))
+        if unproven:
+            print("  NOT PROVEN - the search ran out of time on these. They "
+                  "may well be possible with a longer run;")
+            print("  they are priced at 10,000 each rather than enforced:")
+            for r in unproven:
+                print("     UNPROVEN %-4s %s" % (r, LADDER_TEXT.get(r, r)))
+        if not given_up:
+            print("  Nothing was given up: every rule is being obeyed.")
+        print("")
+    elif strict_now:
+        print("--strict: every rule enforced, nothing may be given up.")
     if rescue_now:
         print("--rescue: strict attempt skipped, livable exceptions allowed "
               "(each costs 10,000 - the solver still prefers none).")
@@ -2070,22 +2395,25 @@ def main():
         else:
             print("  Phase 1 found no complete table in its time share; "
                   "continuing without a proven minimum.", flush=True)
+    # The real model for the rest of the run: every rule the ladder KEPT is a
+    # plain, unbreakable constraint (full propagation - the solver cannot even
+    # explore a timetable that breaks it), and every rule it had to give up is
+    # priced at 10,000 and reported.
     m, x, starts_of, viols = build(s, sessions, rescue=rescue_now,
-                                   exc_cap=exc_cap)
-    if hint_from is not None:
+                                   relaxed=relaxed, exc_cap=exc_cap)
+    if ladder_place:
+        # start the real solve from the week the ladder proved reachable
+        print("Starting from the ladder's week: %d of %d sessions hinted."
+              % (hint_placement(m, sessions, x, starts_of, ladder_place),
+                 len(sessions)), flush=True)
+    elif hint_from is not None:
         s1v, x1v = hint_from
+        clear_hints(m)
         for se in sessions:
             for j in range(len(starts_of(se))):
                 if s1v.Value(x1v[se.sid, j]):
                     m.AddHint(x[se.sid, j], 1)
                     break
-
-    def on_sigint(signum, frame):
-        global STOP
-        STOP = True
-        print("   Stopping after the next solution...", flush=True)
-
-    signal.signal(signal.SIGINT, on_sigint)
 
     solver = cp_model.CpSolver()
     # phase 2 (or the only phase) gets whatever the limit has left
@@ -2134,23 +2462,15 @@ def main():
     # --continue: start from the last saved solution instead of from nothing.
     # AddHint is only a suggestion - it never overrides a constraint, so a
     # stale hint can slow the search but can never make the result wrong.
-    if "--continue" in sys.argv:
+    if "--continue" in sys.argv and ladder_place:
+        print("--continue: the ladder already carried that week forward.")
+    elif "--continue" in sys.argv:
         prev = os.path.join(OUT, "solution.json")
         if os.path.exists(prev):
             with open(prev, encoding="utf-8") as f:
                 saved = json.load(f)
-            place = saved.get("placement", {})
-            hinted = 0
-            for se in sessions:
-                uid0 = uid_of(se, 0)
-                got = place.get(uid0)
-                if not got:
-                    continue
-                for j, (d, p0, ixs) in enumerate(starts_of(se)):
-                    if d == got[0] and p0 == got[1]:
-                        m.AddHint(x[se.sid, j], 1)
-                        hinted += 1
-                        break
+            hinted = hint_placement(m, sessions, x, starts_of,
+                                    saved.get("placement", {}))
             print("Resuming from out/solution.json - penalty %s, %d of %d "
                   "sessions hinted." % (saved.get("penalty"), hinted, len(sessions)))
         else:
@@ -2162,7 +2482,10 @@ def main():
     # with the objective switched off it lands in under a minute. So: find
     # a table, then spend every remaining second improving it.
     pen_map = getattr(m, "pen_map", {})
-    full_obj = [(w, v) for entries in pen_map.values() for w, v in entries]
+    # THE WHOLE objective - comfort penalties AND the 10,000-point exception
+    # terms. Deriving this from pen_map (which holds comfort only) is what
+    # made every given-up rule cost nothing after PHASE 0.
+    full_obj = list(getattr(m, "penalties", []))
     if full_obj:
         print("\n  PHASE 0 - finding a first legal timetable "
               "(comfort switched off)...", flush=True)
@@ -2175,11 +2498,7 @@ def main():
         if f_name in ("OPTIMAL", "FEASIBLE"):
             print("     found one in %.0fs - now improving it."
                   % f_solver.WallTime(), flush=True)
-            for se in sessions:
-                for j in range(len(starts_of(se))):
-                    if f_solver.Value(x[se.sid, j]):
-                        m.AddHint(x[se.sid, j], 1)
-                        break
+            rehint(m, sessions, x, starts_of, f_solver.Value)
         else:
             print("     no legal timetable found yet (%s) - continuing."
                   % f_name, flush=True)
@@ -2190,6 +2509,11 @@ def main():
     # ---- staged solve: freeze each tier's best before moving on ---------
     budget = solver.parameters.max_time_in_seconds
     staged = "--flat" not in sys.argv and pen_map
+    # The 10,000-point exception terms are NOT comfort and belong to no tier -
+    # they must stay in the objective during EVERY tier, or a tier is free to
+    # buy its own comfort by breaking a rule the ladder promised to keep.
+    comfort_vars = {id(v) for entries in pen_map.values() for _w, v in entries}
+    exc_terms = [(w, v) for w, v in full_obj if id(v) not in comfort_vars]
     if staged:
         for tier in sorted(TIERS):
             terms = [(w, v) for key in TIERS[tier]
@@ -2199,29 +2523,30 @@ def main():
             share = min(max(120.0, budget * 0.2), budget / 3.0)
             print("\n  TIER %d - optimising %s (up to %d min)..."
                   % (tier, ", ".join(TIERS[tier]), share // 60), flush=True)
-            m.Minimize(sum(w * v for w, v in terms))
+            m.Minimize(sum(w * v for w, v in terms + exc_terms))
             st_solver = cp_model.CpSolver()
             st_solver.parameters.max_time_in_seconds = share
             st_solver.parameters.num_search_workers = n_workers()
             st = st_solver.StatusName(st_solver.Solve(m))
             if st in ("OPTIMAL", "FEASIBLE"):
-                best = int(st_solver.ObjectiveValue())
+                # this tier's OWN cost, not the objective value (which also
+                # carries the exception terms) - freezing the mixed total
+                # would forbid trading an exception away later
+                best = sum(w * st_solver.Value(v) for w, v in terms)
                 # freeze: later tiers may never make this tier worse
                 m.Add(sum(w * v for w, v in terms) <= best)
                 print("     tier %d best = %d%s - frozen."
                       % (tier, best, " (proven optimal)" if st == "OPTIMAL" else ""),
                       flush=True)
-                for se in sessions:      # warm-start the next stage
-                    for j in range(len(starts_of(se))):
-                        if st_solver.Value(x[se.sid, j]):
-                            m.AddHint(x[se.sid, j], 1)
-                            break
+                # warm-start the next stage (clearing first: a duplicated hint
+                # variable makes CP-SAT reject the whole model)
+                rehint(m, sessions, x, starts_of, st_solver.Value)
             else:
                 print("     tier %d: no complete timetable in its slice - "
                       "moving on without freezing." % tier, flush=True)
-        # restore the full objective for the final, longest phase
-        m.Minimize(sum(w * v for w, v in
-                       [(w, v) for entries in pen_map.values() for w, v in entries]))
+        # restore the full objective for the final, longest phase - comfort
+        # AND exceptions (m.penalties, never pen_map)
+        m.Minimize(sum(w * v for w, v in full_obj))
         solver.parameters.max_time_in_seconds = max(
             120.0, float(cfg.time_limit) - (time.time() - t0))
         print("\n  FINAL - polishing everything else with the tiers frozen...",
@@ -2236,13 +2561,30 @@ def main():
     exceptions = []
     exc_path = os.path.join(OUT, "exceptions.json")
 
-    if name in ("INFEASIBLE", "MODEL_INVALID") and rescue_now:
+    # MODEL_INVALID is NOT a statement about the school - it means this
+    # program built a broken model (a duplicated solution hint does exactly
+    # that). Lumping it in with INFEASIBLE told Majd for weeks that his data
+    # was impossible when the fault was here. Say so plainly instead.
+    if name == "MODEL_INVALID":
+        print("\nINTERNAL ERROR: the model was built wrongly. This is a bug "
+              "in the tool, NOT a problem with your data.")
+        info = ""
+        try:
+            info = solver.ResponseProto().solution_info
+        except Exception:                      # noqa: BLE001 - diagnostics only
+            pass
+        if info:
+            print("  CP-SAT says: %s" % info)
+        print("  Please send this message to whoever maintains the tool.")
+        return 4
+
+    if name == "INFEASIBLE" and (rescue_now or relaxed):
         print("\nNO TIMETABLE EXISTS even with the livable exceptions.")
         print("Something structural is impossible (a clash, room shortage,")
         print("or contradictory data). Check the data, then re-run.")
         return 2
 
-    if name in ("INFEASIBLE", "MODEL_INVALID"):
+    if name == "INFEASIBLE":
         # ---- RESCUE MODE ------------------------------------------------
         # The strict rules admit no timetable at all. Rather than stop dead,
         # retry with the RELAXABLE rules (H7 day off / training day, H17
@@ -2263,7 +2605,11 @@ def main():
         status = solver.Solve(m, cb)
         cb.save(force=True)
         name = solver.StatusName(status)
-        if name in ("INFEASIBLE", "MODEL_INVALID"):
+        if name == "MODEL_INVALID":
+            print("\nINTERNAL ERROR in rescue mode: the model was built "
+                  "wrongly. A bug in the tool, not in your data.")
+            return 4
+        if name == "INFEASIBLE":
             print("\nNO TIMETABLE EXISTS even with the livable exceptions.")
             print("Something structural is impossible (a clash, room shortage,")
             print("or contradictory data). Check the data, then re-run.")
@@ -2285,8 +2631,10 @@ def main():
         print("\nNo solution found inside the time limit.")
         print("Raise time_limit_seconds in config.json and re-run.")
         return 3
-    elif rescue_now:
-        # Forced --rescue solve succeeded: read the exception vars directly.
+    elif viols:
+        # The solve succeeded with some rules priced instead of enforced
+        # (--rescue, or a rung the ladder proved it had to give up). Read the
+        # exception vars directly so every case is named in the report.
         for rule, tid, day, var, desc in viols:
             v = solver.Value(var)
             if v:
@@ -2381,4 +2729,10 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        # a second Ctrl+C, or one landing inside a phase that has no callback
+        print("\nStopped by Ctrl+C. The best timetable found so far is in "
+              "out/solution.json and out/best_so_far.html.")
+        sys.exit(130)
