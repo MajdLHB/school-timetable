@@ -667,6 +667,11 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
             cands.append(d)
         if not cands:
             continue
+        # Majd 2026-08-25, looking at a scattered week: "day off teaching -
+        # make it less important, keep it there but for better results maybe
+        # let him teach then". So the CHOSEN day off is now a strong SOFT
+        # preference (flexible_day_off per taught hour), never a chain - a
+        # WRITTEN day in the sheet stays absolutely hard as before.
         offs = {d: m.NewBoolVar("off_%s_%s" % (tid, d)) for d in cands}
         m.Add(sum(offs.values()) == 1)
         day_off_choice[tid] = offs
@@ -675,15 +680,10 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                      for v in occs(ss, i)]
             if not terms:
                 continue
-            if not rescue:
-                m.Add(sum(terms) == 0).OnlyEnforceIf(offs[d])
-            else:
-                v = m.NewIntVar(0, len(terms), "vH7f_%s_%s" % (tid, d))
-                m.Add(v == sum(terms)).OnlyEnforceIf(offs[d])
-                m.Add(v == 0).OnlyEnforceIf(offs[d].Not())
-                penalties.append((RESCUE_WEIGHT, v))
-                viols.append(("H7", tid, d, v,
-                              "teaches on their chosen day off"))
+            v = m.NewIntVar(0, len(terms), "vH7f_%s_%s" % (tid, d))
+            m.Add(v == sum(terms)).OnlyEnforceIf(offs[d])
+            m.Add(v == 0).OnlyEnforceIf(offs[d].Not())
+            add_pen("flexible_day_off", 200, v)
 
     # ---- H17: a teacher never teaches more than 6 hours in one day --------
     # Circular 51/2018 II.2, repeated by the inspectorate text. Relaxable in

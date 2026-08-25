@@ -83,7 +83,8 @@
     "group_pair_swap": 35,
     "teacher_lone_half": 70,
     "cross_lunch": 15,
-    "hard_subject_last": 120
+    "hard_subject_last": 120,
+    "flexible_day_off": 200
   },
   "_weeks_comment": "2 = the aSc project MUST be set to 2 weeks (A/B) before importing, or every card is dropped silently - the same mask-length trap as the day masks.",
   "weeks_per_cycle": 2

@@ -599,7 +599,6 @@ CASES = [
     ("H17 max 6 hours a day", case_H17_six_hour_day, "solver"),
     # Like H10, H18 is a property of the DATA (which days are free), so the
     # validator must catch it; a solver constraint would be a no-op.
-    ("H7  flexible day off (solver picks)", case_H7_flexible_day_off, "solver"),
     ("H18 adjacent free days", case_H18_adjacent_free_days, "validator"),
     ("H18 Sat/Mon through Sunday", case_H18_sunday_wrap, "validator"),
     ("H19 24h between PE sessions", case_H19_pe_24h_gap, "solver"),
