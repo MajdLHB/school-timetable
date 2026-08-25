@@ -23,7 +23,7 @@ EXC = os.path.join(D.HERE, "out", "exceptions.json")
 
 # Only these rules may ever be excused by a rescue-mode exceptions file.
 # A clash or a wrong room is never an acceptable exception.
-EXCUSABLE = {"H7", "H17", "H4"}   # H4: a declared room shortage
+EXCUSABLE = {"H7", "H17", "H4", "H21"}  # H4 rooms, H21 lone hours
 
 
 def _group_no(groupids):
@@ -442,6 +442,15 @@ def main():
     #  now - Majd: "keep it there but for better results maybe let him teach
     #  then". Only a WRITTEN day_off is checked, above. The report and
     #  view.html still show each chosen day and any teaching on it.)
+
+    # --- H21: a teacher never comes in for a single hour (Majd's rule) -----
+    lone_day = collections.Counter()
+    for (t_, d, p, w), v in t_at.items():
+        lone_day[t_, d, w] += len(v)
+    for (t_, d, w), n in sorted(lone_day.items()):
+        if n == 1:
+            fail("H21", "teacher %s teaches ONE hour on %s (week %s) - a "
+                        "wasted journey." % (t_, d, w), key=(t_, d))
 
     # --- H17: never more than 6 teaching hours in one day ------------------
     # Per week: an every-week hour loads both weeks, a week-A hour only A.

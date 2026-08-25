@@ -797,6 +797,37 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
             m.Add(v == 0).OnlyEnforceIf(offs[d].Not())
             add_pen("flexible_day_off", 200, v)
 
+    # ---- H21: a teacher NEVER comes in for a single hour ------------------
+    # Majd 2026-08-25: "lone hours are as big and important as hard rules"
+    # - and the inspectorate agrees: "for efficiency, a teacher is not
+    # assigned a single lone hour in a morning or evening". So a teacher's
+    # day is either EMPTY or at least 2 hours. Relaxable in rescue mode,
+    # where every case is declared in the report like H7/H17.
+    for tid, ss in by_teacher.items():
+        for w in weeks_of(ss):
+            act = [se for se in ss if in_week(se, w)]
+            for d in days:
+                ix = [i for i, (dd, p) in enumerate(slots) if dd == d]
+                terms = [v for i in ix for v in occs(act, i)]
+                if len(terms) < 2:
+                    continue
+                if not rescue:
+                    # "0 or at least 2" as a DOMAIN, not a reified bool:
+                    # CP-SAT propagates domains far more strongly, which
+                    # matters on a school packed to 91% (2026-08-25).
+                    dom = cp_model.Domain.FromIntervals(
+                        [[0, 0], [2, len(terms)]])
+                    tot = m.NewIntVarFromDomain(
+                        dom, "h21tot_%s_%s_%s" % (tid, d, w))
+                    m.Add(tot == sum(terms))
+                else:
+                    lone = m.NewBoolVar("vH21_%s_%s_%s" % (tid, d, w))
+                    m.Add(sum(terms) == 1).OnlyEnforceIf(lone)
+                    m.Add(sum(terms) != 1).OnlyEnforceIf(lone.Not())
+                    penalties.append((RESCUE_WEIGHT, lone))
+                    viols.append(("H21", tid, d, lone,
+                                  "comes in for a single hour"))
+
     # ---- H17: a teacher never teaches more than 6 hours in one day --------
     # Circular 51/2018 II.2, repeated by the inspectorate text. Relaxable in
     # rescue mode (a 7-hour day is livable in extremis; a clash is not).

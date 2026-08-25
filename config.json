@@ -81,7 +81,7 @@
     "not_same_day": 80,
     "double_not_at_start": 25,
     "group_pair_swap": 40,
-    "teacher_lone_half": 400,
+    "teacher_lone_half": 700,
     "cross_lunch": 20,
     "hard_subject_last": 1000,
     "flexible_day_off": 250,
