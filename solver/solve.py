@@ -307,6 +307,16 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
     viols = []
     penalties = []
 
+    def add_pen(key, default, var):
+        """One comfort penalty - or, when the Weights sheet says HARD for
+        this key, an unbreakable constraint (var == 0). Majd's promotion
+        mechanism: build right first, instead of repairing later."""
+        w = W.get(key, default)
+        if w == "HARD":
+            m.Add(var == 0)
+        else:
+            penalties.append((w, var))
+
     # ---- feasible starts per session length (H9 contiguity) --------------
     # A session of length L may start at period p on day d only when
     # p, p+1, ..., p+L-1 are ALL open on d. The lunch break closes 5-6, so
@@ -496,7 +506,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                                         "pile_%s_%s_g%s_%s_%s"
                                         % (key[0], key[1], key[2], w, d))
                     m.Add(extra >= sum(hour_terms) - 1)
-                    penalties.append((W.get("same_subject_twice_a_day", 50), extra))
+                    add_pen("same_subject_twice_a_day", 50, extra)
                 continue
         # symmetry: equal-length neighbours in one week's pattern take
         # increasing days (never pairs a week-A with a week-B session)
@@ -542,7 +552,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                                        "gsync_%s_%s_%d_%s_%s" % (cid, sid_, gb, w, d))
                     m.Add(diff >= sum(a_terms) - sum(b_terms))
                     m.Add(diff >= sum(b_terms) - sum(a_terms))
-                    penalties.append((W.get("tp_groups_same_day", 45), diff))
+                    add_pen("tp_groups_same_day", 45, diff)
 
     # ---- H7: the teacher's day off AND training day are completely empty --
     # (circular II.1: respect the pedagogical training days)
@@ -714,7 +724,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
             pres[d, p] = b
         return pres
 
-    def add_gap_penalty(pres, key, weight, also_one_hour=False, also_day_count=False):
+    def add_gap_penalty(pres, key, weight_key, also_one_hour=False, also_day_count=False):
         """S1/S7 no holes, S2 no 1-hour days, S8-compact fewest days.
 
         Returns {day: here-bool} so S21 (shared transport) can compare two
@@ -741,15 +751,15 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
             gaps = m.NewIntVar(0, len(ps), "gaps_%s_%s" % (key, d))
             m.Add(gaps == last - first + 1 - taught).OnlyEnforceIf(here)
             m.Add(gaps == 0).OnlyEnforceIf(here.Not())
-            penalties.append((weight, gaps))
+            add_pen(weight_key, 100, gaps)
 
             if also_one_hour:
                 solo = m.NewBoolVar("solo_%s_%s" % (key, d))
                 m.Add(taught == 1).OnlyEnforceIf(solo)
                 m.Add(taught != 1).OnlyEnforceIf(solo.Not())
-                penalties.append((W["one_hour_day"], solo))
+                add_pen("one_hour_day", 50, solo)
             if also_day_count:
-                penalties.append((W["extra_day_present"], here))
+                add_pen("extra_day_present", 50, here)
         return days_here
 
     # S1 teacher holes, S2 one-hour days. S8 is the MINISTRY version
@@ -765,7 +775,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
         for w in wks:
             pres = presence(ss, "T%s%s" % (tid, w), w)
             days_by_week.append(
-                add_gap_penalty(pres, "T%s%s" % (tid, w), W["teacher_gap"],
+                add_gap_penalty(pres, "T%s%s" % (tid, w), "teacher_gap",
                                 also_one_hour=True, also_day_count=compact))
             if not compact:
                 # S8 (ministry): every taught hour beyond 4 on one day is a
@@ -777,7 +787,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                     over = m.NewIntVar(0, len(ps) - 4,
                                        "crowd_%s_%s_%s" % (tid, d, w))
                     m.Add(over >= sum(pres[d, p] for p in ps) - 4)
-                    penalties.append((W.get("overloaded_day", 40), over))
+                    add_pen("overloaded_day", 40, over)
         if len(days_by_week) == 1:
             teacher_days[tid] = days_by_week[0]
         else:
@@ -803,7 +813,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
             imb = m.NewIntVar(0, S, "imb_%s" % tid)
             m.Add(imb >= mh - eh - 2)
             m.Add(imb >= eh - mh - 2)
-            penalties.append((W.get("morning_evening_imbalance", 60), imb))
+            add_pen("morning_evening_imbalance", 60, imb)
 
     # ---- S21: shared transport - paired teachers come in on the same days.
     # travels_with in the Teachers sheet names the partner (one side is
@@ -828,7 +838,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
             diff = m.NewBoolVar("pair_%s_%s_%s" % (pair[0], pair[1], d))
             m.Add(a != b).OnlyEnforceIf(diff)
             m.Add(a == b).OnlyEnforceIf(diff.Not())
-            penalties.append((W.get("travel_pair", 70), diff))
+            add_pen("travel_pair", 70, diff)
 
     # S7 pupils get no holes either - seen from each PART of the class (a
     # pupil in group 1 lives through the whole-class hours plus group 1's),
@@ -847,7 +857,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
             for w in weeks_of(part):
                 key = "C%s.g%s%s" % (cid, g, w)
                 pres = presence(part, key, w)
-                add_gap_penalty(pres, key, W["class_gap"])
+                add_gap_penalty(pres, key, "class_gap")
                 # T26/T27 (circular I.2): a PUPIL's day beyond 6 hours, or a
                 # half-day beyond 4, is heavily penalised. Counted per group
                 # view - group machinery made pupil-hours countable at last.
@@ -858,14 +868,14 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                     if len(dps) > 6:
                         over6 = m.NewIntVar(0, len(dps), "pup6_%s_%s" % (key, d))
                         m.Add(over6 >= sum(pres[d, p] for p in dps) - 6)
-                        penalties.append((W.get("pupil_day_over6", 120), over6))
+                        add_pen("pupil_day_over6", 120, over6)
                     for half, hp in halves.items():
                         hps = [p for p in dps if p in hp]
                         if len(hps) > 4:
                             o4 = m.NewIntVar(0, len(hps),
                                              "pup4_%s_%s_%s" % (key, d, half))
                             m.Add(o4 >= sum(pres[d, p] for p in hps) - 4)
-                            penalties.append((W.get("pupil_half_over4", 100), o4))
+                            add_pen("pupil_half_over4", 100, o4)
 
     # ---- S15: a class never comes in for a single lone hour ---------------
     # Circular I.2: minimum 2 hours in any morning or evening - for pupils
@@ -896,7 +906,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                         m.Add(cnt == 0).OnlyEnforceIf(b_cnt1.Not())
                         m.AddBoolAnd([b_tot1, b_cnt1]).OnlyEnforceIf(solo)
                         m.AddBoolOr([b_tot1.Not(), b_cnt1.Not()]).OnlyEnforceIf(solo.Not())
-                        penalties.append((W.get("class_one_hour_session", 85), solo))
+                        add_pen("class_one_hour_session", 85, solo)
 
     # ---- S3: hard subjects belong in the morning -------------------------
     hard_sess = [se for se in sessions
@@ -907,7 +917,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
         if terms:
             n_ev = m.NewIntVar(0, len(terms), "hard_in_evening")
             m.Add(n_ev == sum(terms))
-            penalties.append((W["hard_subject_evening"], n_ev))
+            add_pen("hard_subject_evening", 50, n_ev)
 
     # ---- S12: daylight subjects PREFER the morning -----------------------
     # "morning and max 14h to 16h" - the late window is a fallback, not the
@@ -921,7 +931,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
         if terms:
             n_late = m.NewIntVar(0, len(terms), "daylight_outside_morning")
             m.Add(n_late == sum(terms))
-            penalties.append((W.get("daylight_not_morning", 45), n_late))
+            add_pen("daylight_not_morning", 45, n_late)
 
     # ---- S6: sessions of one subject avoid consecutive days ---------------
     # Circular III.2: subjects taught 2 h/week must not fall on consecutive
@@ -933,7 +943,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
             if da in dps and db in dps:
                 both = m.NewIntVar(0, 1, "adj_%s_%s_%s" % (key[0], key[1], da))
                 m.Add(both >= dps[da] + dps[db] - 1)
-                penalties.append((W.get("same_subject_adjacent_days", 50), both))
+                add_pen("same_subject_adjacent_days", 50, both)
 
     # ---- S18: never subject B straight after subject A --------------------
     # The inspectorate, for both 4th-year streams: never Philosophy in the
@@ -960,7 +970,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                     both = m.NewIntVar(0, len(va) + len(vb),
                                        "na_%s_%s_%s_%s_%d" % (cid, sid_a, sid_b, d, p))
                     m.Add(both >= sum(va) + sum(vb) - 1)
-                    penalties.append((W.get("not_after", 60), both))
+                    add_pen("not_after", 60, both)
 
     # ---- S20: grouped subjects PAIR UP and swap (Majd 2026-08-25: "they ---
     # alternate between tech and svt in groups"). While group 1 sits in
@@ -988,7 +998,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                                            % (cid, sids[a_i], sids[b_i], w, i))
                         m.Add(diff >= sum(va) - sum(vb))
                         m.Add(diff >= sum(vb) - sum(va))
-                        penalties.append((W.get("group_pair_swap", 35), diff))
+                        add_pen("group_pair_swap", 35, diff)
 
     # ---- T37: subject pairs that must not share a day (soft) --------------
     # Ministry: History and Geography never on the same day. Generic: any
@@ -1022,7 +1032,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                         m.Add(sum(tb) == 0).OnlyEnforceIf(bb.Not())
                         both = m.NewIntVar(0, 1, "nsd_%s_%s_%s_%s_%s" % (cid, sid_a, sid_b, d, w))
                         m.Add(both >= ba + bb - 1)
-                        penalties.append((W.get("not_same_day", 60), both))
+                        add_pen("not_same_day", 60, both)
 
     # ---- T41: a double belongs at the TOP of its half-day -----------------
     # A 2h+ block that starts mid-run leaves a stub before it; the ministry
@@ -1035,7 +1045,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
             continue
         for j, (d, p0, ixs) in enumerate(starts_of(se)):
             if p0 not in run_starts.get(d, ()):
-                penalties.append((W.get("double_not_at_start", 25), x[se.sid, j]))
+                add_pen("double_not_at_start", 25, x[se.sid, j])
 
     # ---- S4 / M-P6: no two same-nature subjects back to back --------------
     # Inspectorate pupil-rule 8: avoid consecutive subjects of the same
@@ -1068,7 +1078,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                     pair = m.NewIntVar(0, len(va) + len(vb),
                                        "nat_%s_%s_%s_%d" % (cid, nat, sid_b, i))
                     m.Add(pair >= sum(va) + sum(vb) - 1)
-                    penalties.append((W.get("same_nature_adjacent", 80), pair))
+                    add_pen("same_nature_adjacent", 80, pair)
 
     # ---- S19: core subjects get three quarters of their hours in the ------
     # morning (circular III.2). Rows flagged core=yes in the Curriculum
@@ -1086,7 +1096,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
             continue
         over = m.NewIntVar(0, hours, "core_ev_%s_%s_g%s" % key)
         m.Add(over >= sum(terms) - allowed_ev)
-        penalties.append((W.get("core_morning", 65), over))
+        add_pen("core_morning", 65, over)
 
     # ---- S10: last-period fairness for teachers ---------------------------
     # Nobody is stuck with the final period every single day: beyond two
@@ -1099,7 +1109,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
             continue
         over = m.NewIntVar(0, len(terms), "lastfair_%s" % tid)
         m.Add(over >= sum(terms) - 2)
-        penalties.append((W.get("last_period_fairness", 35), over))
+        add_pen("last_period_fairness", 35, over)
 
     # ---- S16: subject-specific late-hour avoidance ------------------------
     # Soft cousin of H15. Ministry: Maths avoids the evening and never after
@@ -1110,7 +1120,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
             continue
         for i, (d, p) in enumerate(slots):
             if p > aa and (se.sid, i) in occ:
-                penalties.append((W.get("late_subject", 50), occ[se.sid, i]))
+                add_pen("late_subject", 50, occ[se.sid, i])
 
     # ---- S14: the last period of the day is a slot of last resort ---------
     # Majd: "try to avoid 17 to 18 as much as possible its late". Ministry
@@ -1120,7 +1130,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
     for se in sessions:
         for i, (d, p) in enumerate(slots):
             if p == last_p and (se.sid, i) in occ:
-                penalties.append((W.get("last_period", 55), occ[se.sid, i]))
+                add_pen("last_period", 55, occ[se.sid, i])
 
     # ---- S13: no Friday evening for bac classes (local preference) --------
     # ---- S17: bac classes get a free afternoon Mon-Thu (circular I.6) -----
@@ -1132,7 +1142,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
                   if d == "Fri" and p in evening]
         for i in fri_ev:
             for v in occs(ss, i):
-                penalties.append((W.get("bac_friday_evening", 30), v))
+                add_pen("bac_friday_evening", 30, v)
         # S17: at least one of the first four days' evenings entirely free
         free_days = []
         for d in first_four:
@@ -1148,7 +1158,7 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
             none_free = m.NewBoolVar("bacnofree_%s" % cid)
             m.AddBoolAnd([b.Not() for b in free_days]).OnlyEnforceIf(none_free)
             m.AddBoolOr(free_days).OnlyEnforceIf(none_free.Not())
-            penalties.append((W.get("bac_no_free_afternoon", 70), none_free))
+            add_pen("bac_no_free_afternoon", 70, none_free)
 
     # objective="exceptions" (rescue phase 1): count ONLY the exception
     # hours, so the solver can PROVE the minimum - Majd's "so I know it's

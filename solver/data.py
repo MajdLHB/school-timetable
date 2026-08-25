@@ -298,8 +298,16 @@ def load_school(xlsx=None, cfg=None):
         n_over = 0
         for r in _rows(wb["Weights"]):
             key = (r.get("key") or "").strip()
-            if key and str(r.get("value", "")).strip() != "":
-                cfg.weights[key] = _int(r.get("value"), cfg.weights.get(key, 0))
+            raw = str(r.get("value", "")).strip()
+            if key and raw:
+                # Majd 2026-08-25 ("what if we stuff more hard rules"):
+                # HARD / صارم promotes a comfort rule to an unbreakable one.
+                # The price: with too many HARD rules no timetable may exist
+                # at all - phase 1 will say so plainly.
+                if raw.upper() in ("HARD", "صارم"):
+                    cfg.weights[key] = "HARD"
+                else:
+                    cfg.weights[key] = _int(raw, cfg.weights.get(key, 0))
                 n_over += 1
         if n_over:
             print("NOTE : %d rule weights read from the Weights sheet "
@@ -426,6 +434,15 @@ def check(s):
                     errs.append(where + " - a block of " + str(max(bl)) + " consecutive hours can "
                                 "never be placed: the longest open run in any day is " +
                                 str(max_run) + " (the lunch break interrupts every day).")
+
+    # HARD-promoted weights: everything may be promoted except the keys where
+    # "zero" would mean nonsense (extra_day_present=HARD would forbid a
+    # compact teacher from coming to school at all).
+    for k, v in s.cfg.weights.items():
+        if v == "HARD" and k in ("extra_day_present",):
+            errs.append("Weights sheet: '" + k + "' cannot be HARD - zero of "
+                        "it would mean the teacher never comes in. Use a "
+                        "number.")
 
     # H14 options: refs exist, same-year pooling, one band per class, and
     # every group of a band identical in hours+blocks (they run as one).

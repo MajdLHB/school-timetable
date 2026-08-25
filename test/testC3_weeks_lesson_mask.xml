@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- TEST C3: the fix probe for the phantom unplaced cards of test C2.
-     C2 result (2026-08-24): the week-A cards PLACED correctly (grid showed
-     them), but 3 unplaced copies sat in the bottom strip - aSc 2013 seems
-     to ignore weeksdefid on lessons and expects cards in BOTH weeks.
-     This file is identical to C2 except each lesson ALSO carries a raw
-     `weeks` mask column. Import into a 2-WEEK, 6-day project.
+<!-- TEST C3 v2: the phantom-copies fix, learned from LAST YEAR'S REAL FILE:
+     aSc 2013 counts a lesson's cards across BOTH weeks, so a week-A-only
+     lesson must declare periodsperweek = cards/2 (their file contains
+     periodsperweek="0.5" exactly 63 times). v1 (weeks mask on lessons)
+     did NOT remove the phantoms - this version changes periodsperweek to
+     0.5 / 1.0 / 1.0. Import into a 2-WEEK, 6-day project.
      PASS = same placed cards as C2, and the bottom strip is EMPTY. -->
-<timetable importtype="database" options="idprefix:ABTEST3">
+<timetable importtype="database" options="idprefix:ABTEST3V2">
    <weeksdefs options="" columns="id,weeks,name,short">
       <weeksdef id="WALL" weeks="11" name="All weeks" short="All"/>
       <weeksdef id="WA" weeks="10" name="Week A" short="A"/>
@@ -32,9 +32,9 @@
       <classroom id="R2" name="Labo 2" short="L2"/>
    </classrooms>
    <lessons options="" columns="id,subjectid,classids,groupids,teacherids,weeksdefid,weeks,periodspercard,periodsperweek">
-      <lesson id="LW" subjectid="SVT" classids="C1" groupids="G0" teacherids="T1" weeksdefid="WA" weeks="10" periodspercard="1" periodsperweek="1"/>
-      <lesson id="LA" subjectid="SVT" classids="C1" groupids="G1" teacherids="T1" weeksdefid="WB" weeks="01" periodspercard="2" periodsperweek="2"/>
-      <lesson id="LB" subjectid="SVT" classids="C1" groupids="G2" teacherids="T2" weeksdefid="WB" weeks="01" periodspercard="2" periodsperweek="2"/>
+      <lesson id="LW" subjectid="SVT" classids="C1" groupids="G0" teacherids="T1" weeksdefid="WA" weeks="10" periodspercard="1" periodsperweek="0.5"/>
+      <lesson id="LA" subjectid="SVT" classids="C1" groupids="G1" teacherids="T1" weeksdefid="WB" weeks="01" periodspercard="2" periodsperweek="1.0"/>
+      <lesson id="LB" subjectid="SVT" classids="C1" groupids="G2" teacherids="T2" weeksdefid="WB" weeks="01" periodspercard="2" periodsperweek="1.0"/>
    </lessons>
    <cards options="" columns="lessonid,period,days,weeks,classroomids">
       <card lessonid="LW" period="1" days="100000" weeks="10" classroomids="R1"/>

@@ -90,7 +90,7 @@ Seventeen rules, all high value and low cost, most needing no new data.
 | T41 | Doubles at the start of a half-day, never split by the break | after T40 |
 | T42 | **Week A / Week B** | **DONE 2026-08-24** — `week` column (A/B/blank), all clashes + caps + comfort rules per week view, verified, selftested |
 | T43 | **Group splitting**, with pupil ≠ teacher hours | **DONE 2026-08-24** — `groups=N`, hours per group, parallel halves, per-part clash + pupil views, S22 same-day preference (M-SN4), verified, selftested |
-| T44 | **H14 option groups** pooled across classes | **DONE 2026-08-25** — Majd answered the 5 questions; bands simultaneous, teachers+rooms bound, verified, selftested. aSc format pending test C4 import |
+| T44 | **H14 option groups** pooled across classes | **DONE 2026-08-25** — Majd answered the 5 questions; bands simultaneous, teachers+rooms bound, verified, selftested. **aSc format PROVEN by test C4 (2026-08-25)**: both classes showed ESP+ALL stacked in one period, multi-class option lessons accepted |
 | T45 | Room proximity — avoid long walks between consecutive lessons | **DONE 2026-08-25** (inert until the Rooms `zone` column is filled — Majd: assume 0, edit later) |
 
 ## Phase 6 — finishing

@@ -186,8 +186,13 @@ def write(s, units, placement, rooms, path, include_periods=True):
         cid, sid, tid, g, wk = key
         lid = "L%d" % n
         lesson_id[key] = lid
+        # aSc 2013 counts a lesson's cards ACROSS BOTH WEEKS: a week-A-only
+        # lesson must say periodsperweek = cards/2 (fractions like 0.5 are
+        # exactly what last year's real file contains, 63 times) - otherwise
+        # aSc shows phantom unplaced copies for the other week (test C2/C3).
+        pw = ("%.1f" % (len(us) / 2.0)) if wk in ("A", "B") else len(us)
         kw = dict(id=lid, subjectid=sid, classids=cid, teacherids=tid,
-                  periodspercard=1, periodsperweek=len(us))
+                  periodspercard=1, periodsperweek=pw)
         if has_groups:
             kw["groupids"] = gid(cid, g)
         if has_weeks:
