@@ -2,6 +2,11 @@
 """Score ANY aSc timetable XML on universal comfort metrics - the same
 ruler for a hand-made table and a solver table.
 
+CAVEAT (Majd 2026-08-25): the reference in data/reference/ is a WORK IN
+PROGRESS copy from last year, NOT the finished table - its numbers are a
+floor for the hand-made quality, not the truth. Score a FINAL export
+before claiming victory over human tables.
+
 Counts (per week view, A/B averaged; the lunch break is never a hole):
   - teacher hole-hours (free periods trapped inside a half-day)
   - teacher one-hour days (coming in for a single lesson)
