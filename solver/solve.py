@@ -139,6 +139,26 @@ def expand(s):
                                      row["teacher_id"], rt, L, next_off[okey],
                                      explicit, g, gw))
                 next_off[okey] += L
+
+    # ---- H14: option bands (Majd's five answers, 2026-08-25) --------------
+    # Every pupil takes exactly one option, so while the band runs the WHOLE
+    # class is in an option - modelled as a whole-class pseudo-subject
+    # "OPT:<band>" per member class. build() ties the member classes'
+    # copies to the SAME slots and binds the option teachers and rooms.
+    if s.options and not s.option_bands:
+        D.compute_option_bands(s)
+    for band in s.option_bands:
+        bl, err = D.parse_blocks(band["blocks"], band["hours"])
+        explicit = bool(str(band["blocks"]).strip())
+        if err or not bl or sum(bl) != band["hours"]:
+            bl, explicit = [1] * band["hours"], False
+        for cid in band["classes"]:
+            off = 0
+            for k, L in enumerate(bl):
+                sid = "%s|OPT:%s||g0|s%d" % (cid, band["id"], k)
+                sessions.append(Sess(sid, cid, "OPT:" + band["id"], "",
+                                     "__opt__", L, off, explicit, 0, ""))
+                off += L
     return sessions
 
 
@@ -187,8 +207,9 @@ class Progress(cp_model.CpSolverSolutionCallback):
     """
 
     def __init__(self, t0, sessions=None, x=None, starts_of=None, slots=None,
-                 every=15.0, viols=None):
+                 every=15.0, viols=None, exceptions_only=False):
         super().__init__()
+        self.exceptions_only = exceptions_only
         self.t0 = t0
         self.n = 0
         self.sessions = sessions
@@ -231,6 +252,17 @@ class Progress(cp_model.CpSolverSolutionCallback):
     def on_solution_callback(self):
         self.n += 1
         el = time.time() - self.t0
+        if self.exceptions_only:
+            # rescue PHASE 1: the objective IS the exception hours
+            self.last_exc = int(self.ObjectiveValue())
+            self.last_soft = 0
+            print("   %6.1fs  PHASE 1 version %-3d exceptions down to %d hours"
+                  % (el, self.n, self.last_exc), flush=True)
+            self.save()
+            if STOP:
+                self.save(force=True)
+                self.StopSearch()
+            return
         # split the penalty into what Majd actually cares about: hours that
         # break a real rule (H7/H17 exceptions, RESCUE_WEIGHT each) vs soft
         # comfort points (holes, late hours, imbalance...)
@@ -252,7 +284,7 @@ class Progress(cp_model.CpSolverSolutionCallback):
             self.StopSearch()
 
 
-def build(s, sessions, rescue=False):
+def build(s, sessions, rescue=False, objective="full", exc_cap=None):
     """Build the CP-SAT model over sessions.
 
     rescue=False - every hard rule is a real constraint (the normal mode).
@@ -346,6 +378,35 @@ def build(s, sessions, rescue=False):
 
     S = len(slots)
 
+    # ---- H14: bind the option bands ---------------------------------------
+    # 1) ALIGNMENT - every member class's copy of the band sits in the SAME
+    #    slots (a pupil not in this option is in another one of the band).
+    # 2) TEACHERS - every option group's teacher is busy in the band's slots,
+    #    so their clashes, day off, 6h cap and comfort rules all see it.
+    # 3) ROOMS - the band needs one room PER OPTION GROUP; counted below in
+    #    the room-type constraint via band_room_terms.
+    band_rep = {}                     # band id -> rep class's sessions
+    band_room_terms = collections.defaultdict(list)   # room type -> (occvar, n)
+    for band in s.option_bands:
+        copies = {cid: sorted(by_cs.get((cid, "OPT:" + band["id"]), []),
+                              key=lambda se: se.hour_offset)
+                  for cid in band["classes"]}
+        rep = band["classes"][0]
+        band_rep[band["id"]] = copies[rep]
+        for cid in band["classes"][1:]:
+            for a, b in zip(copies[rep], copies[cid]):
+                for j in range(len(starts_of(a))):
+                    m.Add(x[a.sid, j] == x[b.sid, j])
+        for tid in {g["teacher_id"] for g in band["groups"] if g["teacher_id"]}:
+            # (a teacher with TWO parallel groups in one band is impossible
+            #  and is refused by the data check, not modelled here)
+            by_teacher[tid].extend(band_rep[band["id"]])
+        by_room_need = collections.Counter(D.option_room_type(s, g)
+                                           for g in band["groups"])
+        for rt, n_need in by_room_need.items():
+            for se in band_rep[band["id"]]:
+                band_room_terms[rt].append((se, n_need))
+
     # ---- H2: a class is in one place at a time ---------------------------
     # With groups (T43): the class's PARTS clash, not its cards. A whole-class
     # session (group 0) clashes with everything; group g clashes with group g
@@ -377,14 +438,20 @@ def build(s, sessions, rescue=False):
     # assign_rooms() below turns the counts into concrete room numbers, and
     # verify.py checks the concrete result independently. Counted per week
     # view: an every-week lesson occupies its room in both weeks.
-    for rt, ss in by_type.items():
+    for rt in sorted(set(by_type) | set(band_room_terms)):
+        if rt == "__opt__":
+            continue   # the band pseudo-rows book rooms via band_room_terms
+        ss = by_type.get(rt, [])
         n_rooms = len(s.rooms_of_type(rt))
-        for w in weeks_of(ss):
+        extra = band_room_terms.get(rt, [])
+        for w in weeks_of(ss + [se for se, _n in extra]):
             act = [se for se in ss if in_week(se, w)]
             for i in range(S):
                 vs = occs(act, i)
-                if len(vs) > n_rooms:
-                    m.Add(sum(vs) <= n_rooms)
+                ex = [(occ[se.sid, i], n) for se, n in extra
+                      if (se.sid, i) in occ]
+                if len(vs) + sum(n for _v, n in ex) > n_rooms:
+                    m.Add(sum(vs) + sum(n * v for v, n in ex) <= n_rooms)
 
     # ---- H9: different blocks of one subject on different days -----------
     # (The contiguity half of H9 is built into the start positions above.)
@@ -1083,7 +1150,16 @@ def build(s, sessions, rescue=False):
             m.AddBoolOr(free_days).OnlyEnforceIf(none_free.Not())
             penalties.append((W.get("bac_no_free_afternoon", 70), none_free))
 
-    m.Minimize(sum(w * v for w, v in penalties))
+    # objective="exceptions" (rescue phase 1): count ONLY the exception
+    # hours, so the solver can PROVE the minimum - Majd's "so I know it's
+    # doable" question. exc_cap then freezes that minimum for phase 2, which
+    # optimises comfort without ever adding an exception back.
+    if exc_cap is not None:
+        m.Add(sum(v for _r, _t, _d, v, _w in viols) <= exc_cap)
+    if objective == "exceptions":
+        m.Minimize(sum(v for _r, _t, _d, v, _w in viols))
+    else:
+        m.Minimize(sum(w * v for w, v in penalties))
     # main() reads the flexible day-off choice from here after solving, to
     # report which day each teacher was given. Kept as an attribute so the
     # (m, x, starts_of, viols) signature the selftests rely on stays stable.
@@ -1163,7 +1239,8 @@ def assign_rooms(s, sessions, placement):
         return sorted(cands,
                       key=lambda rid: 0 if zone_of.get(rid, "") in near else 1)
 
-    ordered = sorted(sessions, key=lambda se: -se.length)
+    ordered = sorted([se for se in sessions if se.room_type != "__opt__"],
+                     key=lambda se: -se.length)
     # first pass: home rooms, longest sessions first
     for se in ordered:
         home = s.classes.get(se.class_id, {}).get("home_room", "")
@@ -1188,6 +1265,27 @@ def assign_rooms(s, sessions, placement):
                         break
                 else:
                     out[u] = ""  # should never happen; verify.py will catch it
+
+    # ---- H14: one concrete room per option GROUP at the band's slots ------
+    # The model already guaranteed the counts fit; here each group gets its
+    # room id for the aSc cards, under the key "OPT|<group id>|<hour>".
+    for band in getattr(s, "option_bands", []):
+        rep = band["classes"][0]
+        for g in band["groups"]:
+            rt = D.option_room_type(s, g)
+            for t in range(band["hours"]):
+                uid = "%s|OPT:%s|%d" % (rep, band["id"], t)
+                if uid not in placement:
+                    continue
+                sl = tuple(placement[uid])
+                key = "OPT|%s|%d" % (g["id"], t)
+                for rid in rooms_by_type.get(rt, []):
+                    if not taken[sl].get(rid, set()):
+                        out[key] = rid
+                        taken[sl].setdefault(rid, set()).update({"A", "B"})
+                        break
+                else:
+                    out[key] = ""
     return out
 
 
@@ -1444,10 +1542,58 @@ def main():
     # cost 10,000 per hour, so a zero-exception timetable always wins when one
     # exists - forcing rescue can never invent exceptions.
     rescue_now = "--rescue" in sys.argv
+    exc_cap = None
+    hint_from = None
     if rescue_now:
         print("--rescue: strict attempt skipped, livable exceptions allowed "
               "(each costs 10,000 - the solver still prefers none).")
-    m, x, starts_of, viols = build(s, sessions, rescue=rescue_now)
+        # ---- PHASE 1: what is the MINIMUM number of exceptions? -----------
+        # Majd 2026-08-25: "at least he should do it with least amount of
+        # exceptions... so i know its doable so i let it run". This phase
+        # optimises ONLY the exception count; OPTIMAL here is a PROOF.
+        print("\nPHASE 1 - finding the minimum possible exceptions "
+              "(0 = a fully legal table exists)...", flush=True)
+        m1, x1, so1, v1 = build(s, sessions, rescue=True,
+                                objective="exceptions")
+        s1 = cp_model.CpSolver()
+        s1.parameters.max_time_in_seconds = min(
+            max(60.0, cfg.time_limit / 3.0), max(60.0, cfg.time_limit - 60.0))
+        s1.parameters.num_search_workers = n_workers()
+        cb1 = Progress(t0, sessions=sessions, x=x1, starts_of=so1,
+                       slots=s.cfg.slots, viols=v1, exceptions_only=True)
+        n1 = s1.StatusName(s1.Solve(m1, cb1))
+        if n1 in ("INFEASIBLE", "MODEL_INVALID"):
+            print("\nNO TIMETABLE EXISTS even with the livable exceptions.")
+            print("Something structural is impossible (a clash, room shortage,")
+            print("or contradictory data). Check the data, then re-run.")
+            return 2
+        if n1 in ("OPTIMAL", "FEASIBLE"):
+            exc_cap = int(s1.ObjectiveValue())
+            if n1 == "OPTIMAL" and exc_cap == 0:
+                print("  PROVEN: a FULLY LEGAL timetable exists. Doable, "
+                      "0 exceptions.")
+            elif n1 == "OPTIMAL":
+                print("  PROVEN MINIMUM: %d exception-hours. No timetable "
+                      "for this data can do better - fix data, not time."
+                      % exc_cap)
+            else:
+                print("  Best found: %d exception-hours (NOT proven minimal "
+                      "- a longer run may still lower it)." % exc_cap)
+            print("PHASE 2 - exceptions locked at %d, optimising comfort..."
+                  % exc_cap, flush=True)
+            hint_from = (s1, x1)
+        else:
+            print("  Phase 1 found no complete table in its time share; "
+                  "continuing without a proven minimum.", flush=True)
+    m, x, starts_of, viols = build(s, sessions, rescue=rescue_now,
+                                   exc_cap=exc_cap)
+    if hint_from is not None:
+        s1v, x1v = hint_from
+        for se in sessions:
+            for j in range(len(starts_of(se))):
+                if s1v.Value(x1v[se.sid, j]):
+                    m.AddHint(x[se.sid, j], 1)
+                    break
 
     def on_sigint(signum, frame):
         global STOP
@@ -1457,7 +1603,9 @@ def main():
     signal.signal(signal.SIGINT, on_sigint)
 
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = float(cfg.time_limit)
+    # phase 2 (or the only phase) gets whatever the limit has left
+    solver.parameters.max_time_in_seconds = max(
+        60.0, float(cfg.time_limit) - (time.time() - t0))
     solver.parameters.num_search_workers = n_workers()
     solver.parameters.log_search_progress = False
 

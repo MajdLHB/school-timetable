@@ -89,7 +89,8 @@ def write(s, units, placement, rooms, path, include_periods=True):
     # Majd imported test/testC1_groups.xml into the real aSc: the two half-
     # class cards stacked in one period with no clash. Every class gets its
     # entire-class group; split classes get their halves on divisiontag 1.
-    has_groups = any(u.group for u in units)
+    bands = getattr(s, "option_bands", [])
+    has_groups = any(u.group for u in units) or bool(bands)
     n_groups_of = {}
     for u in units:
         if u.group:
@@ -97,6 +98,14 @@ def write(s, units, placement, rooms, path, include_periods=True):
 
     def gid(cid, g):
         return "GRP_%s_%d" % (cid, g)
+
+    # H14: option-division groups (division 2) - pupils by chosen option.
+    # opt_groups_of[class id] = [(number>=100, option group dict), ...]
+    opt_groups_of = {}
+    for band in bands:
+        for gi, g in enumerate(band["groups"]):
+            for cid_ in g["classes"]:
+                opt_groups_of.setdefault(cid_, []).append((100 + gi, g))
 
     if has_groups:
         A('   <groups options="" columns="id,classid,name,entireclass,'
@@ -111,6 +120,12 @@ def write(s, units, placement, rooms, path, include_periods=True):
                 A(_row("group", id=gid(c["id"], g), classid=c["id"],
                        name="Groupe %d" % g, entireclass=0, divisiontag=1,
                        studentcount=(size // n) if size else ""))
+            for num, og in opt_groups_of.get(c["id"], []):
+                sub = s.subjects.get(og["subject_id"], {})
+                A(_row("group", id="OPTG_%s_%d" % (c["id"], num),
+                       classid=c["id"],
+                       name="خيار: %s" % (sub.get("name") or og["subject_id"]),
+                       entireclass=0, divisiontag=2, studentcount=""))
         A('   </groups>')
 
     # ---- weeks (T42): the format of test C2 - cards carry a week mask ----
@@ -140,10 +155,25 @@ def write(s, units, placement, rooms, path, include_periods=True):
     A('   </classrooms>')
 
     # ---- lessons: one per (class, subject, teacher, group, week) ----------
+    # (the OPT: pseudo-units stay out - option groups get their own lessons)
     bunches = {}
     for u in units:
+        if u.subject_id.startswith("OPT:"):
+            continue
         key = (u.class_id, u.subject_id, u.teacher_id, u.group, u.week)
         bunches.setdefault(key, []).append(u)
+
+    # H14 option lessons: multi-class, on the option division. The band's
+    # slots come from the representative class's pseudo-units. UNPROVEN in
+    # aSc: multi-class lessons with per-class groupids - test C4 probes it.
+    def band_slots(band):
+        rep = band["classes"][0]
+        out_sl = []
+        for t in range(band["hours"]):
+            uid = "%s|OPT:%s|%d" % (rep, band["id"], t)
+            if uid in placement:
+                out_sl.append((t, placement[uid]))
+        return out_sl
 
     lesson_id = {}
     cols = "id,subjectid,classids,teacherids,periodspercard,periodsperweek"
@@ -163,6 +193,18 @@ def write(s, units, placement, rooms, path, include_periods=True):
         if has_weeks:
             kw["weeksdefid"] = {"A": "WA", "B": "WB"}.get(wk, "WALL")
         A(_row("lesson", **kw))
+    for band in bands:
+        for gi, g in enumerate(band["groups"]):
+            kw = dict(id="OL_%s" % g["id"], subjectid=g["subject_id"],
+                      classids=",".join(g["classes"]),
+                      teacherids=g["teacher_id"],
+                      periodspercard=1, periodsperweek=band["hours"])
+            if has_groups:
+                kw["groupids"] = ",".join("OPTG_%s_%d" % (c, 100 + gi)
+                                          for c in g["classes"])
+            if has_weeks:
+                kw["weeksdefid"] = "WALL"
+            A(_row("lesson", **kw))
     A('   </lessons>')
 
     # ---- cards: one per placed hour ---------------------------------------
@@ -177,6 +219,12 @@ def write(s, units, placement, rooms, path, include_periods=True):
             d, p = placement[u.uid]
             A(_row("card", lessonid=lid, period=p, days=day_mask(days, d),
                    weeks=week_mask(u.week), classroomids=rooms.get(u.uid, "")))
+    for band in bands:
+        for gi, g in enumerate(band["groups"]):
+            for t, (d, p) in band_slots(band):
+                A(_row("card", lessonid="OL_%s" % g["id"], period=p,
+                       days=day_mask(days, d), weeks=week_mask(""),
+                       classroomids=rooms.get("OPT|%s|%d" % (g["id"], t), "")))
     A('   </cards>')
 
     A('</timetable>')

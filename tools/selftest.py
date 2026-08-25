@@ -430,6 +430,65 @@ def case_ALT_groups_take_turns():
     return base(""), base("ALT")
 
 
+def opt(s, oid, sid, tid, hours, classes):
+    if sid not in s.subjects:
+        s.subjects[sid] = dict(id=sid, name=sid, short=sid,
+                               difficulty="medium", room_type="normal",
+                               latest_period=0)
+    s.options.append(dict(id=oid, subject_id=sid, teacher_id=tid,
+                          hours=hours, blocks="", classes=list(classes),
+                          room_type=""))
+
+
+def case_H14_band_alignment():
+    """H14: the option lessons of pooled classes run SIMULTANEOUSLY. Two
+    classes, one band (ESP + ALL). BREAK: C1's only free slot is period 2
+    and C2's is period 1 - the band cannot align, must refuse. RELAX: both
+    locks on period 1, the band takes period 2 for everyone."""
+    def base(p_ar):
+        s = tiny(days=("Mon",), periods=2)
+        for rid in ("R2", "R3", "R4"):
+            s.rooms[rid] = dict(id=rid, name=rid, type="normal", capacity=99)
+        teacher(s, "T1")
+        teacher(s, "T2")
+        teacher(s, "T3")
+        teacher(s, "T4")
+        klass(s, "C1")
+        klass(s, "C2")
+        teach(s, "C1", "MA", 1, "T1")
+        teach(s, "C2", "AR", 1, "T4")
+        s.locked.append(dict(class_id="C1", subject_id="MA", day="Mon",
+                             period=1, room_id="", why="selftest"))
+        s.locked.append(dict(class_id="C2", subject_id="AR", day="Mon",
+                             period=p_ar, room_id="", why="selftest"))
+        opt(s, "O1", "ESP", "T2", 1, ("C1", "C2"))
+        opt(s, "O2", "ALL", "T3", 1, ("C1", "C2"))
+        return s
+    return base(2), base(1)
+
+
+def case_H14_option_teacher_bound():
+    """H14: an option teacher's unavailability blocks the whole band. BREAK:
+    T3 (German) is unavailable in both periods - no slot for the band.
+    RELAX: only period 1 blocked, the band sits period 2."""
+    def base(block_all):
+        s = tiny(days=("Mon",), periods=2)
+        s.rooms["R2"] = dict(id="R2", name="R2", type="normal", capacity=99)
+        teacher(s, "T2")
+        teacher(s, "T3")
+        klass(s, "C1")
+        klass(s, "C2")
+        opt(s, "O1", "ESP", "T2", 1, ("C1", "C2"))
+        opt(s, "O2", "ALL", "T3", 1, ("C1", "C2"))
+        s.unavailable.append(dict(teacher_id="T3", day="Mon", period=1,
+                                  hard="yes", reason="selftest"))
+        if block_all:
+            s.unavailable.append(dict(teacher_id="T3", day="Mon", period=2,
+                                      hard="yes", reason="selftest"))
+        return s
+    return base(True), base(False)
+
+
 def case_LOCK_conflict():
     """Two different subjects of one class pinned to the same slot.
     RELAX: pin them to different slots."""
@@ -512,6 +571,8 @@ CASES = [
     ("T43 half class overbooked", case_T43_half_class_overbooked, "solver"),
     ("T42 week A/B share a slot", case_T42_weeks_share_slot, "solver"),
     ("ALT groups take turns", case_ALT_groups_take_turns, "solver"),
+    ("H14 band alignment", case_H14_band_alignment, "solver"),
+    ("H14 option teacher bound", case_H14_option_teacher_bound, "solver"),
     ("LOCK conflicting pins", case_LOCK_conflict, "solver"),
 ]
 

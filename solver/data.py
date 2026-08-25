@@ -59,6 +59,11 @@ class School:
     curriculum: list = field(default_factory=list)
     unavailable: list = field(default_factory=list)
     locked: list = field(default_factory=list)
+    # H14 (Majd's answers, 2026-08-25): option groups pool pupils from
+    # several same-year classes; every pupil takes exactly one option, so
+    # all option lessons of one pool run SIMULTANEOUSLY (a "band").
+    options: list = field(default_factory=list)
+    option_bands: list = field(default_factory=list)
 
     def room_type_for(self, cur_row):
         """Which kind of room this curriculum row needs."""
@@ -239,6 +244,15 @@ def load_school(xlsx=None, cfg=None):
             not_same_day=[v for v in (r.get("not_same_day") or "")
                           .replace(",", ";").split(";") if v.strip()],
         )
+    # Majd 2026-08-25: "it did have tp and lesson for same subject day and
+    # afternoon" - a subject's TP and its theory lesson must not share a
+    # day. The <SID>_TP naming is ours, so the pair links automatically
+    # (T37, weight not_same_day - editable in the Weights sheet).
+    for sid, sub in s.subjects.items():
+        if sid.endswith("_TP") and sid[:-3] in s.subjects:
+            if sid[:-3] not in sub["not_same_day"]:
+                sub["not_same_day"].append(sid[:-3])
+
     for r in _rows(wb["Curriculum"]):
         s.curriculum.append(dict(
             class_id=r["class_id"],
@@ -260,6 +274,23 @@ def load_school(xlsx=None, cfg=None):
             # the hours IN that week. Older workbooks have no such column.
             week=(r.get("week") or "").strip().upper(),
         ))
+    # H14 Options sheet: one row per option GROUP (a teacher + the pupils
+    # who chose that option, pooled from the listed classes). Bands are
+    # derived: groups sharing any class must run simultaneously.
+    if "Options" in wb.sheetnames:
+        for r in _rows(wb["Options"]):
+            s.options.append(dict(
+                id=r["id"],
+                subject_id=(r.get("subject_id") or "").strip(),
+                teacher_id=(r.get("teacher_id") or "").strip(),
+                hours=_int(r.get("hours")),
+                blocks=(r.get("blocks") or "").strip(),
+                classes=[c.strip() for c in (r.get("classes") or "")
+                         .replace(",", ";").split(";") if c.strip()],
+                room_type=(r.get("room_type") or "").strip(),
+            ))
+    compute_option_bands(s)
+
     # The Weights sheet is Majd's editable copy of the rule weights: any row
     # there OVERRIDES config.json. His workbook is the database - he asked
     # to see and change the weights without touching JSON (2026-08-25).
@@ -294,6 +325,64 @@ def load_school(xlsx=None, cfg=None):
             ))
     wb.close()
     return s
+
+
+def compute_option_bands(s):
+    """Group the option groups into BANDS: groups sharing any class must run
+    simultaneously (Majd: while options run, a pupil can only be in another
+    option - nobody misses a lesson). Idempotent; safe on empty options."""
+    s.option_bands = []
+    if not s.options:
+        return s.option_bands
+    parent = {}
+
+    def find(a):
+        while parent.get(a, a) != a:
+            parent[a] = parent.get(parent[a], parent[a])
+            a = parent[a]
+        return a
+
+    def union(a, b):
+        parent.setdefault(a, a)
+        parent.setdefault(b, b)
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[ra] = rb
+
+    by_class = {}
+    for g in s.options:
+        parent.setdefault(g["id"], g["id"])
+        for c in g["classes"]:
+            if c in by_class:
+                union(g["id"], by_class[c])
+            by_class[c] = g["id"]
+    comps = {}
+    for g in s.options:
+        comps.setdefault(find(g["id"]), []).append(g)
+    for n, (root, groups) in enumerate(sorted(comps.items()), start=1):
+        classes = sorted({c for g in groups for c in g["classes"]})
+        s.option_bands.append(dict(
+            id="B%d" % n,
+            classes=classes,
+            groups=groups,
+            hours=groups[0]["hours"],
+            blocks=groups[0]["blocks"],
+        ))
+    # the printable views need a name for the band's pseudo-subject
+    for b in s.option_bands:
+        sid = "OPT:" + b["id"]
+        if sid not in s.subjects:
+            s.subjects[sid] = dict(id=sid, name="حصة الخيارات", short="خيار",
+                                   difficulty="medium", room_type="__opt__",
+                                   latest_period=0)
+    return s.option_bands
+
+
+def option_room_type(s, g):
+    """The room an option group needs: its own column, else its subject's."""
+    return (g.get("room_type")
+            or s.subjects.get(g["subject_id"], {}).get("room_type")
+            or "normal")
 
 
 def check(s):
@@ -337,6 +426,64 @@ def check(s):
                     errs.append(where + " - a block of " + str(max(bl)) + " consecutive hours can "
                                 "never be placed: the longest open run in any day is " +
                                 str(max_run) + " (the lunch break interrupts every day).")
+
+    # H14 options: refs exist, same-year pooling, one band per class, and
+    # every group of a band identical in hours+blocks (they run as one).
+    class_band = {}
+    for g in s.options:
+        where = "Options row " + str(g["id"])
+        if g["subject_id"] not in s.subjects:
+            errs.append(where + " - subject '" + g["subject_id"] + "' is not in the Subjects sheet.")
+        if g["teacher_id"] and g["teacher_id"] not in s.teachers:
+            errs.append(where + " - teacher '" + g["teacher_id"] + "' is not in the Teachers sheet.")
+        if g["hours"] <= 0:
+            errs.append(where + " - hours must be greater than 0.")
+        if not g["classes"]:
+            errs.append(where + " - no classes listed; write them like C01;C02.")
+        for c in g["classes"]:
+            if c not in s.classes:
+                errs.append(where + " - class '" + c + "' is not in the Classes sheet.")
+        grades = {str(s.classes[c].get("grade", "")) for c in g["classes"]
+                  if c in s.classes}
+        if len(grades) > 1:
+            errs.append(where + " - pools classes of different years (" +
+                        ", ".join(sorted(grades)) + "). Majd's rule: same "
+                        "year only (streams may mix).")
+        if str(g.get("blocks", "")).strip():
+            bl, berr = parse_blocks(g["blocks"], g["hours"])
+            if berr:
+                errs.append(where + " - " + berr)
+            elif bl and sum(bl) != g["hours"]:
+                errs.append(where + " - blocks add up to " + str(sum(bl)) +
+                            " but hours says " + str(g["hours"]) + ".")
+        rt = option_room_type(s, g)
+        if not s.rooms_of_type(rt) and s.rooms:
+            errs.append(where + " - needs a '" + rt + "' room but none exists.")
+    for band in s.option_bands:
+        if len({g["hours"] for g in band["groups"]}) > 1:
+            errs.append("Option band " + band["id"] + " (" +
+                        ", ".join(g["id"] for g in band["groups"]) +
+                        ") mixes different hours - groups that share classes "
+                        "run SIMULTANEOUSLY, so they need the same hours.")
+        if len({str(g.get("blocks", "")).strip() for g in band["groups"]}) > 1:
+            errs.append("Option band " + band["id"] + " mixes different "
+                        "blocks patterns - they run simultaneously, so the "
+                        "pattern must match.")
+        seen_t = set()
+        for g in band["groups"]:
+            t = g["teacher_id"]
+            if t and t in seen_t:
+                errs.append("Option band " + band["id"] + ": teacher " + t +
+                            " has TWO groups that must run at the same time - "
+                            "impossible. Give one group another teacher.")
+            seen_t.add(t)
+        for c in band["classes"]:
+            if c in class_band:
+                errs.append("Class " + c + " appears in two option bands (" +
+                            class_band[c] + " and " + band["id"] + ") - every "
+                            "pupil takes exactly ONE option, so one band per "
+                            "class.")
+            class_band[c] = band["id"]
 
     for t in s.teachers.values():
         off = t["day_off"]
@@ -400,6 +547,11 @@ def check(s):
             a, b = week_hours(c)
             e[0] += a
             e[1] += b
+    for g in s.options:            # H14: option groups run every week
+        if g["teacher_id"]:
+            e = loadw.setdefault(g["teacher_id"], [0, 0])
+            e[0] += g["hours"]
+            e[1] += g["hours"]
     # H10 compares the AVERAGE of the two weeks - that is how the school's
     # own sheets count (a fortnightly hour appears there as 0.5, e.g. the
     # official 18.5). The BUSIER week still drives the physical fit checks.
@@ -456,6 +608,11 @@ def check(s):
                 e[0] += c["hours"]
             if wk in ("", "B"):
                 e[1] += c["hours"]
+    for band in s.option_bands:    # the band occupies each member class
+        for c in band["classes"]:
+            e = clw.setdefault(c, [0, 0])
+            e[0] += band["hours"]
+            e[1] += band["hours"]
     for cid in sorted(clw):
         if max(clw[cid]) > week:
             errs.append("Class " + cid + " needs " + str(max(clw[cid])) +
@@ -496,9 +653,9 @@ def check(s):
 
     # THE bottleneck: rooms. Grouped rows occupy a room PER GROUP; week A/B
     # rows only occupy their week - the busier week is what must fit.
-    total = max(
-        sum(week_hours(c)[i] for c in s.curriculum)
-        for i in (0, 1)) if s.curriculum else 0
+    total = (max(sum(week_hours(c)[i] for c in s.curriculum)
+                 for i in (0, 1)) if s.curriculum else 0) \
+        + sum(g["hours"] for g in s.options)
     cap = len(s.rooms) * week
     if cap:
         use = 100.0 * total / cap
@@ -520,6 +677,11 @@ def check(s):
         a, b = week_hours(c)
         e[0] += a
         e[1] += b
+    for g in s.options:            # every option group needs its own room
+        rt = option_room_type(s, g)
+        e = by_type.setdefault(rt, [0, 0])
+        e[0] += g["hours"]
+        e[1] += g["hours"]
     for rt in sorted(by_type):
         n = len(s.rooms_of_type(rt))
         if n and max(by_type[rt]) > n * week:

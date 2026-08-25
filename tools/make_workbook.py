@@ -89,6 +89,15 @@ SHEETS = {
         dv={"room_type": "normal,lab_phys,lab_chem,lab_sci,it,gym,tech",
             "groups": "1,2,3", "core": "yes,no", "week": "A,B"},
         width={"blocks": 16}),
+    "Options": dict(
+        cols=["id", "subject_id", "teacher_id", "hours", "blocks",
+              "classes", "room_type"],
+        hint=["e.g. OPT3_ESP", "ESP / ALL / ITA / MUS / TASH",
+              "from Teachers", "hours per week", "e.g. 2 or 1+1",
+              "same-year classes pooled, like C13;C14;C15",
+              "blank = subject default"],
+        dv={},
+        width={"classes": 28}),
     "Unavailable": dict(
         cols=["teacher_id", "day", "period", "hard", "reason"],
         hint=["from Teachers", "or * for every day", "or * for whole day",

@@ -68,7 +68,7 @@ Seventeen rules, all high value and low cost, most needing no new data.
 | id | task | status |
 |---|---|---|
 | T26 | Max 6 h/day, min 2 h per half-day — **pupils and teachers** | DONE for teachers (H17 hard + S2) and pupil min-2 (S15). Pupil max-6/day needs group machinery — card-hours ≠ pupil-hours |
-| T27 | Max 4 h for a pupil in one half-day | LATER |
+| T27 | Max 4 h for a pupil in one half-day | **DONE 2026-08-25** (with T26 pupil 6h/day cap — group machinery made pupil-hours countable) |
 | T28 | Spread each teacher across most days (replaces our S8) | DONE — S8 rewritten, `compact=yes` column ready for the T25 list |
 | T29 | Morning/evening alternation, first four days | DONE — S5 coded (|morning−evening| ≤ 2 slack) |
 | T30 | Three quarters of core and stream subjects in the morning | LATER — replaces our cruder S3 |
@@ -90,8 +90,8 @@ Seventeen rules, all high value and low cost, most needing no new data.
 | T41 | Doubles at the start of a half-day, never split by the break | after T40 |
 | T42 | **Week A / Week B** | **DONE 2026-08-24** — `week` column (A/B/blank), all clashes + caps + comfort rules per week view, verified, selftested |
 | T43 | **Group splitting**, with pupil ≠ teacher hours | **DONE 2026-08-24** — `groups=N`, hours per group, parallel halves, per-part clash + pupil views, S22 same-day preference (M-SN4), verified, selftested |
-| T44 | **H14 option groups** pooled across classes | LAST REMAINING HARD RULE — needs Majd's answers (RULES.md H14 questions) |
-| T45 | Room proximity — avoid long walks between consecutive lessons | after T20 |
+| T44 | **H14 option groups** pooled across classes | **DONE 2026-08-25** — Majd answered the 5 questions; bands simultaneous, teachers+rooms bound, verified, selftested. aSc format pending test C4 import |
+| T45 | Room proximity — avoid long walks between consecutive lessons | **DONE 2026-08-25** (inert until the Rooms `zone` column is filled — Majd: assume 0, edit later) |
 
 ## Phase 6 — finishing
 

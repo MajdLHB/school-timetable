@@ -146,6 +146,14 @@ def main():
         for g in (range(1, n_groups + 1) if n_groups > 1 else [0]):
             for w in _row_group_weeks(row, g):
                 want[row["class_id"], row["subject_id"], g, w] += row["hours"]
+    # H14: every option group delivers its hours to EVERY member class, on
+    # the option division (group numbers 100+). Bands are simultaneous -
+    # the clash rules below treat option lessons as parallel-compatible.
+    for band in getattr(s, "option_bands", []):
+        for gi, g in enumerate(band["groups"]):
+            for cid in g["classes"]:
+                for w in ("A", "B"):
+                    want[cid, g["subject_id"], 100 + gi, w] += band["hours"]
     got = collections.Counter()
     for d, p, r, lid, wks in placed:
         L = lessons.get(lid)
@@ -189,9 +197,20 @@ def main():
             fail("H1", "teacher %s is in %d places at %s period %d%s."
                  % (t, len(v), d, p, wtag(w)))
     for (c, d, p, w), gs in c_at.items():
-        if len(gs) > 1 and (0 in gs or len(set(gs)) < len(gs)):
+        if len(gs) < 2:
+            continue
+        normal = [g for g in gs if 0 < g < 100]
+        opts = [g for g in gs if g >= 100]
+        # forbidden: the same group twice; the whole class plus anything;
+        # a normal lesson (whole or split) at the same time as an option
+        # (every pupil is in SOME option then - nobody is free for it).
+        clash = (len(set(gs)) < len(gs)
+                 or 0 in gs
+                 or (normal and opts))
+        if clash:
             fail("H2", "class %s is in %d places at %s period %d%s "
-                       "(groups %s - only DIFFERENT groups may overlap)."
+                       "(groups %s - only different halves, or parallel "
+                       "options, may overlap)."
                  % (c, len(gs), d, p, wtag(w),
                     ", ".join(str(g) for g in sorted(gs))))
     for (r, d, p, w), v in r_at.items():
@@ -213,6 +232,9 @@ def main():
     need_type = {}
     for row in s.curriculum:
         need_type[row["class_id"], row["subject_id"]] = s.room_type_for(row)
+    for g in getattr(s, "options", []):
+        for cid in g["classes"]:
+            need_type[cid, g["subject_id"]] = D.option_room_type(s, g)
     for d, p, r, lid, wks in placed:
         L = lessons.get(lid)
         if not L:
@@ -268,6 +290,18 @@ def main():
                     unverifiable.add(key)
                 else:
                     expect[key].extend(want_bl)
+    for band in getattr(s, "option_bands", []):
+        bl, berr = D.parse_blocks(band["blocks"], band["hours"])
+        blank = not str(band["blocks"]).strip()
+        bad = berr or not bl or sum(bl) != band["hours"]
+        for gi, g in enumerate(band["groups"]):
+            for cid in g["classes"]:
+                for w in ("A", "B"):
+                    key = (cid, g["subject_id"], 100 + gi, w)
+                    if blank or bad:
+                        unverifiable.add(key)
+                    else:
+                        expect[key].extend(bl)
     for key, want_bl in expect.items():
         if key in unverifiable:
             continue   # mixed with a free-form row - runs cannot be predicted

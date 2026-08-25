@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- TEST C4: the H14 OPTION format - one lesson spanning TWO classes, on an
+     option division (divisiontag 2), two options in PARALLEL in one period.
+     Import into a 2-WEEK, 6-day project (like C2/C3).
+     PASS = both classes' grids show ESP and ALL stacked in period 3, no
+     clash reported, nothing in the unplaced strip. -->
+<timetable importtype="database" options="idprefix:OPTTEST">
+   <weeksdefs options="" columns="id,weeks,name,short">
+      <weeksdef id="WALL" weeks="11" name="All weeks" short="All"/>
+   </weeksdefs>
+   <teachers options="" columns="id,name,short">
+      <teacher id="T1" name="Prof Esp" short="ESP"/>
+      <teacher id="T2" name="Prof All" short="ALL"/>
+   </teachers>
+   <classes options="" columns="id,name,short">
+      <class id="C1" name="Opt Test 1" short="OT1"/>
+      <class id="C2" name="Opt Test 2" short="OT2"/>
+   </classes>
+   <groups options="" columns="id,classid,name,entireclass,divisiontag,studentcount">
+      <group id="G0_C1" classid="C1" name="Entire class" entireclass="1" divisiontag="0" studentcount="30"/>
+      <group id="G0_C2" classid="C2" name="Entire class" entireclass="1" divisiontag="0" studentcount="30"/>
+      <group id="OPTG_C1_100" classid="C1" name="Option: Espagnol" entireclass="0" divisiontag="2" studentcount="15"/>
+      <group id="OPTG_C1_101" classid="C1" name="Option: Allemand" entireclass="0" divisiontag="2" studentcount="15"/>
+      <group id="OPTG_C2_100" classid="C2" name="Option: Espagnol" entireclass="0" divisiontag="2" studentcount="15"/>
+      <group id="OPTG_C2_101" classid="C2" name="Option: Allemand" entireclass="0" divisiontag="2" studentcount="15"/>
+   </groups>
+   <subjects options="" columns="id,name,short">
+      <subject id="ESP" name="Espagnol" short="Es"/>
+      <subject id="ALL" name="Allemand" short="Al"/>
+   </subjects>
+   <classrooms options="" columns="id,name,short">
+      <classroom id="R1" name="Salle 1" short="S1"/>
+      <classroom id="R2" name="Salle 2" short="S2"/>
+   </classrooms>
+   <lessons options="" columns="id,subjectid,classids,groupids,teacherids,weeksdefid,periodspercard,periodsperweek">
+      <lesson id="LE" subjectid="ESP" classids="C1,C2" groupids="OPTG_C1_100,OPTG_C2_100" teacherids="T1" weeksdefid="WALL" periodspercard="1" periodsperweek="1"/>
+      <lesson id="LA" subjectid="ALL" classids="C1,C2" groupids="OPTG_C1_101,OPTG_C2_101" teacherids="T2" weeksdefid="WALL" periodspercard="1" periodsperweek="1"/>
+   </lessons>
+   <cards options="" columns="lessonid,period,days,weeks,classroomids">
+      <card lessonid="LE" period="3" days="100000" weeks="11" classroomids="R1"/>
+      <card lessonid="LA" period="3" days="100000" weeks="11" classroomids="R2"/>
+   </cards>
+</timetable>
