@@ -20,11 +20,11 @@ if errorlevel 1 (
 
 echo.
 echo  ---------------------------------------------
-echo   STEP 2 of 3 - building the timetable (10 HOURS)
-echo   Phase 1 proves the minimum exceptions first.
+echo   STEP 2 of 3 - building the timetable (10 HOURS, STRICT)
+echo   Every hard rule absolute - no exceptions possible.
 echo   Ctrl+C keeps the best found so far.
 echo  ---------------------------------------------
-python solver\solve.py --rescue --workers=2 --time=36000 %*
+python solver\solve.py --workers=2 --time=36000 %*
 if errorlevel 1 (
   echo.
   echo  No timetable was produced. Read the message above.

@@ -22,12 +22,14 @@ echo  ---------------------------------------------
 echo   STEP 2 of 3 - building the timetable
 echo   (about 10 minutes - Ctrl+C keeps the best so far)
 echo  ---------------------------------------------
-REM --rescue: on the real school the strict phase cannot finish in any
-REM   reasonable time, so we go straight to the mode that always finds a
-REM   timetable and DECLARES every rule exception in the report.
+REM STRICT MODE (Majd 2026-08-25: "build by them from the start...
+REM   crashing hard rules is not livable"): every hard rule is absolute.
+REM   Exceptions are IMPOSSIBLE in this mode. Only if the solver PROVES
+REM   that no legal timetable exists at all does it retry with declared
+REM   exceptions - and then the report says exactly what and why.
 REM --workers=2: this machine has 8 GB RAM; more workers can crash.
 REM   A later --time=N on the command line still overrides the default.
-python solver\solve.py --rescue --workers=2 --time=600 %*
+python solver\solve.py --workers=2 --time=600 %*
 if errorlevel 1 (
   echo.
   echo  No timetable was produced. Read the message above.
