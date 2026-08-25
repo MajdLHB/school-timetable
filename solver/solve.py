@@ -803,6 +803,48 @@ def build(s, sessions, rescue=False, objective="full", exc_cap=None):
     # assigned a single lone hour in a morning or evening". So a teacher's
     # day is either EMPTY or at least 2 hours. Relaxable in rescue mode,
     # where every case is declared in the report like H7/H17.
+    # ---- H22: a teacher's HALF-DAY is empty or at least 2 hours ----------
+    # Majd 2026-08-25, after measuring 43 lonely half-days a week against
+    # his humans' 0.5: "no hour at 11 then back for afternoon... it's a
+    # priority not to have them". A price of 400-700 failed twice, so this
+    # is now a rule: each morning and each evening holds 0 hours or >= 2.
+    # It SUBSUMES H21 (a day of one hour has a half-day of one hour).
+    # Dial: half_day_min2 = HARD (default) / a number / 0 = off.
+    h22_mode = W.get("half_day_min2", "HARD")
+    halves_p = {"am": [p for p in range(1, s.cfg.periods_per_day + 1)
+                       if p not in evening],
+                "pm": sorted(evening)}
+    for tid, ss in (by_teacher.items() if h22_mode else ()):
+        for w in weeks_of(ss):
+            act = [se for se in ss if in_week(se, w)]
+            if sum(se.length for se in act) < 2:
+                continue                 # cannot possibly comply
+            for d in days:
+                for tag, ps in halves_p.items():
+                    ix = [i for i, (dd, p) in enumerate(slots)
+                          if dd == d and p in ps]
+                    terms = [v for i in ix for v in occs(act, i)]
+                    if len(terms) < 2:
+                        continue
+                    if h22_mode != "HARD":
+                        lone = m.NewBoolVar("h22s_%s_%s_%s_%s" % (tid, d, tag, w))
+                        m.Add(sum(terms) == 1).OnlyEnforceIf(lone)
+                        m.Add(sum(terms) != 1).OnlyEnforceIf(lone.Not())
+                        penalties.append((h22_mode, lone))
+                    elif not rescue:
+                        dom = cp_model.Domain.FromIntervals(
+                            [[0, 0], [2, len(terms)]])
+                        tot = m.NewIntVarFromDomain(
+                            dom, "h22_%s_%s_%s_%s" % (tid, d, tag, w))
+                        m.Add(tot == sum(terms))
+                    else:
+                        lone = m.NewBoolVar("vH22_%s_%s_%s_%s" % (tid, d, tag, w))
+                        m.Add(sum(terms) == 1).OnlyEnforceIf(lone)
+                        m.Add(sum(terms) != 1).OnlyEnforceIf(lone.Not())
+                        penalties.append((RESCUE_WEIGHT, lone))
+                        viols.append(("H22", tid, "%s %s" % (d, tag), lone,
+                                      "a half-day with a single lesson"))
+
     h21_mode = W.get("lone_hour_day", "HARD")
     for tid, ss in (by_teacher.items() if h21_mode else ()):
         for w in weeks_of(ss):

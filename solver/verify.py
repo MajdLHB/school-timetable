@@ -23,7 +23,7 @@ EXC = os.path.join(D.HERE, "out", "exceptions.json")
 
 # Only these rules may ever be excused by a rescue-mode exceptions file.
 # A clash or a wrong room is never an acceptable exception.
-EXCUSABLE = {"H7", "H17", "H4", "H21"}  # H4 rooms, H21 lone hours
+EXCUSABLE = {"H7", "H17", "H4", "H21", "H22"}  # rooms, lone hours/halves
 
 
 def _group_no(groupids):
@@ -451,6 +451,17 @@ def main():
         if n == 1:
             fail("H21", "teacher %s teaches ONE hour on %s (week %s) - a "
                         "wasted journey." % (t_, d, w), key=(t_, d))
+
+    # --- H22: no teacher half-day holding exactly one lesson ---------------
+    ev_set = set(cfg.evening)
+    half_load = collections.Counter()
+    for (t_, d, p, w), v in t_at.items():
+        half_load[t_, d, w, "pm" if p in ev_set else "am"] += len(v)
+    for (t_, d, w, tag), n in sorted(half_load.items()):
+        if n == 1:
+            fail("H22", "teacher %s has a single lesson in the %s of %s "
+                        "(week %s) - a wasted journey." % (t_, tag, d, w),
+                 key=(t_, d))
 
     # --- H17: never more than 6 teaching hours in one day ------------------
     # Per week: an every-week hour loads both weeks, a week-A hour only A.

@@ -32,13 +32,14 @@ def _time_of(p):
 
 
 def _tag_of(group, week):
-    """The little label on a card: فوج (group) and/or أ/ب (week A/B)."""
+    """The label on a card. Majd asked for groups and weeks to be OBVIOUS:
+    "فوج 1" spelled out, and "أسبوع أ/ب" rather than a bare letter."""
     bits = []
     if group:
-        bits.append("ف%d" % group)
+        bits.append("فوج %d" % group)
     if week:
-        bits.append({"A": "أ", "B": "ب"}.get(week, week))
-    return " ".join(bits)
+        bits.append("أسبوع %s" % {"A": "أ", "B": "ب"}.get(week, week))
+    return " · ".join(bits)
 
 
 def _table(cfg, grid, second_line, day_tags=None):
@@ -288,17 +289,19 @@ select,button{font-size:1em;padding:6px 12px;margin:2px 6px 2px 0;border-radius:
 button{background:#3d5a80;color:#fff;border:none}
 button.alt{background:#8a7d5c}
 table{border-collapse:collapse;width:100%;background:#fff}
-th,td{border:1px solid #b9b2a2;padding:5px 3px;text-align:center;font-size:.85em;min-width:74px;height:44px}
+table{table-layout:fixed}
+th,td{border:1px solid #b9b2a2;padding:4px 3px;text-align:center;font-size:.85em;width:13.5%;height:78px;vertical-align:middle;overflow:hidden}
 th{background:#3d5a80;color:#fff}
 td.t,th.t{background:#ece8dd;font-weight:bold;min-width:54px}
 td.closed{background:repeating-linear-gradient(45deg,#f0ede6,#f0ede6 6px,#e3dfd4 6px,#e3dfd4 12px)}
 td.rest{background:#e8f0e4}
 td.l.rest{background:#fbe3e3}   /* a lesson ON a free day = declared exception, make it jump out */
 td.l b{display:block;color:#1d3557}
-td.l b em{font-style:normal;font-size:.78em;background:#e3ecf6;border-radius:4px;padding:0 4px;color:#3d5a80}
+td.l b em{display:inline-block;font-style:normal;font-size:.72em;background:#3d5a80;color:#fff;border-radius:4px;padding:0 5px;margin-inline-start:4px;font-weight:600}
 td.l span{display:block;font-size:.9em}
 td.l small{display:block;color:#6b6455}
-td.l hr{border:none;border-top:1px dashed #b9b2a2;margin:2px 0}
+td.l hr{border:none;border-top:1px dashed #b9b2a2;margin:3px 0}
+td.l b{line-height:1.15}td.l span{line-height:1.1}
 .grid{display:none}.grid.show{display:block}
 @page{size:A4 landscape;margin:9mm}
 @media print{
